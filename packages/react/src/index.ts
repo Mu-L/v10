@@ -51,6 +51,8 @@ export type { SliderTrackProps } from './ui/slider/slider-track';
 export type { SliderValueProps } from './ui/slider/slider-value';
 export { Thumbnail, type ThumbnailProps } from './ui/thumbnail/thumbnail';
 export { Time } from './ui/time';
+export { TimeSlider } from './ui/time-slider';
+export { VolumeSlider } from './ui/volume-slider';
 
 // Utilities
 export { mergeProps } from './utils/merge-props';
