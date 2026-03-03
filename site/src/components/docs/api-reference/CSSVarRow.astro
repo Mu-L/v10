@@ -11,7 +11,7 @@ interface Props {
 
 const { name, description, componentName } = Astro.props;
 
-const id = `${componentName}-css-var-${name}`;
+const id = `${componentName}-css-var-${name.replace(/^--/, '')}`;
 ---
 
 <DetailRow id={id} name={name} type="" description={description} colspan={2}>

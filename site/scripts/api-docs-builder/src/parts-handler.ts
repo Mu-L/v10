@@ -94,6 +94,7 @@ export function extractSubPartProps(filePath: string, program: ts.Program, local
         if (name === 'children' || !member.type) continue;
 
         let typeStr = checker.typeToString(checker.getTypeFromTypeNode(member.type));
+        // Only strips trailing ` | undefined`; other orderings (e.g., `undefined | string`) pass through.
         if (member.questionToken) typeStr = typeStr.replace(/ \| undefined$/, '');
 
         const propDef: PropDef = { type: typeStr };

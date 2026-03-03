@@ -309,6 +309,7 @@ function instantiatesCore(filePath: string): boolean {
   }
 }
 
+/** String search heuristic — a comment containing `stateAttrMap` would also match. */
 function usesDataAttrs(filePath: string): boolean {
   try {
     return fs.readFileSync(filePath, 'utf-8').includes('stateAttrMap');
