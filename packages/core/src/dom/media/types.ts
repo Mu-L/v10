@@ -4,8 +4,10 @@ import type {
   MediaControlsState,
   MediaFullscreenState,
   MediaPictureInPictureState,
+  MediaPlaybackRateState,
   MediaPlaybackState,
   MediaSourceState,
+  MediaTextTrackState,
   MediaTimeState,
   MediaVolumeState,
 } from '../../core/media/state';
@@ -44,6 +46,7 @@ export type AnyPlayerStore = Store<PlayerTarget, object>;
 
 export type VideoFeatures = [
   PlayerFeature<MediaPlaybackState>,
+  PlayerFeature<MediaPlaybackRateState>,
   PlayerFeature<MediaVolumeState>,
   PlayerFeature<MediaTimeState>,
   PlayerFeature<MediaSourceState>,
@@ -51,10 +54,12 @@ export type VideoFeatures = [
   PlayerFeature<MediaFullscreenState>,
   PlayerFeature<MediaPictureInPictureState>,
   PlayerFeature<MediaControlsState>,
+  PlayerFeature<MediaTextTrackState>,
 ];
 
 export type AudioFeatures = [
   PlayerFeature<MediaPlaybackState>,
+  PlayerFeature<MediaPlaybackRateState>,
   PlayerFeature<MediaVolumeState>,
   PlayerFeature<MediaTimeState>,
   PlayerFeature<MediaSourceState>,

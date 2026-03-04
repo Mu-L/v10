@@ -5,7 +5,7 @@ import { framework, skin } from '@/stores/homePageDemos';
 import ClientCode from '../Code/ClientCode';
 
 function generateHTMLCode(skin: Skin): string {
-  const skinTag = skin === 'frosted' ? 'video-skin' : 'minimal-video-skin';
+  const skinTag = skin === 'frosted' ? 'video-skin' : 'video-minimal-skin';
   const skinFile = skin === 'frosted' ? 'skin' : 'minimal-skin';
 
   return `<script type="module">

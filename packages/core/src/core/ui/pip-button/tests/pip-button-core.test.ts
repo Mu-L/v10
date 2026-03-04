@@ -27,7 +27,8 @@ describe('PiPButtonCore', () => {
     it('projects pip and availability', () => {
       const core = new PiPButtonCore();
       const media = createMediaState({ pip: true });
-      const state = core.getState(media);
+      core.setMedia(media);
+      const state = core.getState();
 
       expect(state.pip).toBe(true);
       expect(state.availability).toBe('available');
@@ -35,21 +36,22 @@ describe('PiPButtonCore', () => {
 
     it('reflects unsupported availability', () => {
       const core = new PiPButtonCore();
-      const state = core.getState(createMediaState({ pipAvailability: 'unsupported' }));
+      core.setMedia(createMediaState({ pipAvailability: 'unsupported' }));
+      const state = core.getState();
 
       expect(state.availability).toBe('unsupported');
     });
   });
 
   describe('getLabel', () => {
-    it('returns Enter PiP when not in PiP', () => {
+    it('returns Enter picture-in-picture when not in PiP', () => {
       const core = new PiPButtonCore();
-      expect(core.getLabel(createState({ pip: false }))).toBe('Enter PiP');
+      expect(core.getLabel(createState({ pip: false }))).toBe('Enter picture-in-picture');
     });
 
-    it('returns Exit PiP when in PiP', () => {
+    it('returns Exit picture-in-picture when in PiP', () => {
       const core = new PiPButtonCore();
-      expect(core.getLabel(createState({ pip: true }))).toBe('Exit PiP');
+      expect(core.getLabel(createState({ pip: true }))).toBe('Exit picture-in-picture');
     });
 
     it('returns custom string label', () => {
@@ -69,7 +71,7 @@ describe('PiPButtonCore', () => {
     it('returns aria-label', () => {
       const core = new PiPButtonCore();
       const attrs = core.getAttrs(createState());
-      expect(attrs['aria-label']).toBe('Enter PiP');
+      expect(attrs['aria-label']).toBe('Enter picture-in-picture');
     });
 
     it('sets aria-disabled when disabled', () => {

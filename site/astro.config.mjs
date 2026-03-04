@@ -57,14 +57,21 @@ export default defineConfig({
     }),
     mdx({ extendMarkdownConfig: true }),
     sitemap({
-      customPages: [`${SITE_URL}/llms.txt`],
+      // llms-markdown.ts auto-generates per-framework sub-indexes, but sitemap
+      // entries are hardcoded here. Add a new line when adding a framework.
+      customPages: [
+        `${SITE_URL}/llms.txt`,
+        `${SITE_URL}/blog/llms.txt`,
+        `${SITE_URL}/docs/framework/html/llms.txt`,
+        `${SITE_URL}/docs/framework/react/llms.txt`,
+      ],
     }),
     pagefind(),
     llmsMarkdown(),
     checkV8Urls(),
     react({
       babel: {
-        plugins: [['babel-plugin-react-compiler', { target: '18' }]],
+        plugins: [['babel-plugin-react-compiler', { target: '19' }]],
       },
     }),
   ],

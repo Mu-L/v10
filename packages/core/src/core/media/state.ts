@@ -170,6 +170,42 @@ export interface MediaControlsState {
   controlsVisible: boolean;
 }
 
+export interface MediaPlaybackRateState {
+  /**
+   * Available playback rates.
+   *
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/playbackRate
+   */
+  readonly playbackRates: readonly number[];
+  /**
+   * Current playback rate.
+   *
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/playbackRate
+   */
+  playbackRate: number;
+  /**
+   * Set the playback rate.
+   *
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/playbackRate
+   */
+  setPlaybackRate(rate: number): void;
+}
+
+export interface MediaTextCue {
+  startTime: number;
+  endTime: number;
+  text: string;
+}
+
+export interface MediaTextTrackState {
+  /** Cues from the first `kind="chapters"` track. */
+  chaptersCues: MediaTextCue[];
+  /** Cues from the first `kind="metadata" label="thumbnails"` track. */
+  thumbnailCues: MediaTextCue[];
+  /** The `<track>` element's `src` for resolving relative cue text URLs. */
+  thumbnailTrackSrc: string | null;
+}
+
 export interface MediaPictureInPictureState {
   /**
    * Whether picture-in-picture mode is currently active.
