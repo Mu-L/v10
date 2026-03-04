@@ -1,10 +1,9 @@
-import { SliderDataAttrs } from '@videojs/core';
 import { applyStateDataAttrs } from '@videojs/core/dom';
 import type { PropertyDeclarationMap, PropertyValues } from '@videojs/element';
 import { ContextConsumer } from '@videojs/element/context';
 
 import { MediaElement } from '../media-element';
-import { sliderContext } from './slider-context';
+import { sliderContext } from './context';
 
 export class SliderValueElement extends MediaElement {
   static readonly tagName = 'media-slider-value';
@@ -35,6 +34,6 @@ export class SliderValueElement extends MediaElement {
 
     this.textContent = ctx.formatValue ? ctx.formatValue(value, this.type) : String(Math.round(value));
 
-    applyStateDataAttrs(this, ctx.state, SliderDataAttrs);
+    applyStateDataAttrs(this, ctx.state, ctx.stateAttrMap);
   }
 }

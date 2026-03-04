@@ -9,9 +9,9 @@ import { SliderThumb } from '../slider-thumb';
 import { SliderTrack } from '../slider-track';
 import { SliderValue } from '../slider-value';
 
-const { mockSliderHandle } = vi.hoisted(() => ({
-  mockSliderHandle: () => ({
-    interaction: {
+const { mockSliderApi } = vi.hoisted(() => ({
+  mockSliderApi: () => ({
+    input: {
       current: {
         pointerPercent: 0,
         dragPercent: 0,
@@ -37,7 +37,7 @@ const { mockSliderHandle } = vi.hoisted(() => ({
 
 vi.mock('@videojs/core/dom', async (importOriginal) => {
   const orig: Record<string, unknown> = await importOriginal();
-  return { ...orig, createSlider: vi.fn(mockSliderHandle) };
+  return { ...orig, createSlider: vi.fn(mockSliderApi) };
 });
 
 vi.mock('@videojs/store/react', () => ({
@@ -97,10 +97,8 @@ describe('SliderTrack', () => {
     expect(container.querySelector('[data-testid="track"]')).toBeTruthy();
   });
 
-  it('returns null outside of SliderRoot', () => {
-    const { container } = render(<SliderTrack />);
-
-    expect(container.firstElementChild).toBeNull();
+  it('throws outside of SliderRoot', () => {
+    expect(() => render(<SliderTrack />)).toThrow('Slider compound components must be used within a Slider.Root');
   });
 
   it('forwards ref', () => {
@@ -126,10 +124,8 @@ describe('SliderFill', () => {
     expect(container.querySelector('[data-testid="fill"]')).toBeTruthy();
   });
 
-  it('returns null outside of SliderRoot', () => {
-    const { container } = render(<SliderFill />);
-
-    expect(container.firstElementChild).toBeNull();
+  it('throws outside of SliderRoot', () => {
+    expect(() => render(<SliderFill />)).toThrow('Slider compound components must be used within a Slider.Root');
   });
 });
 
@@ -144,10 +140,8 @@ describe('SliderBuffer', () => {
     expect(container.querySelector('[data-testid="buffer"]')).toBeTruthy();
   });
 
-  it('returns null outside of SliderRoot', () => {
-    const { container } = render(<SliderBuffer />);
-
-    expect(container.firstElementChild).toBeNull();
+  it('throws outside of SliderRoot', () => {
+    expect(() => render(<SliderBuffer />)).toThrow('Slider compound components must be used within a Slider.Root');
   });
 });
 
@@ -162,10 +156,8 @@ describe('SliderThumb', () => {
     expect(container.querySelector('[data-testid="thumb"]')).toBeTruthy();
   });
 
-  it('returns null outside of SliderRoot', () => {
-    const { container } = render(<SliderThumb />);
-
-    expect(container.firstElementChild).toBeNull();
+  it('throws outside of SliderRoot', () => {
+    expect(() => render(<SliderThumb />)).toThrow('Slider compound components must be used within a Slider.Root');
   });
 
   it('forwards ref', () => {
@@ -203,10 +195,8 @@ describe('SliderValue', () => {
     expect(el?.tagName).toBe('OUTPUT');
   });
 
-  it('returns null outside of SliderRoot', () => {
-    const { container } = render(<SliderValue />);
-
-    expect(container.firstElementChild).toBeNull();
+  it('throws outside of SliderRoot', () => {
+    expect(() => render(<SliderValue />)).toThrow('Slider compound components must be used within a Slider.Root');
   });
 
   it('displays rounded value by default', () => {

@@ -4,9 +4,15 @@ import { formatTimeAsPhrase } from '@videojs/utils/time';
 import type { NonNullableObject } from '@videojs/utils/types';
 
 import type { MediaBufferState, MediaTimeState } from '../../media/state';
-import { type SliderBaseProps, SliderCore, type SliderInteraction, type SliderState } from '../slider/slider-core';
+import { SliderCore, type SliderProps, type SliderState } from '../slider/slider-core';
 
-export interface TimeSliderProps extends SliderBaseProps {
+export interface TimeSliderProps extends SliderProps {
+  /** @internal Derived from `currentTime` — not user-settable. */
+  value?: number | undefined;
+  /** @internal Always 0 — not user-settable. */
+  min?: number | undefined;
+  /** @internal Derived from `duration` — not user-settable. */
+  max?: number | undefined;
   /** Trailing-edge throttle (ms) for seek requests during drag. */
   commitThrottle?: number | undefined;
 }
@@ -16,19 +22,16 @@ export interface TimeSliderState extends SliderState, Pick<MediaTimeState, 'curr
   bufferPercent: number;
 }
 
-// @ts-expect-error — defaultProps shape differs from base (domain sliders omit value/min/max)
+/** Time-domain slider: maps media time/buffer state to slider state. */
 export class TimeSliderCore extends SliderCore {
-  static readonly defaultProps: NonNullableObject<TimeSliderProps> = {
-    step: SliderCore.defaultProps.step,
-    largeStep: SliderCore.defaultProps.largeStep,
-    orientation: SliderCore.defaultProps.orientation,
-    disabled: SliderCore.defaultProps.disabled,
-    thumbAlignment: SliderCore.defaultProps.thumbAlignment,
+  static override readonly defaultProps: NonNullableObject<TimeSliderProps> = {
+    ...SliderCore.defaultProps,
     label: 'Seek',
     commitThrottle: 100,
   };
 
   #props = { ...TimeSliderCore.defaultProps };
+  #media: (MediaTimeState & MediaBufferState) | null = null;
 
   constructor(props?: TimeSliderProps) {
     super();
@@ -40,15 +43,21 @@ export class TimeSliderCore extends SliderCore {
     super.setProps({ ...props, min: 0 });
   }
 
-  getTimeState(media: MediaTimeState & MediaBufferState, interaction: SliderInteraction): TimeSliderState {
+  setMedia(media: MediaTimeState & MediaBufferState): void {
+    this.#media = media;
+  }
+
+  getState(): TimeSliderState {
+    const media = this.#media!;
     const { duration, currentTime, seeking, buffered } = media;
+    const { dragging, dragPercent } = this.input;
 
     // Override min/max for time domain, forwarding all user props so disabled/thumbAlignment aren't lost.
     super.setProps({ ...this.#props, min: 0, max: duration });
 
     // Raw precision during drag for smooth scrubbing — step snapping only applies to keyboard.
-    const value = interaction.dragging ? clamp((interaction.dragPercent / 100) * duration, 0, duration) : currentTime;
-    const base = super.getState(interaction, value);
+    const value = dragging ? clamp((dragPercent / 100) * duration, 0, duration) : currentTime;
+    const base = super.getSliderState(value);
 
     // Use end of the furthest buffered range
     const bufferedEnd = buffered.length > 0 ? buffered[buffered.length - 1]![1] : 0;

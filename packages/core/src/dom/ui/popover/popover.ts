@@ -1,8 +1,8 @@
 import type { State } from '@videojs/store';
 import { listen } from '@videojs/utils/dom';
-import type { PopoverInteraction } from '../../../core/ui/popover/popover-core';
+import type { PopoverInput } from '../../../core/ui/popover/popover-core';
 import type { UIFocusEvent, UIPointerEvent } from '../event';
-import type { TransitionHandler } from '../transition';
+import type { TransitionApi } from '../transition';
 
 export type PopoverOpenChangeReason = 'click' | 'hover' | 'focus' | 'escape' | 'outside-click' | 'blur';
 
@@ -12,7 +12,7 @@ export interface PopoverChangeDetails {
 }
 
 export interface PopoverOptions {
-  transition: TransitionHandler;
+  transition: TransitionApi;
   onOpenChange: (open: boolean, details: PopoverChangeDetails) => void;
   /** Fires after open/close animations complete. */
   onOpenChangeComplete?: (open: boolean) => void;
@@ -37,8 +37,8 @@ export interface PopoverPopupProps {
   onFocusOut: (event: UIFocusEvent) => void;
 }
 
-export interface PopoverHandle {
-  interaction: State<PopoverInteraction>;
+export interface PopoverApi {
+  input: State<PopoverInput>;
   triggerProps: PopoverTriggerProps;
   popupProps: PopoverPopupProps;
   readonly triggerElement: HTMLElement | null;
@@ -49,7 +49,7 @@ export interface PopoverHandle {
   destroy: () => void;
 }
 
-export function createPopover(options: PopoverOptions): PopoverHandle {
+export function createPopover(options: PopoverOptions): PopoverApi {
   const { transition, onOpenChange, closeOnEscape, closeOnOutsideClick } = options;
 
   const state = transition.state;
@@ -299,7 +299,7 @@ export function createPopover(options: PopoverOptions): PopoverHandle {
     popupEl = el;
 
     if (el) {
-      // If the interaction is already open (e.g., React mount after state
+      // If the popover is already open (e.g., React mount after state
       // change), show the popover now. In `applyOpen` the element may not
       // have been in the DOM yet, so the earlier `tryShowPopover` was a no-op.
       if (state.current.active) {
@@ -316,7 +316,7 @@ export function createPopover(options: PopoverOptions): PopoverHandle {
   }
 
   return {
-    interaction: state,
+    input: state,
     triggerProps,
     popupProps,
     get triggerElement() {

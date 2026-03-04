@@ -9,7 +9,7 @@ import type { UIComponentProps } from '../../utils/types';
 import { useLatestRef } from '../../utils/use-latest-ref';
 import { renderElement } from '../../utils/use-render';
 import { useSlider } from '../hooks/use-slider';
-import { SliderProvider } from '../slider/slider-context';
+import { SliderProvider } from '../slider/context';
 
 const noopVolume = {
   volume: 0,
@@ -50,15 +50,14 @@ export const VolumeSliderRoot = forwardRef<HTMLDivElement, VolumeSliderRootProps
     const volumeRef = useLatestRef(volume);
 
     const { state, cssVars, rootRef, thumbRef, rootProps, thumbProps } = useSlider<VolumeSliderCore.State>({
-      computeState: (interaction) => {
-        if (!volume) {
-          return core.getVolumeState(noopVolume, interaction);
-        }
-        return core.getVolumeState(volume, interaction);
+      computeState: (input) => {
+        core.setInput(input);
+        core.setMedia(volume ?? noopVolume);
+        return core.getState();
       },
       getPercent: () => (volume ? volume.volume * 100 : 0),
-      getStepPercent: () => step,
-      getLargeStepPercent: () => largeStep,
+      getStepPercent: () => core.getStepPercent(),
+      getLargeStepPercent: () => core.getLargeStepPercent(),
       orientation,
       disabled,
       adjustPercent: (rawPercent, thumbSize, trackSize) =>

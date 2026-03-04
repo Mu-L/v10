@@ -47,6 +47,8 @@ export interface StateContext<Target> {
 // ----------------------------------------
 
 export interface SliceConfig<Target, State> {
+  /** Debug label. Used as `displayName` on selectors created from this slice. */
+  name?: string;
   state: (ctx: StateContext<Target>) => State;
   attach?: (ctx: AttachContext<Target, State>) => void;
 }

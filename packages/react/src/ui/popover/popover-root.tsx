@@ -1,14 +1,14 @@
 'use client';
 
-import { type PopoverProps as CorePopoverProps, PopoverCore } from '@videojs/core';
-import { createPopover, createTransitionHandler, type PopoverChangeDetails } from '@videojs/core/dom';
+import { type PopoverProps as CorePopoverProps, PopoverCore, PopoverDataAttrs } from '@videojs/core';
+import { createPopover, createTransition, type PopoverChangeDetails } from '@videojs/core/dom';
 import { useSnapshot } from '@videojs/store/react';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 
 import { useLatestRef } from '../../utils/use-latest-ref';
 import { useSafeId } from '../../utils/use-safe-id';
-import { PopoverContextProvider } from './popover-context';
+import { PopoverContextProvider } from './context';
 
 export interface PopoverRootProps extends CorePopoverProps {
   /** Called when the popover open state changes (fires immediately, before animations). */
@@ -46,7 +46,7 @@ export function PopoverRoot({
 
   const [popover] = useState(() => {
     const instance = createPopover({
-      transition: createTransitionHandler(),
+      transition: createTransition(),
       onOpenChange: (nextOpen: boolean, details: PopoverChangeDetails) => {
         onOpenChangeRef.current?.(nextOpen, details);
       },
@@ -71,12 +71,12 @@ export function PopoverRoot({
   const anchorName = useSafeId();
   const popupId = useSafeId('popup-');
 
-  // Sync controlled open prop -> internal interaction state.
+  // Sync controlled open prop -> internal input state.
   useEffect(() => {
     if (controlledOpen === undefined) return;
 
-    const { active: interactionOpen } = popover.interaction.current;
-    if (controlledOpen === interactionOpen) return;
+    const { active: inputOpen } = popover.input.current;
+    if (controlledOpen === inputOpen) return;
 
     if (controlledOpen) {
       popover.open('click');
@@ -88,11 +88,14 @@ export function PopoverRoot({
   // Cleanup on unmount
   useEffect(() => () => popover.destroy(), [popover]);
 
-  const interaction = useSnapshot(popover.interaction);
-  const state = core.getState(interaction);
+  const input = useSnapshot(popover.input);
+  core.setInput(input);
+  const state = core.getState();
 
   return (
-    <PopoverContextProvider value={{ core, popover, state, anchorName, popupId }}>{children}</PopoverContextProvider>
+    <PopoverContextProvider value={{ core, popover, state, stateAttrMap: PopoverDataAttrs, anchorName, popupId }}>
+      {children}
+    </PopoverContextProvider>
   );
 }
 

@@ -4,18 +4,19 @@ import {
   createSlider,
   getTimeSliderCSSVars,
   logMissingFeature,
-  type SliderHandle,
+  type SliderApi,
   selectBuffer,
   selectTime,
 } from '@videojs/core/dom';
 import type { PropertyDeclarationMap, PropertyValues } from '@videojs/element';
 import { ContextProvider } from '@videojs/element/context';
 import { applyStyles, isRTL } from '@videojs/utils/dom';
+import { formatTime } from '@videojs/utils/time';
 
 import { playerContext } from '../../player/context';
 import { PlayerController } from '../../player/player-controller';
 import { MediaElement } from '../media-element';
-import { sliderContext } from '../slider/slider-context';
+import { sliderContext } from '../slider/context';
 
 export class TimeSliderElement extends MediaElement {
   static readonly tagName = 'media-time-slider';
@@ -28,7 +29,7 @@ export class TimeSliderElement extends MediaElement {
     orientation: { type: String },
     disabled: { type: Boolean },
     thumbAlignment: { type: String, attribute: 'thumb-alignment' },
-  } satisfies PropertyDeclarationMap<keyof TimeSliderCore.Props>;
+  } satisfies PropertyDeclarationMap<Exclude<keyof TimeSliderCore.Props, 'value' | 'min' | 'max'>>;
 
   label = TimeSliderCore.defaultProps.label;
   commitThrottle = TimeSliderCore.defaultProps.commitThrottle;
@@ -43,7 +44,7 @@ export class TimeSliderElement extends MediaElement {
   readonly #timeState = new PlayerController(this, playerContext, selectTime);
   readonly #bufferState = new PlayerController(this, playerContext, selectBuffer);
 
-  #slider: SliderHandle | null = null;
+  #slider: SliderApi | null = null;
   #disconnect: AbortController | null = null;
 
   override connectedCallback(): void {
@@ -63,21 +64,11 @@ export class TimeSliderElement extends MediaElement {
         if (!media) return 0;
         return this.#core.percentFromValue(media.currentTime);
       },
-      getStepPercent: () => {
-        const { step, min, max } = this.#core.props;
-        const range = max - min;
-        return range > 0 ? (step / range) * 100 : 0;
-      },
-      getLargeStepPercent: () => {
-        const { largeStep, min, max } = this.#core.props;
-        const range = max - min;
-        return range > 0 ? (largeStep / range) * 100 : 0;
-      },
-      onValueChange: () => {
-        // Visual update only — CSS vars are refreshed in update().
-      },
+      getStepPercent: () => this.#core.getStepPercent(),
+      getLargeStepPercent: () => this.#core.getLargeStepPercent(),
       onValueCommit: (percent) => {
-        this.#seek(percent);
+        const media = this.#timeState.value;
+        if (media) media.seek(this.#core.valueFromPercent(percent));
       },
       commitThrottle: this.commitThrottle,
       onDragStart: () => {
@@ -88,14 +79,14 @@ export class TimeSliderElement extends MediaElement {
       },
     });
 
-    this.#slider.interaction.subscribe(() => this.requestUpdate(), { signal });
+    this.#slider.input.subscribe(() => this.requestUpdate(), { signal });
 
     // Prevent default touch gestures and text selection during interaction.
     this.style.touchAction = 'none';
     this.style.userSelect = 'none';
 
     if (__DEV__ && !this.#timeState.value) {
-      logMissingFeature(TimeSliderElement.tagName, 'time');
+      logMissingFeature(this.localName, this.#timeState.displayName!);
     }
   }
 
@@ -120,9 +111,10 @@ export class TimeSliderElement extends MediaElement {
     const buffer = this.#bufferState.value;
     if (!time) return;
 
-    const interaction = this.#slider.interaction.current;
+    this.#core.setInput(this.#slider.input.current);
     const media = { ...time, ...(buffer ?? { buffered: [], seekable: [] }) };
-    const state = this.#core.getTimeState(media, interaction);
+    this.#core.setMedia(media);
+    const state = this.#core.getState();
     const cssVars = getTimeSliderCSSVars(state);
 
     applyStyles(this, cssVars);
@@ -133,24 +125,11 @@ export class TimeSliderElement extends MediaElement {
     // Provide context to child elements with base slider data attrs.
     this.#provider.setValue({
       state,
+      stateAttrMap: TimeSliderDataAttrs,
       pointerValue: this.#core.valueFromPercent(state.pointerPercent),
       thumbAttrs: this.#core.getAttrs(state),
       thumbProps: this.#slider.thumbProps,
-      formatValue: (value) => formatTime(value),
+      formatValue: (value) => formatTime(value, state.duration),
     });
   }
-
-  #seek(percent: number): void {
-    const media = this.#timeState.value;
-    if (!media) return;
-    const time = this.#core.valueFromPercent(percent);
-    media.seek(time);
-  }
-}
-
-function formatTime(seconds: number): string {
-  const total = Math.round(seconds);
-  const minutes = Math.floor(total / 60);
-  const secs = total % 60;
-  return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }

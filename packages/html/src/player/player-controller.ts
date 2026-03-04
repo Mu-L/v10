@@ -83,6 +83,10 @@ export class PlayerController<Store extends PlayerStore, Result = Store> impleme
     return this.#store?.value;
   }
 
+  get displayName(): string | undefined {
+    return this.#selector?.displayName;
+  }
+
   hostConnected(): void {
     const store = this.#consumer.value;
     if (store) this.#connect(store);

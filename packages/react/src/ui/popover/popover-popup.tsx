@@ -1,6 +1,6 @@
 'use client';
 
-import { PopoverDataAttrs, type PopoverState } from '@videojs/core';
+import type { PopoverState } from '@videojs/core';
 import { getAnchorPositionStyle, resolveOffsets } from '@videojs/core/dom';
 import { supportsAnchorPositioning } from '@videojs/utils/dom';
 import type { CSSProperties } from 'react';
@@ -9,7 +9,7 @@ import { forwardRef, useCallback, useLayoutEffect, useMemo, useRef, useState } f
 import type { UIComponentProps } from '../../utils/types';
 import { useComposedRefs } from '../../utils/use-composed-refs';
 import { renderElement } from '../../utils/use-render';
-import { usePopoverContext } from './popover-context';
+import { usePopoverContext } from './context';
 
 export interface PopoverPopupProps extends UIComponentProps<'div', PopoverState> {}
 
@@ -20,7 +20,7 @@ export const PopoverPopup = forwardRef<HTMLDivElement, PopoverPopupProps>(functi
   { render, className, style, ...elementProps },
   forwardedRef
 ) {
-  const { core, popover, state, anchorName, popupId } = usePopoverContext();
+  const { core, popover, state, stateAttrMap, anchorName, popupId } = usePopoverContext();
   const internalRef = useRef<HTMLDivElement>(null);
 
   const popupRef = useCallback(
@@ -106,7 +106,7 @@ export const PopoverPopup = forwardRef<HTMLDivElement, PopoverPopupProps>(functi
     { render, className, style },
     {
       state,
-      stateAttrMap: PopoverDataAttrs,
+      stateAttrMap,
       ref: composedRef,
       props: [
         {

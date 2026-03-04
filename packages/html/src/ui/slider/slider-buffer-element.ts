@@ -1,22 +1,11 @@
-import { SliderDataAttrs } from '@videojs/core';
-import { applyStateDataAttrs } from '@videojs/core/dom';
-import type { PropertyValues } from '@videojs/element';
+import type { SliderState } from '@videojs/core';
 import { ContextConsumer } from '@videojs/element/context';
 
-import { MediaElement } from '../media-element';
-import { sliderContext } from './slider-context';
+import { ContextPartElement } from '../context-part-element';
+import { sliderContext } from './context';
 
-export class SliderBufferElement extends MediaElement {
+export class SliderBufferElement extends ContextPartElement<SliderState> {
   static readonly tagName = 'media-slider-buffer';
 
-  readonly #ctx = new ContextConsumer(this, {
-    context: sliderContext,
-    subscribe: true,
-  });
-
-  protected override update(_changed: PropertyValues): void {
-    super.update(_changed);
-    const ctx = this.#ctx.value;
-    if (ctx) applyStateDataAttrs(this, ctx.state, SliderDataAttrs);
-  }
+  protected readonly consumer = new ContextConsumer(this, { context: sliderContext, subscribe: true });
 }

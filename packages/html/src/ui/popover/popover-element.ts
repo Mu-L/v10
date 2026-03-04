@@ -1,13 +1,13 @@
-import { PopoverCore, PopoverDataAttrs, type PopoverInteraction, type PopoverProps } from '@videojs/core';
+import { PopoverCore, PopoverDataAttrs, type PopoverInput, type PopoverProps } from '@videojs/core';
 import {
   applyElementProps,
   applyStateDataAttrs,
   createPopover,
-  createTransitionHandler,
+  createTransition,
   getAnchorNameStyle,
   getAnchorPositionStyle,
+  type PopoverApi,
   type PopoverChangeDetails,
-  type PopoverHandle,
   resolveOffsets,
 } from '@videojs/core/dom';
 import type { PropertyDeclarationMap, PropertyValues } from '@videojs/element';
@@ -44,12 +44,12 @@ export class PopoverElement extends MediaElement {
   closeDelay = PopoverCore.defaultProps.closeDelay;
 
   readonly #core = new PopoverCore();
-  #popover: PopoverHandle | null = null;
-  #snapshot: SnapshotController<PopoverInteraction> | null = null;
+  #popover: PopoverApi | null = null;
+  #snapshot: SnapshotController<PopoverInput> | null = null;
 
   // Cleanup controllers
   #disconnect: AbortController | null = null;
-  #triggerAc: AbortController | null = null;
+  #triggerAbort: AbortController | null = null;
   #currentTrigger: HTMLElement | null = null;
 
   override connectedCallback(): void {
@@ -57,7 +57,7 @@ export class PopoverElement extends MediaElement {
     this.#disconnect = new AbortController();
 
     this.#popover = createPopover({
-      transition: createTransitionHandler(),
+      transition: createTransition(),
       onOpenChange: (nextOpen: boolean, details: PopoverChangeDetails) => {
         this.open = nextOpen;
         this.dispatchEvent(new CustomEvent('open-change', { detail: { open: nextOpen, ...details } }));
@@ -73,15 +73,15 @@ export class PopoverElement extends MediaElement {
     this.#popover.setPopupElement(this);
 
     // Apply popup event handlers (pointerenter/leave, focusout) to self.
-    applyElementProps(this, this.#popover.popupProps, this.#disconnect.signal);
+    applyElementProps(this, this.#popover.popupProps, { signal: this.#disconnect.signal });
 
     // Subscribe to interaction state for reactive updates.
     // Reuse the controller across connect/disconnect cycles to avoid
     // leaking stale controllers in the host's controller set.
     if (this.#snapshot) {
-      this.#snapshot.track(this.#popover.interaction);
+      this.#snapshot.track(this.#popover.input);
     } else {
-      this.#snapshot = new SnapshotController(this, this.#popover.interaction);
+      this.#snapshot = new SnapshotController(this, this.#popover.input);
     }
   }
 
@@ -110,7 +110,7 @@ export class PopoverElement extends MediaElement {
 
     // Sync controlled open state
     if (this.#popover && changed.has('open')) {
-      const { active: interactionOpen } = this.#popover.interaction.current;
+      const { active: interactionOpen } = this.#popover.input.current;
       if (this.open !== interactionOpen) {
         if (this.open) {
           this.#popover.open();
@@ -129,9 +129,10 @@ export class PopoverElement extends MediaElement {
     const triggerEl = this.#findTrigger();
     this.#syncTrigger(triggerEl);
 
-    // Derive state from core + interaction.
-    const interaction = this.#popover.interaction.current;
-    const state = this.#core.getState(interaction);
+    // Derive state from core + input.
+    const input = this.#popover.input.current;
+    this.#core.setInput(input);
+    const state = this.#core.getState();
 
     // Apply popup ARIA and data attributes to self.
     applyElementProps(this, this.#core.getPopupAttrs(state));
@@ -178,8 +179,8 @@ export class PopoverElement extends MediaElement {
     this.#popover?.setTriggerElement(triggerEl);
 
     if (triggerEl && this.#popover) {
-      this.#triggerAc = new AbortController();
-      applyElementProps(triggerEl, this.#popover.triggerProps, this.#triggerAc.signal);
+      this.#triggerAbort = new AbortController();
+      applyElementProps(triggerEl, this.#popover.triggerProps, { signal: this.#triggerAbort.signal });
     }
   }
 
@@ -194,8 +195,8 @@ export class PopoverElement extends MediaElement {
       this.#currentTrigger.style.removeProperty('anchor-name');
     }
 
-    this.#triggerAc?.abort();
-    this.#triggerAc = null;
+    this.#triggerAbort?.abort();
+    this.#triggerAbort = null;
     this.#currentTrigger = null;
   }
 }

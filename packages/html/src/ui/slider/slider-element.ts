@@ -1,11 +1,11 @@
 import { SliderCore, SliderDataAttrs } from '@videojs/core';
-import { applyStateDataAttrs, createSlider, getSliderCSSVars, type SliderHandle } from '@videojs/core/dom';
+import { applyStateDataAttrs, createSlider, getSliderCSSVars, type SliderApi } from '@videojs/core/dom';
 import type { PropertyDeclarationMap, PropertyValues } from '@videojs/element';
 import { ContextProvider } from '@videojs/element/context';
 import { applyStyles, isRTL } from '@videojs/utils/dom';
 
 import { MediaElement } from '../media-element';
-import { sliderContext } from './slider-context';
+import { sliderContext } from './context';
 
 export class SliderElement extends MediaElement {
   static readonly tagName = 'media-slider';
@@ -35,7 +35,7 @@ export class SliderElement extends MediaElement {
   readonly #core = new SliderCore();
   readonly #provider = new ContextProvider(this, { context: sliderContext });
 
-  #slider: SliderHandle | null = null;
+  #slider: SliderApi | null = null;
   #disconnect: AbortController | null = null;
 
   override connectedCallback(): void {
@@ -51,16 +51,8 @@ export class SliderElement extends MediaElement {
       isRTL: () => isRTL(this),
       isDisabled: () => this.disabled,
       getPercent: () => this.#core.percentFromValue(this.value),
-      getStepPercent: () => {
-        const { step, min, max } = this.#core.props;
-        const range = max - min;
-        return range > 0 ? (step / range) * 100 : 0;
-      },
-      getLargeStepPercent: () => {
-        const { largeStep, min, max } = this.#core.props;
-        const range = max - min;
-        return range > 0 ? (largeStep / range) * 100 : 0;
-      },
+      getStepPercent: () => this.#core.getStepPercent(),
+      getLargeStepPercent: () => this.#core.getLargeStepPercent(),
       onValueChange: (percent) => {
         this.value = this.#core.valueFromPercent(percent);
         this.dispatchEvent(new CustomEvent('value-change', { detail: { value: this.value }, bubbles: true }));
@@ -77,7 +69,7 @@ export class SliderElement extends MediaElement {
       },
     });
 
-    this.#slider.interaction.subscribe(() => this.requestUpdate(), { signal });
+    this.#slider.input.subscribe(() => this.requestUpdate(), { signal });
 
     // Prevent default touch gestures and text selection during interaction.
     this.style.touchAction = 'none';
@@ -101,8 +93,8 @@ export class SliderElement extends MediaElement {
     super.update(_changed);
     if (!this.#slider) return;
 
-    const interaction = this.#slider.interaction.current;
-    const state = this.#core.getState(interaction, this.value);
+    this.#core.setInput(this.#slider.input.current);
+    const state = this.#core.getSliderState(this.value);
     const cssVars = getSliderCSSVars(state);
 
     applyStyles(this, cssVars);
@@ -113,6 +105,7 @@ export class SliderElement extends MediaElement {
     // Provide context to child elements (thumb, value, track, etc.).
     this.#provider.setValue({
       state,
+      stateAttrMap: SliderDataAttrs,
       pointerValue: this.#core.valueFromPercent(state.pointerPercent),
       thumbAttrs: this.#core.getAttrs(state),
       thumbProps: this.#slider.thumbProps,

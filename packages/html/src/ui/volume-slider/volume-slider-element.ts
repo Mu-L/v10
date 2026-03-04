@@ -4,7 +4,7 @@ import {
   createSlider,
   getSliderCSSVars,
   logMissingFeature,
-  type SliderHandle,
+  type SliderApi,
   selectVolume,
 } from '@videojs/core/dom';
 import type { PropertyDeclarationMap, PropertyValues } from '@videojs/element';
@@ -14,7 +14,7 @@ import { applyStyles, isRTL } from '@videojs/utils/dom';
 import { playerContext } from '../../player/context';
 import { PlayerController } from '../../player/player-controller';
 import { MediaElement } from '../media-element';
-import { sliderContext } from '../slider/slider-context';
+import { sliderContext } from '../slider/context';
 
 export class VolumeSliderElement extends MediaElement {
   static readonly tagName = 'media-volume-slider';
@@ -26,7 +26,7 @@ export class VolumeSliderElement extends MediaElement {
     orientation: { type: String },
     disabled: { type: Boolean },
     thumbAlignment: { type: String, attribute: 'thumb-alignment' },
-  } satisfies PropertyDeclarationMap<keyof VolumeSliderCore.Props>;
+  } satisfies PropertyDeclarationMap<Exclude<keyof VolumeSliderCore.Props, 'value' | 'min' | 'max'>>;
 
   label = VolumeSliderCore.defaultProps.label;
   step = VolumeSliderCore.defaultProps.step;
@@ -39,7 +39,7 @@ export class VolumeSliderElement extends MediaElement {
   readonly #provider = new ContextProvider(this, { context: sliderContext });
   readonly #volumeState = new PlayerController(this, playerContext, selectVolume);
 
-  #slider: SliderHandle | null = null;
+  #slider: SliderApi | null = null;
   #disconnect: AbortController | null = null;
 
   override connectedCallback(): void {
@@ -59,16 +59,8 @@ export class VolumeSliderElement extends MediaElement {
         if (!media) return 0;
         return media.volume * 100;
       },
-      getStepPercent: () => {
-        const { step, min, max } = this.#core.props;
-        const range = max - min;
-        return range > 0 ? (step / range) * 100 : 0;
-      },
-      getLargeStepPercent: () => {
-        const { largeStep, min, max } = this.#core.props;
-        const range = max - min;
-        return range > 0 ? (largeStep / range) * 100 : 0;
-      },
+      getStepPercent: () => this.#core.getStepPercent(),
+      getLargeStepPercent: () => this.#core.getLargeStepPercent(),
       onValueChange: (percent) => {
         this.#setVolume(percent);
       },
@@ -83,14 +75,14 @@ export class VolumeSliderElement extends MediaElement {
       },
     });
 
-    this.#slider.interaction.subscribe(() => this.requestUpdate(), { signal });
+    this.#slider.input.subscribe(() => this.requestUpdate(), { signal });
 
     // Prevent default touch gestures and text selection during interaction.
     this.style.touchAction = 'none';
     this.style.userSelect = 'none';
 
     if (__DEV__ && !this.#volumeState.value) {
-      logMissingFeature(VolumeSliderElement.tagName, 'volume');
+      logMissingFeature(this.localName, this.#volumeState.displayName!);
     }
   }
 
@@ -114,8 +106,9 @@ export class VolumeSliderElement extends MediaElement {
     const media = this.#volumeState.value;
     if (!media) return;
 
-    const interaction = this.#slider.interaction.current;
-    const state = this.#core.getVolumeState(media, interaction);
+    this.#core.setInput(this.#slider.input.current);
+    this.#core.setMedia(media);
+    const state = this.#core.getState();
     const cssVars = getSliderCSSVars(state);
 
     applyStyles(this, cssVars);
@@ -126,6 +119,7 @@ export class VolumeSliderElement extends MediaElement {
     // Provide context to child elements.
     this.#provider.setValue({
       state,
+      stateAttrMap: SliderDataAttrs,
       pointerValue: this.#core.valueFromPercent(state.pointerPercent),
       thumbAttrs: this.#core.getAttrs(state),
       thumbProps: this.#slider.thumbProps,

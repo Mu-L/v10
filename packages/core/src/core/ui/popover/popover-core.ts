@@ -1,5 +1,6 @@
 import { defaults } from '@videojs/utils/object';
 import type { NonNullableObject } from '@videojs/utils/types';
+
 import type { TransitionFlags, TransitionState, TransitionStatus } from '../transition';
 import { getTransitionFlags } from '../transition';
 
@@ -35,11 +36,11 @@ export interface PopoverProps {
 }
 
 /**
- * The raw transition state managed by `createTransitionHandler`. Uses `active`
+ * The raw transition state managed by `createTransition`. Uses `active`
  * (not `open`) to distinguish the generic transition state machine from the
  * domain-specific `PopoverState.open`.
  */
-export interface PopoverInteraction extends TransitionState {}
+export interface PopoverInput extends TransitionState {}
 
 export interface PopoverState extends TransitionFlags {
   open: boolean;
@@ -73,14 +74,21 @@ export class PopoverCore {
     this.#props = defaults(props, PopoverCore.defaultProps);
   }
 
-  getState(interaction: PopoverInteraction): PopoverState {
+  #input: PopoverInput | null = null;
+
+  setInput(input: PopoverInput): void {
+    this.#input = input;
+  }
+
+  getState(): PopoverState {
+    const input = this.#input!;
     return {
-      open: interaction.active,
-      status: interaction.status,
+      open: input.active,
+      status: input.status,
       side: this.#props.side,
       align: this.#props.align,
       modal: this.#props.modal,
-      ...getTransitionFlags(interaction.status),
+      ...getTransitionFlags(input.status),
     };
   }
 
@@ -104,5 +112,5 @@ export class PopoverCore {
 export namespace PopoverCore {
   export type Props = PopoverProps;
   export type State = PopoverState;
-  export type Interaction = PopoverInteraction;
+  export type Input = PopoverInput;
 }

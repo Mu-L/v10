@@ -1,10 +1,9 @@
-import { SliderDataAttrs } from '@videojs/core';
 import { applyElementProps, applyStateDataAttrs } from '@videojs/core/dom';
 import type { PropertyValues } from '@videojs/element';
 import { ContextConsumer } from '@videojs/element/context';
 
 import { MediaElement } from '../media-element';
-import { sliderContext } from './slider-context';
+import { sliderContext } from './context';
 
 export class SliderThumbElement extends MediaElement {
   static readonly tagName = 'media-slider-thumb';
@@ -38,7 +37,7 @@ export class SliderThumbElement extends MediaElement {
 
     // Apply keyboard and focus handlers once — they don't change per slider instance.
     if (!this.#thumbPropsApplied && this.#disconnect) {
-      applyElementProps(this, ctx.thumbProps, this.#disconnect.signal);
+      applyElementProps(this, ctx.thumbProps, { signal: this.#disconnect.signal });
       this.#thumbPropsApplied = true;
     }
 
@@ -46,6 +45,6 @@ export class SliderThumbElement extends MediaElement {
     applyElementProps(this, ctx.thumbAttrs);
 
     // Apply state data attributes.
-    applyStateDataAttrs(this, ctx.state, SliderDataAttrs);
+    applyStateDataAttrs(this, ctx.state, ctx.stateAttrMap);
   }
 }

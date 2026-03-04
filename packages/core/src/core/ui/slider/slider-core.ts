@@ -3,8 +3,8 @@ import { defaults } from '@videojs/utils/object';
 import { isFunction } from '@videojs/utils/predicate';
 import type { NonNullableObject } from '@videojs/utils/types';
 
-/** Shared configuration for all slider variants. */
-export interface SliderBaseProps {
+/** Configuration shared by all slider variants. */
+export interface SliderProps {
   /** Custom label for the slider. */
   label?: string | ((state: SliderState) => string) | undefined;
   /** Step increment for value changes (arrow keys). */
@@ -17,9 +17,6 @@ export interface SliderBaseProps {
   disabled?: boolean | undefined;
   /** How the thumb aligns at the track edges. `edge` constrains the thumb within track bounds. */
   thumbAlignment?: 'center' | 'edge' | undefined;
-}
-
-export interface SliderProps extends SliderBaseProps {
   /** Current slider value. */
   value?: number | undefined;
   /** Minimum value of the slider range. */
@@ -28,8 +25,8 @@ export interface SliderProps extends SliderBaseProps {
   max?: number | undefined;
 }
 
-/** Current pointer/drag interaction state, typically provided by a DOM controller. */
-export interface SliderInteraction {
+/** Current pointer/drag input state, typically provided by a DOM controller. */
+export interface SliderInput {
   /** Pointer position as a percentage of the track (0–100). */
   pointerPercent: number;
   /** Drag position as a percentage of the track (0–100). */
@@ -63,23 +60,37 @@ export interface SliderState {
   thumbAlignment: 'center' | 'edge';
 }
 
+/** Base slider logic: value mapping, ARIA attrs, and step calculations. */
 export class SliderCore {
   static readonly defaultProps: NonNullableObject<SliderProps> = {
     label: '',
-    value: 0,
-    min: 0,
-    max: 100,
     step: 1,
     largeStep: 10,
     orientation: 'horizontal',
     disabled: false,
     thumbAlignment: 'center',
+    value: 0,
+    min: 0,
+    max: 100,
+  };
+
+  static readonly defaultInput: SliderInput = {
+    pointerPercent: 0,
+    dragPercent: 0,
+    dragging: false,
+    pointing: false,
+    focused: false,
   };
 
   #props = { ...SliderCore.defaultProps };
+  #input: SliderInput = { ...SliderCore.defaultInput };
 
   get props(): Readonly<NonNullableObject<SliderProps>> {
     return this.#props;
+  }
+
+  get input(): Readonly<SliderInput> {
+    return this.#input;
   }
 
   constructor(props?: SliderProps) {
@@ -90,16 +101,21 @@ export class SliderCore {
     this.#props = defaults(props, SliderCore.defaultProps);
   }
 
-  getState(interaction: SliderInteraction, value: number): SliderState {
+  setInput(input: SliderInput): void {
+    this.#input = input;
+  }
+
+  getSliderState(value: number): SliderState {
     const { orientation, disabled, thumbAlignment } = this.#props;
+    const { pointerPercent, dragging, pointing, focused } = this.#input;
 
     return {
       value,
       fillPercent: this.percentFromValue(value),
-      pointerPercent: interaction.pointerPercent,
-      dragging: interaction.dragging,
-      pointing: interaction.pointing,
-      interactive: interaction.dragging || interaction.pointing || interaction.focused,
+      pointerPercent,
+      dragging,
+      pointing,
+      interactive: dragging || pointing || focused,
       orientation,
       disabled,
       thumbAlignment,
@@ -145,6 +161,20 @@ export class SliderCore {
     return ((value - min) / (max - min)) * 100;
   }
 
+  /** Step as a percentage of the slider range. */
+  getStepPercent(): number {
+    const { step, min, max } = this.#props;
+    const range = max - min;
+    return range > 0 ? (step / range) * 100 : 0;
+  }
+
+  /** Large step as a percentage of the slider range. */
+  getLargeStepPercent(): number {
+    const { largeStep, min, max } = this.#props;
+    const range = max - min;
+    return range > 0 ? (largeStep / range) * 100 : 0;
+  }
+
   adjustPercentForAlignment(rawPercent: number, thumbSize: number, trackSize: number): number {
     if (this.#props.thumbAlignment === 'center' || trackSize === 0) {
       return rawPercent;
@@ -160,5 +190,5 @@ export class SliderCore {
 export namespace SliderCore {
   export type Props = SliderProps;
   export type State = SliderState;
-  export type Interaction = SliderInteraction;
+  export type Input = SliderInput;
 }

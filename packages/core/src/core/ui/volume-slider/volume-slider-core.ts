@@ -2,22 +2,27 @@ import { defaults } from '@videojs/utils/object';
 import type { NonNullableObject } from '@videojs/utils/types';
 
 import type { MediaVolumeState } from '../../media/state';
-import { type SliderBaseProps, SliderCore, type SliderInteraction, type SliderState } from '../slider/slider-core';
+import { SliderCore, type SliderProps, type SliderState } from '../slider/slider-core';
 
-export interface VolumeSliderProps extends SliderBaseProps {}
+export interface VolumeSliderProps extends SliderProps {
+  /** @internal Derived from `volume` (0–100) — not user-settable. */
+  value?: number | undefined;
+  /** @internal Always 0 — not user-settable. */
+  min?: number | undefined;
+  /** @internal Always 100 — not user-settable. */
+  max?: number | undefined;
+}
 
 export interface VolumeSliderState extends SliderState, Pick<MediaVolumeState, 'volume' | 'muted'> {}
 
-// @ts-expect-error — defaultProps shape differs from base (domain sliders omit value/min/max)
+/** Volume-domain slider: maps media volume/mute state to slider state. */
 export class VolumeSliderCore extends SliderCore {
-  static readonly defaultProps: NonNullableObject<VolumeSliderProps> = {
+  static override readonly defaultProps: NonNullableObject<VolumeSliderProps> = {
+    ...SliderCore.defaultProps,
     label: 'Volume',
-    step: SliderCore.defaultProps.step,
-    largeStep: SliderCore.defaultProps.largeStep,
-    orientation: SliderCore.defaultProps.orientation,
-    disabled: SliderCore.defaultProps.disabled,
-    thumbAlignment: SliderCore.defaultProps.thumbAlignment,
   };
+
+  #media: MediaVolumeState | null = null;
 
   constructor(props?: VolumeSliderProps) {
     super();
@@ -28,11 +33,17 @@ export class VolumeSliderCore extends SliderCore {
     super.setProps(defaults(props, VolumeSliderCore.defaultProps));
   }
 
-  getVolumeState(media: MediaVolumeState, interaction: SliderInteraction): VolumeSliderState {
+  setMedia(media: MediaVolumeState): void {
+    this.#media = media;
+  }
+
+  getState(): VolumeSliderState {
+    const media = this.#media!;
     const { volume, muted } = media;
+    const { dragging, dragPercent } = this.input;
     const volumePercent = volume * 100;
-    const value = interaction.dragging ? this.valueFromPercent(interaction.dragPercent) : volumePercent;
-    const base = super.getState(interaction, value);
+    const value = dragging ? this.valueFromPercent(dragPercent) : volumePercent;
+    const base = super.getSliderState(value);
 
     return {
       ...base,
