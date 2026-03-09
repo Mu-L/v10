@@ -112,7 +112,7 @@ export function TabsList({ label, children, variant = 'compact' }: TabsListProps
           target: '[role="tabpanel"]:not([hidden])',
         }}
         className={clsx(
-          'ml-auto sticky right-0 h-7 px-2.5 flex items-center justify-center cursor-pointer disabled:cursor-wait intent:bg-warm-gray rounded-xs'
+          'ml-auto sticky right-0 h-7 px-2.5 flex items-center justify-center cursor-pointer disabled:cursor-wait intent:bg-manila-dark dark:intent:bg-warm-gray rounded-xs'
         )}
         copied={<Check size={20} />}
       >
