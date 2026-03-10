@@ -20,7 +20,7 @@ const SEEK_TIME = 10;
 function getTemplateHTML() {
   return /*html*/ `
     <media-container class="media-default-skin media-default-skin--audio">
-      <slot name="media" slot="media"></slot>
+      <slot name="media"></slot>
 
       <div class="media-surface media-controls">
         <media-play-button commandfor="play-tooltip" class="media-button media-button--icon media-button--play">
