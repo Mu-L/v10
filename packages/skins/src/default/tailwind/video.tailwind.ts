@@ -85,16 +85,18 @@ export const controls = cn(
   // Position
   'absolute bottom-3 inset-x-3',
   'text-white z-10',
-  // Transitions
+  // Transitions (fine pointer only — instant toggle on touch to avoid dead-zone taps)
   'will-change-[scale,transform,filter,opacity]',
-  'transition-[scale,transform,filter,opacity] ease-out',
-  'delay-0 duration-100 origin-bottom',
+  '[@media(pointer:fine)]:transition-[scale,transform,filter,opacity]',
+  'ease-out origin-bottom',
+  '[@media(pointer:fine)]:delay-0 [@media(pointer:fine)]:duration-100',
   // Hidden state
-  'not-data-visible:pointer-events-none not-data-visible:blur-sm',
-  'not-data-visible:scale-90 not-data-visible:opacity-0',
-  'not-data-visible:delay-500 not-data-visible:duration-300',
+  'not-data-visible:pointer-events-none not-data-visible:opacity-0',
+  'not-data-visible:blur-sm not-data-visible:scale-90',
+  '[@media(pointer:fine)]:not-data-visible:delay-500',
+  '[@media(pointer:fine)]:not-data-visible:duration-300',
   // Reduced motion + hidden
-  'motion-reduce:not-data-visible:duration-100',
+  '[@media(pointer:fine)]:motion-reduce:not-data-visible:duration-100',
   'motion-reduce:not-data-visible:blur-none',
   'motion-reduce:not-data-visible:scale-100'
 );
