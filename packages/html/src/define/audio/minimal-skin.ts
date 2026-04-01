@@ -1,7 +1,7 @@
-import { ReactiveElement } from '@videojs/element';
 import { renderIcon } from '@videojs/icons/render/minimal';
+import { createShadowStyle, createTemplate } from '@videojs/utils/dom';
 import { safeDefine } from '../safe-define';
-import { createStyles, SkinMixin } from '../skin-mixin';
+import { SkinElement } from '../skin-element';
 import styles from './minimal-skin.css?inline';
 
 // Side-effect imports: register all custom elements used in the template.
@@ -118,10 +118,10 @@ function getTemplateHTML() {
   `;
 }
 
-export class MinimalAudioSkinElement extends SkinMixin(ReactiveElement) {
+export class MinimalAudioSkinElement extends SkinElement {
   static readonly tagName = 'audio-minimal-skin';
-  static styles = createStyles(styles);
-  static getTemplateHTML = getTemplateHTML;
+  static styles = createShadowStyle(styles);
+  static template = createTemplate(getTemplateHTML());
 }
 
 safeDefine(MinimalAudioSkinElement);
