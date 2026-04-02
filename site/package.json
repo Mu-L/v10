@@ -5,10 +5,9 @@
   "scripts": {
     "api-docs": "tsx scripts/api-docs-builder/src/index.ts",
     "ejected-skins": "tsx scripts/build-ejected-skins.ts",
-    "predev": "pnpm api-docs && pnpm ejected-skins",
     "dev": "NETLIFY_DEV=1 astro dev",
-    "prebuild": "pnpm api-docs && pnpm ejected-skins",
     "build": "astro build",
+    "clean": "rm -rf dist .netlify src/content/generated-component-reference src/content/generated-util-reference src/content/ejected-skins.json",
     "astro": "astro",
     "test": "vitest run",
     "test:watch": "vitest",
