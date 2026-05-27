@@ -196,6 +196,22 @@ each `set src`).
   writes through. The adapter doesn't expose these features' surfaces
   directly; consumers read engine state via the captured signal refs.
 
+## Use cases that compose this feature
+
+- **[`audio-only-mode-override`](../use-cases/audio-only-mode-override.md)**
+  *(partial — Phase 1 landed)* — Phase 1 baseline constituent with an
+  alternative adapter shape. The variant ships an independent
+  `SimpleHlsAudioOnlyMediaElement` adapter (via
+  `SimpleHlsAudioOnlyMediaMixin`) parallel to `SimpleHlsMediaElement`;
+  the `shareSignals` mechanism + mixin pattern compose unchanged. The
+  consumer-facing API matches the WHATWG `HTMLMediaElement` surface.
+- **[`video-only-mode-override`](../use-cases/video-only-mode-override.md)**
+  *(coarse)* — Phase 1 baseline constituent on the inverse axis.
+  Ships an independent `SimpleVideoOnlyHlsMediaElement`-style
+  adapter parallel to `SimpleHlsMediaElement`. Same `shareSignals`
+  pattern; consumer-facing API differs from both default and
+  audio-only-mode-override.
+
 ## See also
 
 - [clusters.md § Engine lifecycle](./clusters.md#engine-lifecycle)
