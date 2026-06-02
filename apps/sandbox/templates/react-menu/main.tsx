@@ -180,7 +180,7 @@ function App() {
             <TriggerButton>Quality</TriggerButton>
             <Menu.Content className={menuContentClass}>
               <Menu.RadioGroup value={quality} onValueChange={setQuality}>
-                <Menu.Label className={menuLabelClass}>Resolution</Menu.Label>
+                <Menu.GroupLabel className={menuLabelClass}>Resolution</Menu.GroupLabel>
                 {['auto', '1080p', '720p', '480p'].map((value) => (
                   <Menu.RadioItem key={value} value={value} className={radioItemClass}>
                     {quality === value && <RadioDot />}
@@ -205,7 +205,7 @@ function App() {
             <TriggerButton>Settings</TriggerButton>
             <Menu.Content className={menuContentClass}>
               <Menu.Group>
-                <Menu.Label className={menuLabelClass}>Playback</Menu.Label>
+                <Menu.GroupLabel className={menuLabelClass}>Playback</Menu.GroupLabel>
                 <Menu.CheckboxItem checked={loop} onCheckedChange={setLoop} className={checkboxItemClass}>
                   {loop && <Checkmark />}
                   Loop
