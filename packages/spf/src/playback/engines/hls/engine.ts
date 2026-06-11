@@ -35,6 +35,7 @@ import { syncTextTracks } from '../../behaviors/dom/sync-text-tracks';
 import { trackCurrentTime } from '../../behaviors/dom/track-current-time';
 import { trackLoadTriggers } from '../../behaviors/dom/track-load-triggers';
 import { updateMediaSourceDuration } from '../../behaviors/dom/update-mediasource-duration';
+import { resolveCdnPriority } from '../../behaviors/resolve-cdn-priority';
 import { type ParsePresentation, resolvePresentation } from '../../behaviors/resolve-presentation';
 import { resolveAudioTrack, resolveTextTrack, resolveVideoTrack } from '../../behaviors/resolve-track';
 import { selectTextTrack } from '../../behaviors/select-tracks';
@@ -71,6 +72,16 @@ export interface SimpleHlsEngineState {
    * when it changes. Multi-language-audio Tier 2 programmatic-write path.
    */
   userAudioTrackSelection?: Partial<AudioTrack>;
+  /**
+   * The CDNs the source is served from (track-URL origins), in manifest
+   * priority order — most-preferred first (mirrors HLS content steering's
+   * `PATHWAY-PRIORITY`). Owned by `resolveCdnPriority`, read by
+   * `track-switching`'s `preferActiveCdn` scope, which narrows to the
+   * highest-priority CDN with surviving tracks so video / audio / text stay on
+   * one host. Only meaningful for redundant-stream sources; a single-CDN source
+   * has one entry.
+   */
+  cdnPriority?: string[];
   currentTime?: number;
   loadActivated?: boolean;
 }
@@ -247,6 +258,22 @@ export function createSimpleHlsEngine(
       syncPreload,
       trackLoadTriggers,
       resolvePresentation,
+
+      // Session-level CDN priority for redundant-stream sources. Owns
+      // `cdnPriority`; `track-switching`'s preferActiveCdn scope reads it so
+      // every type stays on one CDN. No-op for single-CDN sources.
+      //
+      // Placed before switch* so `cdnPriority` is set before the first pick —
+      // but this ordering is only *mildly* load-bearing, not required for
+      // correctness. Selection is reactive: a late `cdnPriority` re-fires the
+      // pick and converges on the same result (see the late-arrival test in
+      // track-switching.test.ts). Order affects only a transient, and only for
+      // an *asymmetric* manifest (a type listing a non-primary CDN first):
+      // composing this after switch* would let that type fire one wasted
+      // media-playlist fetch to the wrong CDN before correcting. Symmetric
+      // redundant streams (the norm) never hit it — the first-listed CDN is
+      // already the primary we'd pick anyway.
+      resolveCdnPriority,
 
       // Track selection (reads config for initial preferences).
       // Video selection lives in switchVideoTrack (composed below);
