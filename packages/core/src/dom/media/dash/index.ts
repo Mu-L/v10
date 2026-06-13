@@ -23,19 +23,6 @@ export class DashMedia
     this.#engine.initialize(undefined, undefined, false);
   }
 
-  get engine() {
-    return this.#engine;
-  }
-
-  get src() {
-    return this.#src;
-  }
-
-  set src(src) {
-    this.#src = src;
-    this.#engine.attachSource(src);
-  }
-
   attach(target: HTMLVideoElement) {
     super.attach(target);
     this.#engine.attachView(target);
@@ -50,5 +37,19 @@ export class DashMedia
   destroy() {
     this.detach();
     this.#engine.destroy();
+    super.destroy();
+  }
+
+  get engine() {
+    return this.#engine;
+  }
+
+  get src() {
+    return this.#src;
+  }
+
+  set src(src) {
+    this.#src = src;
+    this.#engine.attachSource(src);
   }
 }
