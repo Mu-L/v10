@@ -133,7 +133,7 @@ describe('createSimpleHlsEngine', () => {
   });
 
   it('keeps audio on the same CDN as video even when the audio rendition order differs', async () => {
-    // Order-effect guard: `resolveCdnPriority` derives the list from track order,
+    // Order-effect guard: `deriveCdnPriority` derives the list from track order,
     // so a same-ordered source can't distinguish "scope applied" from "scope is
     // a no-op". This source is doubly adversarial to the desired result: the
     // audio selection set comes BEFORE video in the manifest, and within it the
@@ -206,6 +206,176 @@ describe('createSimpleHlsEngine', () => {
     // The discriminator: audio is listed first and lists aud-b first, but the
     // video-derived cdnPriority puts cdn-a first, so the scope picks aud-a.
     expect(engine.state.selectedAudioTrackId.get()).toBe('aud-a');
+
+    engine.destroy();
+  });
+
+  it('fails over video and audio to the next CDN when one is marked failed', async () => {
+    const flush = () => Promise.resolve().then(() => Promise.resolve());
+    const engine = createSimpleHlsEngine();
+
+    const videoTrack = (id: string, host: string): PartiallyResolvedVideoTrack => ({
+      type: 'video',
+      id,
+      codecs: [],
+      url: `https://${host}/${id}.m3u8`,
+      bandwidth: 2_400_000,
+      mimeType: 'video/mp4',
+    });
+    const audioTrack = (id: string, host: string): PartiallyResolvedAudioTrack => ({
+      type: 'audio',
+      id,
+      codecs: ['mp4a.40.2'],
+      url: `https://${host}/${id}.m3u8`,
+      bandwidth: 128_000,
+      mimeType: 'audio/mp4',
+      groupId: 'audio',
+      name: id,
+      sampleRate: 48_000,
+      channels: 2,
+    });
+
+    engine.state.presentation.set({
+      id: 'pres-failover',
+      url: 'https://cdn-a.example.com/master.m3u8',
+      startTime: 0,
+      selectionSets: [
+        {
+          id: 'v',
+          type: 'video',
+          switchingSets: [
+            {
+              id: 'vs',
+              type: 'video',
+              tracks: [videoTrack('vid-a', 'cdn-a.example.com'), videoTrack('vid-b', 'cdn-b.example.com')],
+            },
+          ],
+        },
+        {
+          id: 'a',
+          type: 'audio',
+          switchingSets: [
+            {
+              id: 'as',
+              type: 'audio',
+              tracks: [audioTrack('aud-a', 'cdn-a.example.com'), audioTrack('aud-b', 'cdn-b.example.com')],
+            },
+          ],
+        },
+      ],
+    } as Presentation);
+    await flush();
+
+    // Primary CDN initially.
+    expect(engine.state.selectedVideoTrackId.get()).toBe('vid-a');
+    expect(engine.state.selectedAudioTrackId.get()).toBe('aud-a');
+
+    // Mark cdn-a failed → both types fail over to cdn-b coherently.
+    engine.state.failedCdns.set(['https://cdn-a.example.com']);
+    await flush();
+    expect(engine.state.selectedVideoTrackId.get()).toBe('vid-b');
+    expect(engine.state.selectedAudioTrackId.get()).toBe('aud-b');
+
+    // cdn-a recovers → both return to the primary.
+    engine.state.failedCdns.set([]);
+    await flush();
+    expect(engine.state.selectedVideoTrackId.get()).toBe('vid-a');
+    expect(engine.state.selectedAudioTrackId.get()).toBe('aud-a');
+
+    engine.destroy();
+  });
+
+  it('auto-fails-over when a CDN fetch fails (monitor trips, failedCdns set)', async () => {
+    const engine = createSimpleHlsEngine({ failover: { cooldownMs: 60_000 } });
+
+    // cdn-a is down (media-playlist fetch rejects); cdn-b serves a valid playlist.
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : String((input as Request).url ?? input);
+      if (url.includes('cdn-a')) throw new TypeError('cdn-a unreachable');
+      return new Response('#EXTM3U\n#EXT-X-TARGETDURATION:10\n#EXTINF:10.0,\nseg-1.m4s\n#EXT-X-ENDLIST');
+    }) as typeof fetch;
+
+    const videoTrack = (id: string, host: string): PartiallyResolvedVideoTrack => ({
+      type: 'video',
+      id,
+      codecs: [],
+      url: `https://${host}/${id}.m3u8`,
+      bandwidth: 2_400_000,
+      mimeType: 'video/mp4',
+    });
+
+    engine.state.presentation.set({
+      id: 'pres-failover',
+      url: 'https://cdn-a.example.com/master.m3u8',
+      startTime: 0,
+      selectionSets: [
+        {
+          id: 'v',
+          type: 'video',
+          switchingSets: [
+            {
+              id: 'vs',
+              type: 'video',
+              tracks: [videoTrack('vid-a', 'cdn-a.example.com'), videoTrack('vid-b', 'cdn-b.example.com')],
+            },
+          ],
+        },
+      ],
+    } as Presentation);
+
+    // The primary (cdn-a) is picked first, its media-playlist fetch fails, the
+    // monitor trips it, the constraint prunes it, and the scope fails over to
+    // cdn-b — all without any external failedCdns write.
+    await vi.waitFor(() => {
+      expect(engine.state.failedCdns.get()).toEqual(['https://cdn-a.example.com']);
+      expect(engine.state.selectedVideoTrackId.get()).toBe('vid-b');
+    });
+
+    engine.destroy();
+  });
+
+  it('honors a custom getCdnId across cdnPriority, the trip, and the constraint/scope', async () => {
+    // Key CDNs on the `cdn=` query param instead of origin. Both variants share a
+    // host, so origin-based identity would see ONE CDN (no redundancy); the
+    // custom resolver must be respected at every site for failover to work.
+    const getCdnId = (url: string) => new URL(url).searchParams.get('cdn') ?? url;
+    const engine = createSimpleHlsEngine({ getCdnId, failover: { cooldownMs: 60_000 } });
+
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : String((input as Request).url ?? input);
+      if (url.includes('cdn=a')) throw new TypeError('cdn-a unreachable');
+      return new Response('#EXTM3U\n#EXT-X-TARGETDURATION:10\n#EXTINF:10.0,\nseg-1.m4s\n#EXT-X-ENDLIST');
+    }) as typeof fetch;
+
+    const videoTrack = (id: string, cdn: string): PartiallyResolvedVideoTrack => ({
+      type: 'video',
+      id,
+      codecs: [],
+      url: `https://cdn.example.com/${id}.m3u8?cdn=${cdn}`,
+      bandwidth: 2_400_000,
+      mimeType: 'video/mp4',
+    });
+
+    engine.state.presentation.set({
+      id: 'pres-custom-cdn',
+      url: 'https://cdn.example.com/master.m3u8',
+      startTime: 0,
+      selectionSets: [
+        {
+          id: 'v',
+          type: 'video',
+          switchingSets: [{ id: 'vs', type: 'video', tracks: [videoTrack('vid-a', 'a'), videoTrack('vid-b', 'b')] }],
+        },
+      ],
+    } as Presentation);
+
+    await vi.waitFor(() => {
+      // deriveCdnPriority keyed on the param (not origin → not a single CDN).
+      expect(engine.state.cdnPriority.get()).toEqual(['a', 'b']);
+      // The trip recorded the param key, and the constraint + scope failed over.
+      expect(engine.state.failedCdns.get()).toEqual(['a']);
+      expect(engine.state.selectedVideoTrackId.get()).toBe('vid-b');
+    });
 
     engine.destroy();
   });

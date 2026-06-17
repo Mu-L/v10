@@ -4,17 +4,20 @@
  * default, react to user intent and algorithmic ranking, and clear it on src
  * unload.
  *
- * Selection runs a small ordered chain of rules over the candidate tracks
- * (`applyRules`). Each rule narrows or reorders the list and reads the signals
- * it needs at apply time, so the effect subscribes to exactly what the applied
- * rules consult. Today the chain is three rules, most authoritative first:
+ * Selection runs in two stages. First a **hard-constraints pre-pass**
+ * (`applyConstraints`) prunes the unplayable from the candidate set — today the
+ * failed-CDN constraint (`excludeFailedCdns`, failover cooldown); capability
+ * probing will join it. Then a small ordered chain of rules (`applyRules`) picks
+ * among the survivors. Each constraint/rule reads the signals it needs at apply
+ * time, so the effect subscribes to exactly what was consulted. The chain is
+ * three rules, most authoritative first:
  *
  *   1. **user intent** — a soft filter on `user*TrackSelection`: narrow to the
  *      partial-track match; an empty match falls through to the full set.
  *   2. **active CDN** — a soft filter on `cdnPriority` (`preferActiveCdn`):
  *      narrow to the highest-priority CDN that still has tracks; an empty match
  *      falls through. Shared by video and audio, so every type stays on one CDN
- *      (`resolveCdnPriority` owns the list). No-op for non-redundant sources.
+ *      (`deriveCdnPriority` owns the list). No-op for non-redundant sources.
  *   3. **ranking** — the terminal sort: `rankByBandwidth`, shared by video and
  *      audio. Fitting tracks (within the throughput threshold) first, highest
  *      bitrate first; over-throughput tracks after, least-over first. Hysteresis
@@ -30,17 +33,17 @@
  * (canonical cleanup-binds-to-setup per `reactors.md`).
  *
  * The pick is the head of the chain's result (`applyRules(...)[0]`). Each
- * variant supplies its **rule chain** via config; `setupTrackSwitching` owns
- * only the lifecycle and runs whatever chain it's given. Both variants today run
+ * variant supplies its **constraints + rule chain** via config;
+ * `setupTrackSwitching` owns only the lifecycle and runs what it's given. Both
+ * variants today run constraints `[excludeFailedCdns]` then rules
  * `[filterByUserSelection, preferActiveCdn, rankByBandwidth]`; `switchVideoTrack`
- * also accepts ABR tuning config, `switchAudioTrack` takes none.
+ * also accepts ABR tuning config, `switchAudioTrack` takes none. (The active-CDN
+ * *scope* is the sticky-pick half of multi-CDN; the failed-CDN *constraint* is
+ * the failover half — prune the cooled-down CDN, the scope falls to the next.)
  *
- * Deferred (not yet in the chain): a hard-constraints pre-pass (capability
- * probing, CDN *failover* — excluding a failed CDN's tracks during cooldown)
- * gating the candidate set, and audio's preferred-language / default-track
- * selection as standing soft-filter rules — previously the empty-slot picker,
- * dropped in the move to the rule chain. (The active-CDN *scope* above is the
- * sticky-pick half of multi-CDN; the failed-CDN constraint is the failover half.)
+ * Deferred: capability probing as a second constraint; audio's preferred-
+ * language / default-track selection as standing soft-filter rules (previously
+ * the empty-slot picker, dropped in the move to the rule chain).
  */
 
 import { type AnySlotMap, defineBehavior } from '../../core/composition/create-composition';
@@ -56,7 +59,7 @@ import {
   type PartiallyResolvedVideoTrack,
   type VideoTrack,
 } from '../../media/types';
-import { getCdnId } from '../../media/utils/cdn';
+import { getCdnId as defaultGetCdnId, type GetCdnId } from '../../media/utils/cdn';
 import { getTracksByType } from '../../media/utils/tracks';
 import type { BandwidthConfig, BandwidthState } from '../../network/bandwidth-estimator';
 import { DEFAULT_BANDWIDTH_CONFIG, getBandwidthEstimate } from '../../network/bandwidth-estimator';
@@ -91,6 +94,8 @@ export interface SwitchVideoTrackConfig {
   quality?: Partial<QualityConfig>;
   bandwidth?: Partial<BandwidthConfig>;
   initialBandwidth?: number;
+  /** Override CDN-id derivation (shared by the CDN scope + failover constraint). */
+  getCdnId?: GetCdnId;
 }
 
 /** Default initial-bandwidth value before bandwidth measurements arrive. */
@@ -150,6 +155,31 @@ export function applyRules<T, State, Context, Config>(
     current = remaining;
     if (current.length === 1) break;
   }
+  return current;
+}
+
+/**
+ * Apply hard constraints to a candidate list — the pre-pass that runs before the
+ * rule chain. A constraint shares a rule's signature but its exclusion is
+ * *hard*: it removes the unplayable (a codec the environment can't decode, a CDN
+ * in failover cooldown) and a removed track is never attempted. Unlike
+ * `applyRules`, this never skips an empty result and never early-bails — every
+ * constraint always applies, and an empty survivor set is a real outcome
+ * ("nothing playable here"), not a fall-through. Because each constraint only
+ * removes, the order they run in can't change the result.
+ *
+ * @param constraints - Constraints to apply (pooled, order-independent)
+ * @param tracks - Candidate tracks
+ * @param deps - The behavior's `{ state, context, config }`, passed to each constraint
+ * @returns The playable survivors (possibly empty)
+ */
+export function applyConstraints<T, State, Context, Config>(
+  constraints: readonly SelectionRule<T, State, Context, Config>[],
+  tracks: readonly T[],
+  deps: SelectionRuleDeps<State, Context, Config>
+): readonly T[] {
+  let current = tracks;
+  for (const constraint of constraints) current = constraint(current, deps);
   return current;
 }
 
@@ -216,16 +246,19 @@ type TrackSwitchingStateMap<S extends SelectionKey> = {
 /**
  * Config `setupTrackSwitching` itself reads — its own wiring: which selection
  * slot to write and clear (`selectionKey`), how to enumerate candidate tracks
- * (`getTracks`), and the **rule chain** to run (`rules`). Rule-specific config
- * is deliberately absent — each rule declares the fields it reads as *optional*
- * on its own config view (`UserSelectionConfig`, `BandwidthRankerConfig`), so
- * the behavior never enumerates a rule's config. The variant builds the
- * concrete config as this base plus whatever its chain's rules consult; it
- * flows through untouched as the `C` type param on `setupTrackSwitching`.
+ * (`getTracks`), the optional **hard-constraints pre-pass** (`constraints`,
+ * applied before the chain to prune the unplayable), and the **rule chain** to
+ * run (`rules`). Rule-/constraint-specific config is deliberately absent — each
+ * declares the fields it reads as *optional* on its own config view
+ * (`UserSelectionConfig`, `BandwidthRankerConfig`), so the behavior never
+ * enumerates them. The variant builds the concrete config as this base plus
+ * whatever its chain consults; it flows through untouched as the `C` type param
+ * on `setupTrackSwitching`.
  */
 interface TrackSwitchingConfig<S extends SelectionKey, T extends SwitchableTrack> {
   selectionKey: S;
   getTracks: (presentation: MaybeResolvedPresentation) => readonly T[];
+  constraints?: readonly SelectionRule<T, TrackSwitchingStateMap<S>, AnySlotMap, TrackSwitchingConfig<S, T>>[];
   rules: readonly SelectionRule<T, TrackSwitchingStateMap<S>, AnySlotMap, TrackSwitchingConfig<S, T>>[];
 }
 
@@ -277,12 +310,33 @@ type BandwidthRankerConfig<S extends SelectionKey, T extends SwitchableTrack> = 
 /**
  * State the active-CDN scope reads: the lifecycle map plus an *optional*
  * `cdnPriority` — the manifest-ordered CDN list (most-preferred first). The
- * signal exists only when the composition includes `resolveCdnPriority` (which
+ * signal exists only when the composition includes `deriveCdnPriority` (which
  * materializes + owns it); the scope reads it defensively and passes through
  * when it's absent (no CDN preference).
  */
 type CdnScopeStateMap<S extends SelectionKey> = TrackSwitchingStateMap<S> & {
   cdnPriority?: ReadonlySignal<string[] | undefined>;
+};
+
+/**
+ * State the failed-CDN constraint reads: the lifecycle map plus an *optional*
+ * `failedCdns` — the CDN ids currently in failover cooldown. The signal exists
+ * only when the composition includes a failover monitor (or an external driver); the
+ * constraint reads it defensively and excludes nothing when it's absent.
+ */
+type CdnConstraintStateMap<S extends SelectionKey> = TrackSwitchingStateMap<S> & {
+  failedCdns?: ReadonlySignal<string[] | undefined>;
+};
+
+/**
+ * Config the CDN rules read: the base config plus an *optional* `getCdnId`
+ * override. Both `excludeFailedCdns` and `preferActiveCdn` derive a track's CDN
+ * from its URL; the override must be the *same* one `deriveCdnPriority` and the
+ * failover trip use, or the keys stop matching. Optional → defaults to the
+ * origin-based `getCdnId`, so the base config (without it) stays assignable.
+ */
+type CdnRuleConfig<S extends SelectionKey, T extends SwitchableTrack> = TrackSwitchingConfig<S, T> & {
+  getCdnId?: GetCdnId;
 };
 
 type VideoTrackCandidate = PartiallyResolvedVideoTrack | VideoTrack;
@@ -311,8 +365,31 @@ function filterByUserSelection<S extends SelectionKey, U extends UserSelectionKe
 }
 
 /**
+ * Failed-CDN constraint — a *hard* filter (constraints pre-pass), shared by
+ * video and audio. Removes tracks served from a CDN currently in failover
+ * cooldown (`failedCdns`, written by the failover monitor). Removed tracks are never
+ * attempted; the scope then narrows to the next surviving CDN in `cdnPriority`,
+ * and snaps back to the primary once it leaves cooldown.
+ *
+ * Passes everything through when there's no `failedCdns` signal/value. When it
+ * prunes *every* track (all CDNs cooled down), the empty result is preserved
+ * (per `applyConstraints`) — "nothing playable," which today leaves the prior
+ * pick in place.
+ */
+function excludeFailedCdns<S extends SelectionKey, T extends SwitchableTrack>(
+  tracks: readonly T[],
+  { state, config }: SelectionRuleDeps<CdnConstraintStateMap<S>, AnySlotMap, CdnRuleConfig<S, T>>
+): readonly T[] {
+  const failed = state.failedCdns?.get();
+  if (!failed?.length) return tracks;
+  const getCdnId = config.getCdnId ?? defaultGetCdnId;
+  const failedSet = new Set(failed);
+  return tracks.filter((track) => !failedSet.has(getCdnId(track.url)));
+}
+
+/**
  * Active-CDN scope — a soft filter, shared by video and audio. Narrows to the
- * highest-priority CDN in `cdnPriority` (owned by `resolveCdnPriority`) that
+ * highest-priority CDN in `cdnPriority` (owned by `deriveCdnPriority`) that
  * still has tracks, so every track type stays on one CDN. A redundant-streams
  * source lists the same renditions on multiple hosts; this keeps the pick on one
  * host rather than letting the ranker drift across them.
@@ -327,15 +404,17 @@ function filterByUserSelection<S extends SelectionKey, U extends UserSelectionKe
  * (no preference) or when nothing matches (`applyRules` skips an empty result).
  * Non-redundant sources have one CDN, so the narrow is a no-op.
  *
- * The CDN-id derivation (`getCdnId`, origin-based) is hardcoded for now; a
- * consumer-configurable derivation can move onto a rule config view later.
+ * The CDN-id derivation defaults to origin-based `getCdnId`, overridable via the
+ * `getCdnId` config — it must match the one `deriveCdnPriority` used to build
+ * `cdnPriority`, or no track's CDN would ever equal an entry.
  */
 function preferActiveCdn<S extends SelectionKey, T extends SwitchableTrack>(
   tracks: readonly T[],
-  { state }: SelectionRuleDeps<CdnScopeStateMap<S>, AnySlotMap, TrackSwitchingConfig<S, T>>
+  { state, config }: SelectionRuleDeps<CdnScopeStateMap<S>, AnySlotMap, CdnRuleConfig<S, T>>
 ): readonly T[] {
   const cdnPriority = state.cdnPriority?.get();
   if (!cdnPriority?.length) return tracks;
+  const getCdnId = config.getCdnId ?? defaultGetCdnId;
   for (const cdn of cdnPriority) {
     const tracksUsingCdn = tracks.filter((track) => getCdnId(track.url) === cdn);
     if (tracksUsingCdn.length) return tracksUsingCdn;
@@ -416,15 +495,13 @@ function setupTrackSwitching<
   );
 
   // The playable candidate set — the tracks the rule chain gets to pick from,
-  // derived *outside* the reaction. This is the seam a future hard-constraints
-  // pre-pass (capability probing, CDN failover) occupies: it would narrow these
-  // tracks before the chain runs —
-  //   isResolvedPresentation(p) ? applyConstraints(constraints, getTracks(p), deps) : []
-  // — and because it's a `computed`, the constraints' own signal reads are
-  // tracked here. The effect reads it with `.get()`, so when the playable set
-  // changes — a new source, or a *dynamic* constraint like a CDN entering
-  // cooldown — the effect re-picks. Today it's just the type's tracks while a
-  // presentation is resolved.
+  // derived *outside* the reaction. The hard-constraints pre-pass (capability
+  // probing, CDN-failover cooldown) narrows the type's tracks before the chain
+  // runs. Because this is a `computed`, a constraint's own signal reads (e.g.
+  // `cdnHealth`) are tracked here, so when the playable set changes — a new
+  // source, or a *dynamic* constraint like a CDN entering cooldown — the effect
+  // re-picks. With no constraints configured this is just the type's tracks
+  // while a presentation is resolved.
   //
   // The `equals` gates notification on the *set of track ids*, not array
   // identity: a live playlist refresh swaps in a new presentation object with
@@ -436,7 +513,8 @@ function setupTrackSwitching<
   const candidateSet = computed<readonly T[]>(
     () => {
       const presentation = state.presentation.get();
-      return isResolvedPresentation(presentation) ? getTracks(presentation) : [];
+      if (!isResolvedPresentation(presentation)) return [];
+      return applyConstraints(config.constraints ?? [], getTracks(presentation), deps);
     },
     { equals: (a, b) => a.length === b.length && a.every((track) => b.some((other) => other.id === track.id)) }
   );
@@ -524,6 +602,7 @@ export const switchVideoTrack = defineBehavior({
         selectionKey: 'selectedVideoTrackId',
         userSelectionKey: 'userVideoTrackSelection',
         getTracks: (presentation) => getTracksByType(presentation, 'video') as readonly VideoTrackCandidate[],
+        constraints: [excludeFailedCdns],
         rules: [filterByUserSelection, preferActiveCdn, rankByBandwidth],
       },
     }),
@@ -549,14 +628,32 @@ export const switchVideoTrack = defineBehavior({
 export const switchAudioTrack = defineBehavior({
   stateKeys: ['presentation', 'selectedAudioTrackId'],
   contextKeys: [],
-  setup: ({ state, ...otherProps }: { state: TrackSwitchingStateMap<'selectedAudioTrackId'> }) =>
+  setup: ({
+    state,
+    config,
+    ...otherProps
+  }: {
+    state: TrackSwitchingStateMap<'selectedAudioTrackId'>;
+    // Shares the video config shape so the engine config spreads through (CDN
+    // derivation + any future cross-cutting fields).
+    config?: SwitchVideoTrackConfig;
+  }) =>
     setupTrackSwitching({
       ...otherProps,
       state,
       config: {
+        // Spread engine config so cross-cutting fields (`getCdnId`, future shared
+        // tuning) flow through like they do for video, then override the per-type
+        // wiring. Video-only ABR tuning (`quality`/`bandwidth`/`initialBandwidth`)
+        // rides along into the shared `rankByBandwidth` too; harmless since audio
+        // has no `bandwidthState` to act on it and the ranker always yields a pick.
+        // FOLLOW-UP: a shared config type for the genuinely cross-cutting fields
+        // would keep video-only tuning out of audio entirely (CJP).
+        ...config,
         selectionKey: 'selectedAudioTrackId',
         userSelectionKey: 'userAudioTrackSelection',
         getTracks: (presentation) => getTracksByType(presentation, 'audio') as readonly AudioTrackCandidate[],
+        constraints: [excludeFailedCdns],
         rules: [filterByUserSelection, preferActiveCdn, rankByBandwidth],
       },
     }),

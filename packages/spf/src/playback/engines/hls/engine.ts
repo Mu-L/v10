@@ -16,6 +16,7 @@ import {
 } from '../../../media/dom/text/text-track-slots';
 import { parseMultivariantPlaylist } from '../../../media/hls/parse-multivariant';
 import type { AudioTrack, MaybeResolvedPresentation, VideoTrack } from '../../../media/types';
+import type { GetCdnId } from '../../../media/utils/cdn';
 import { getResolvedSelectedTrackDuration } from '../../../media/utils/track-selection';
 import type { BandwidthConfig, BandwidthState } from '../../../network/bandwidth-estimator';
 import type { SegmentLoaderActor } from '../../actors/dom/segment-loader';
@@ -26,6 +27,7 @@ import {
   calculatePresentationDuration,
   type PresentationDurationResolver,
 } from '../../behaviors/calculate-presentation-duration';
+import { deriveCdnPriority } from '../../behaviors/derive-cdn-priority';
 import { endOfStream } from '../../behaviors/dom/end-of-stream';
 import { loadAudioSegments, loadTextTrackSegments, loadVideoSegments } from '../../behaviors/dom/load-segments';
 import { setupAudioBufferActors, setupVideoBufferActors } from '../../behaviors/dom/setup-buffer-actors';
@@ -35,10 +37,10 @@ import { syncTextTracks } from '../../behaviors/dom/sync-text-tracks';
 import { trackCurrentTime } from '../../behaviors/dom/track-current-time';
 import { trackLoadTriggers } from '../../behaviors/dom/track-load-triggers';
 import { updateMediaSourceDuration } from '../../behaviors/dom/update-mediasource-duration';
-import { resolveCdnPriority } from '../../behaviors/resolve-cdn-priority';
 import { type ParsePresentation, resolvePresentation } from '../../behaviors/resolve-presentation';
 import { resolveAudioTrack, resolveTextTrack, resolveVideoTrack } from '../../behaviors/resolve-track';
 import { selectTextTrack } from '../../behaviors/select-tracks';
+import { type FailoverMonitorConfig, setupFailoverMonitor } from '../../behaviors/setup-failover-monitor';
 import { syncPreload } from '../../behaviors/sync-preload';
 import { switchAudioTrack, switchVideoTrack } from '../../behaviors/track-switching';
 
@@ -75,13 +77,21 @@ export interface SimpleHlsEngineState {
   /**
    * The CDNs the source is served from (track-URL origins), in manifest
    * priority order — most-preferred first (mirrors HLS content steering's
-   * `PATHWAY-PRIORITY`). Owned by `resolveCdnPriority`, read by
+   * `PATHWAY-PRIORITY`). Owned by `deriveCdnPriority`, read by
    * `track-switching`'s `preferActiveCdn` scope, which narrows to the
    * highest-priority CDN with surviving tracks so video / audio / text stay on
    * one host. Only meaningful for redundant-stream sources; a single-CDN source
    * has one entry.
    */
   cdnPriority?: string[];
+  /**
+   * CDN ids (origins) currently in failover cooldown — written by the CDN
+   * monitor when a host fails too often, read by `track-switching`'s
+   * `excludeFailedCdns` hard constraint, which prunes their tracks so the
+   * active-CDN scope falls to the next CDN in `cdnPriority`. Empty / absent
+   * means all CDNs are eligible.
+   */
+  failedCdns?: string[];
   currentTime?: number;
   loadActivated?: boolean;
 }
@@ -196,6 +206,21 @@ export interface SimpleHlsEngineConfig extends ShareSignalsConfig<SimpleHlsEngin
    * ratio gating ABR upgrades. Defaults: `DEFAULT_QUALITY_CONFIG` (0.85 / 1.15).
    */
   quality?: Partial<QualityConfig>;
+  /**
+   * Multi-CDN failover monitor tuning. `cooldownMs` is how long a CDN stays
+   * excluded after a failed fetch trips it. Defaults:
+   * `DEFAULT_FAILOVER_MONITOR_CONFIG` (300s). Only meaningful for redundant-stream
+   * sources.
+   */
+  failover?: Partial<FailoverMonitorConfig>;
+  /**
+   * How to derive a CDN grouping key from a track URL — used to build
+   * `cdnPriority`, to record the failover trip in `failedCdns`, and by the
+   * track-switching CDN scope + failover constraint. One function, read by all of
+   * them, so the keys stay comparable. Defaults to the URL origin; override to
+   * key on something else (e.g. Mux's `cdn=` query param).
+   */
+  getCdnId?: GetCdnId;
 }
 
 // ============================================================================
@@ -205,9 +230,11 @@ export interface SimpleHlsEngineConfig extends ShareSignalsConfig<SimpleHlsEngin
 /**
  * Generic `shareSignals` instantiated against the HLS engine's full state
  * and context — captures composition signal refs into the consumer's
- * `onSignalsReady` callback at setup time, and materializes the consumer-input
- * slots (`user*TrackSelection`) that no behavior produces: the track-switching
- * behaviors only *read* them, so shareSignals owns bringing them into existence.
+ * `onSignalsReady` callback at setup time, and materializes input slots that no
+ * composed behavior produces: `user*TrackSelection` (track-switching only reads
+ * them). `failedCdns` is owned by `setupFailoverMonitor`, so it's already
+ * materialized and reachable on the `onSignalsReady` refs without being listed
+ * here.
  */
 const shareSignals = makeShareSignals<SimpleHlsEngineState, SimpleHlsEngineContext>([
   'userVideoTrackSelection',
@@ -273,7 +300,12 @@ export function createSimpleHlsEngine(
       // media-playlist fetch to the wrong CDN before correcting. Symmetric
       // redundant streams (the norm) never hit it — the first-listed CDN is
       // already the primary we'd pick anyway.
-      resolveCdnPriority,
+      deriveCdnPriority,
+
+      // CDN failover cooldown: owns the expiry half of failover — watches
+      // `failedCdns` (tripped directly by track resolution on a failed
+      // media-playlist fetch) and removes each CDN once its cooldown lapses.
+      setupFailoverMonitor,
 
       // Track selection (reads config for initial preferences).
       // Video selection lives in switchVideoTrack (composed below);
