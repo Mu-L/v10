@@ -1,56 +1,48 @@
-import { isFunction } from '@videojs/utils/predicate';
 import type {
   Component,
   ComponentConstructor,
   Components,
   HTMLMediaElementHost,
   HTMLMediaTargetLike as TargetLike,
-} from './media-host';
+} from '../media-host';
 
-type Host<T extends TargetLike = any> = HTMLMediaElementHost<T, any>;
+export type Host<T extends TargetLike = any> = HTMLMediaElementHost<T, any>;
 
-const registry = new WeakMap<Host, Components>();
+const componentRegistry = new WeakMap<Host, Components>();
 
 export function getComponents(host: Host) {
-  let map = registry.get(host);
-  if (!map) registry.set(host, (map = new Map() as Components));
+  let map = componentRegistry.get(host);
+  if (!map) componentRegistry.set(host, (map = new Map() as Components));
   return map;
 }
 
-export function addComponent<T extends Component>(host: Host, instance: T) {
+export function addComponent<T extends Component>(host: Host, component: T) {
   const components = getComponents(host);
-  const ctor = instance.constructor as ComponentConstructor<T>;
-  components.set(ctor, instance);
+  // Get the component's constructor to use as the key for the component in the registry.
+  const ctor = component.constructor as ComponentConstructor<T>;
 
-  // Expose a live binding on `host.config`: reads return the component, writes assign onto it.
+  // Adopt any config set under this namespace before the component registered.
   const { configKey } = ctor;
-  if (configKey) {
-    // Adopt config set before the component was registered.
-    const initial = host.config[configKey];
-    Object.defineProperty(host.config, configKey, {
-      enumerable: true,
-      configurable: true,
-      get: () => instance,
-      set: (value) => Object.assign(instance, value),
-    });
-    if (initial) Object.assign(instance, initial);
-  }
+  const staged = configKey ? host.config[configKey] : undefined;
 
-  instance.setMedia?.(host);
+  components.set(ctor, component);
+
+  if (staged !== undefined) Object.assign(component, staged);
+
+  component.setMedia?.(host);
+
   // @ts-expect-error `target` is protected, but these helpers are the host's own machinery.
-  if (host.target) instance.attach?.(host.target);
+  if (host.target) component.attach?.(host.target);
+
   return () => {
-    if (components.get(ctor) === instance) {
+    if (components.get(ctor) === component) {
       components.delete(ctor);
-      if (configKey) delete host.config[configKey];
     }
   };
 }
 
 export function getProp<T extends TargetLike, K extends keyof T>(host: Host<T>, prop: K): T[K] | undefined {
-  const own = getOwner(host, prop);
-  const result = own?.[prop];
-  return isFunction(result) ? (result.bind(own) as T[K]) : result;
+  return getOwner(host, prop)?.[prop];
 }
 
 export function setProp<T extends TargetLike, K extends keyof T>(host: Host<T>, prop: K, value: T[K]): void {
