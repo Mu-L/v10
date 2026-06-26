@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { kebabCase } from 'es-toolkit/string';
 import GithubSlugger from 'github-slugger';
+import { resolveReferenceSlug } from './api-reference-overrides';
 import { buildComponentReferenceTocHeadings, createComponentReferenceModel } from './componentReferenceModel';
 import { buildFeatureReferenceTocHeadings, createFeatureReferenceModel } from './featureReferenceModel';
 import { buildMediaReferenceTocHeadings, createMediaReferenceModel } from './mediaReferenceModel';
@@ -14,9 +15,8 @@ const FEATURE_REF_DIR = path.resolve(__dirname, '../content/generated-feature-re
 const UTIL_REF_DIR = path.resolve(__dirname, '../content/generated-util-reference');
 const MEDIA_REF_DIR = path.resolve(__dirname, '../content/generated-media-reference');
 
-function readComponentRefJson(componentName) {
-  const kebab = kebabCase(componentName);
-  const filePath = path.join(COMPONENT_REF_DIR, `${kebab}.json`);
+function readComponentRefJson(slug) {
+  const filePath = path.join(COMPONENT_REF_DIR, `${slug}.json`);
   try {
     return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
   } catch {
@@ -142,7 +142,7 @@ function injectComponentReferenceHeadings(node, headingsWithMetadata, reservedSl
   const componentName = typeof componentAttr?.value === 'string' ? componentAttr.value : null;
   if (!componentName) return;
 
-  const json = readComponentRefJson(componentName);
+  const json = readComponentRefJson(resolveReferenceSlug(componentName));
   if (!json) return;
 
   const partOrderAttr = node.attributes?.find((a) => a.name === 'partOrder');
@@ -226,7 +226,7 @@ function injectMediaReferenceHeadings(node, headingsWithMetadata, reservedSlugs)
   const mediaName = typeof mediaAttr?.value === 'string' ? mediaAttr.value : null;
   if (!mediaName) return;
 
-  const json = readMediaRefJson(kebabCase(mediaName));
+  const json = readMediaRefJson(resolveReferenceSlug(mediaName));
   if (!json) return;
 
   const mediaModel = createMediaReferenceModel(mediaName, json);
