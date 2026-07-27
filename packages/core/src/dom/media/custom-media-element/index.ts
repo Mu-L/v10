@@ -90,7 +90,11 @@ export interface MediaHost extends EventTarget {
 }
 
 type CustomMediaConstructor<T extends Constructor<MediaHost>> = Constructor<
-  HTMLElement & InstanceType<T> & { readonly host: InstanceType<T> }
+  HTMLElement &
+    InstanceType<T> & {
+      readonly host: InstanceType<T>;
+      attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void;
+    }
 > & {
   properties: Record<string, { type: any; attribute?: string; empty?: unknown }>;
   getTemplateHTML: (attrs: Record<string, string>) => string;
