@@ -14,7 +14,7 @@ This is the design for the `timestampOffset`-relocation approach to non-zero-PTS
 implemented for **VOD** on branch `feat/spf-non-zero-pts-relocation` (live is parked on
 `feat/spf-non-zero-pts`). It is the
 "how it's modeled and where it lives" companion to the mechanism decision in
-[../../decisions/mse-timestamp-offset.md](../../decisions/mse-timestamp-offset.md)
+[../../decisions/spf/mse-timestamp-offset.md](../../decisions/spf/mse-timestamp-offset.md)
 and the feature framing in
 [features/non-zero-pts-support.md](./features/non-zero-pts-support.md).
 
@@ -104,8 +104,8 @@ text cue:      cueFinal     = cueNative       + timestampOffset   # we compute i
 ```
 
 Text has no `SourceBuffer`, so it *effectively* has a `timestampOffset` applied
-as cue arithmetic. This is the live single-anchor rule
-([../../decisions/live-presentation-anchor.md](../../decisions/live-presentation-anchor.md))
+as cue arithmetic. This is the future live single-anchor rule
+(`live-presentation-anchor`)
 in VOD form: **established from the A/V tracks, applied to all tracks including
 text.**
 
@@ -352,8 +352,7 @@ closed door.
   *shape* (and both write per-track base values → the #1746 multi-writer surface).
   Whether they should be **one unit** — the anchor writing `startDate`/`startTime`
   and relocation writing `startMediaTime` folded into a single establisher — is
-  the remaining, larger dedup, still future. See
-  [../../decisions/live-presentation-anchor.md](../../decisions/live-presentation-anchor.md).
+  the remaining, larger dedup, still future in `live-presentation-anchor`.
 - **Barrier liveness.** For Tier 2, `deriveStartMediaTime` returns `undefined`
   until the selected A/V origins are all present, and the apply-side
   `awaitDefined` holds each first append until then — so audio erroring, disabled,
@@ -387,15 +386,13 @@ closed door.
 
 ## See also
 
-- [presentation-modeling.md](./presentation-modeling.md),
-  [live-presentation-modeling.md](./live-presentation-modeling.md) — the data
+- [presentation-modeling.md](./presentation-modeling.md) — the data
   model this extends; #1746 (the concurrently-RMW'd `presentation` hazard) is why
   the churn stays in the transient `mediaContainerData` slot.
-- [../../decisions/mse-timestamp-offset.md](../../decisions/mse-timestamp-offset.md)
+- [../../decisions/spf/mse-timestamp-offset.md](../../decisions/spf/mse-timestamp-offset.md)
   — the mechanism decision (native-PTS default; relocation for the 0-based cases).
-- [../../decisions/live-presentation-anchor.md](../../decisions/live-presentation-anchor.md),
-  [../../decisions/live-timeline-anchoring.md](../../decisions/live-timeline-anchoring.md)
-  — the live anchor this generalizes.
+- `live-presentation-anchor` and `live-timeline-anchoring` — the future live
+  decisions this generalizes.
 - [features/non-zero-pts-support.md](./features/non-zero-pts-support.md) — the
   feature framing.
 - `packages/spf/src/media/mp4/` — the committed box parser (presumptive +

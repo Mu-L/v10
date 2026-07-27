@@ -27,7 +27,7 @@ A/V tracks, which keeps every DTS ≥ 0 *and* preserves real skew. The coordinat
 model and the discover→derive→apply architecture are documented in full in
 [presentation-timeline-model.md](../presentation-timeline-model.md); the mechanism
 decision (native-PTS default, relocation for the 0-based cases) in
-[../../../decisions/mse-timestamp-offset.md](../../../decisions/mse-timestamp-offset.md).
+[../../../decisions/spf/mse-timestamp-offset.md](../../../decisions/spf/mse-timestamp-offset.md).
 (The alternative — simulated translation in the adapter — was the parked approach
 on `feat/spf-non-zero-pts`.)
 
@@ -202,7 +202,7 @@ encode origin ordinary VOD carries (audio priming, first-frame CTS, edit lists).
 
 - ~~**Mechanism choice: `timestampOffset` vs simulated translation.**~~
   *Resolved.* `timestampOffset` relocation for VOD; see the opening and
-  [../../../decisions/mse-timestamp-offset.md](../../../decisions/mse-timestamp-offset.md).
+  [../../../decisions/spf/mse-timestamp-offset.md](../../../decisions/spf/mse-timestamp-offset.md).
 - ~~**PTS-detection implementation: parser depth.**~~ *Resolved.* A targeted
   extractor (`media/mp4/timestamp-origin.ts`), not a full `mp4box.js`-style
   dependency — split into presumptive vs track-id readers for tree-shaking.
@@ -261,7 +261,7 @@ encode origin ordinary VOD carries (audio priming, first-frame CTS, edit lists).
   **the architectural deep-dive**: the three-timeline coordinate model, the
   discover→derive→apply reactor architecture, the capability axes, and the key
   decisions. This feature doc frames; that doc explains the mechanism.
-- [../../../decisions/mse-timestamp-offset.md](../../../decisions/mse-timestamp-offset.md)
+- [../../../decisions/spf/mse-timestamp-offset.md](../../../decisions/spf/mse-timestamp-offset.md)
   — the mechanism decision (native-PTS default; relocation for the 0-based cases).
 - [clusters.md § Time normalization](./clusters.md#time-normalization)
   — cluster B description; this feature is the foundation.

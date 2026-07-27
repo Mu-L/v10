@@ -102,7 +102,7 @@ jobs:
             Steps:
 
             1. **Load context:**
-               - Read `.claude/skills/docs/references/writing-style.md` for tone and style rules.
+               - Read `.agents/skills/write-docs/references/writing-style.md` for tone and style rules.
                - Read the raw changelog at `site/src/content/changelog/${{ steps.version.outputs.version }}.mdx`.
                - Read other existing `.mdx` files in `site/src/content/changelog/` (if any) to match their tone and format.
                - List the available docs pages so you can link them: `ls site/src/content/docs/concepts site/src/content/docs/how-to site/src/content/docs/reference`. A page's slug is its path under `site/src/content/docs/` without the extension (e.g. `reference/menu.mdx` → `reference/menu`).

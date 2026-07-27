@@ -25,7 +25,7 @@
  * Inert where it shouldn't act: live (the MediaSource never reaches `ended` while the
  * window grows; `duration` is `Infinity`) and streams that end cleanly (no `waiting`).
  *
- * See `internal/decisions/end-of-stream-av-skew-recovery.md`.
+ * See `internal/decisions/spf/end-of-stream-av-skew-recovery.md`.
  */
 import { listen } from '@videojs/utils/dom';
 import { defineBehavior } from '../../../core/composition/create-composition';
