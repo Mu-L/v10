@@ -279,15 +279,14 @@ describe('getSegmentsToLoad', () => {
       expect(toLoad).toHaveLength(2); // Load both segments within 30s
     });
 
-    it('should handle currentTime after all segments', () => {
+    it('past all segments, does not reload interior segments the playhead has passed', () => {
+      // A playhead past every segment is unreachable in practice (clamped to the
+      // presentation's range), but the rule stays well-defined: interior segments
+      // behind the playhead are NOT reloaded. The terminal segment has no
+      // successor, so it stays selectable — see the exact-end / overshoot cases.
       const segments: Segment[] = [createSegment(0, 6), createSegment(6, 6)];
-
-      const bufferedSegments: Segment[] = [];
-      const currentTime = 100;
-
-      const toLoad = getSegmentsToLoad(segments, bufferedSegments, currentTime);
-
-      expect(toLoad).toHaveLength(0); // No segments in range
+      const toLoad = getSegmentsToLoad(segments, [], 100);
+      expect(toLoad.map((s) => s.id)).toEqual(['seg-6']); // only the terminal segment
     });
 
     it('should not load segments beyond target', () => {
@@ -399,6 +398,41 @@ describe('getSegmentsToLoad', () => {
 
       expect(toLoad).toHaveLength(3); // Segments 18, 24, 30
       expect(toLoad[0]?.id).toBe('seg-18');
+    });
+  });
+
+  describe('exact-end boundary (#1828)', () => {
+    it('loads the final segment when currentTime is exactly the total duration', () => {
+      // Regression for #1828: seeking to currentTime === duration must still
+      // select the last segment. A strict `endTime > currentTime` overlap test
+      // drops the final segment (whose endTime === duration), so it never loads
+      // and endOfStream() never fires → the seek stalls forever.
+      const segments = [createSegment(0, 6), createSegment(6, 6), createSegment(12, 6)] as const;
+      // Playhead dragged to the exact end (duration = 18), nothing buffered there.
+      const toLoad = getSegmentsToLoad(segments, [], 18);
+      expect(toLoad.map((s) => s.id)).toEqual(['seg-12']);
+    });
+
+    it('loads the final segment when currentTime slightly exceeds its model end', () => {
+      // Post-loop re-seek variant of #1828. After the first end, endOfStream()
+      // clamps MediaSource.duration to the true buffered end, which can run a
+      // hair past the model's EXTINF-derived last-segment end. A later seek to
+      // that grown duration lands just past the last segment's endTime — its
+      // real media still covers the position, so it must still be selected, or
+      // the loader goes idle and the seek stalls.
+      const segments = [createSegment(0, 6), createSegment(6, 6), createSegment(12, 6)] as const;
+      // Model end = 18; duration grew to 18.03, seek lands past seg-12's endTime.
+      const toLoad = getSegmentsToLoad(segments, [], 18.03);
+      expect(toLoad.map((s) => s.id)).toEqual(['seg-12']);
+    });
+
+    it('does not re-select a finished segment at a mid-stream boundary', () => {
+      // Guard: the fix is scoped to the final segment. At an interior boundary
+      // (currentTime === a non-last segment's endTime) the just-finished segment
+      // must NOT be reloaded — only the segments the playhead is entering.
+      const segments = [createSegment(0, 6), createSegment(6, 6), createSegment(12, 6)] as const;
+      const toLoad = getSegmentsToLoad(segments, [], 6);
+      expect(toLoad.map((s) => s.id)).toEqual(['seg-6', 'seg-12']);
     });
   });
 });

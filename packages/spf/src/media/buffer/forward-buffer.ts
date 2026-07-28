@@ -168,10 +168,25 @@ export function getSegmentsToLoad(
   // Find segments to load:
   // - Overlaps buffer window [currentTime, targetTime)
   // - Not already buffered at that time position
-  const toLoad = segments.filter((seg) => {
-    // Segment must overlap the buffer window
+  const toLoad = segments.filter((seg, i) => {
     const segmentEnd = seg.startTime + seg.duration;
-    const isInRange = seg.startTime < targetTime && segmentEnd > currentTime;
+    const isLast = i === segments.length - 1;
+    // Interior segments use strict `>` so a segment the playhead just finished
+    // (endTime === currentTime at a boundary) isn't reloaded. The terminal
+    // segment has no successor and no reachable position past it — the playhead
+    // is clamped to the presentation's range — so it needs no upper bound: it's
+    // loadable whenever the forward window reaches it. That resolves the
+    // exact-end seek (#1828) and the post-loop re-seek — where
+    // `MediaSource.duration`, clamped by `endOfStream()` to the true buffered
+    // end, has grown a hair past the model's EXTINF-derived end — with no
+    // dependency on any duration value.
+    //
+    // LIVE: for an un-ended live/DVR presentation `isLast` is the sliding edge
+    // segment; loading it eagerly here is benign today (forward-window-bounded,
+    // deduped by the buffered check), but the live effort should confirm the
+    // edge / end-of-stream interaction when it lands.
+    const overlapsPlayhead = isLast || segmentEnd > currentTime;
+    const isInRange = seg.startTime < targetTime && overlapsPlayhead;
 
     // Must not have a segment buffered at this time position
     const isNotBuffered = !bufferedStartTimes.has(seg.startTime);
