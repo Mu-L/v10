@@ -6,11 +6,12 @@
  *
  * Convention:
  *   - Define files: packages/html/src/define/media/*.ts with inline class + static tagName
- *   - Media element classes: packages/html/src/media/{name}/index.ts
+ *   - Media element classes: packages/html/src/media/{name}/media.ts
  *     composed as MediaAttachMixin(CustomMediaElement('video'|'audio', Host))
- *   - Host classes: packages/core/src/dom/media/{name}/index.ts extending
+ *   - React media components: packages/react/src/media/{name}/media.tsx
+ *   - Host classes: packages/media/src/dom/{name}/media.ts extending
  *     HTMLVideoElementHost or HTMLAudioElementHost with getter/setter pairs
- *   - Shared data: packages/core/src/dom/media/custom-media-element/index.ts
+ *   - Shared data: packages/media/src/dom/custom-media-element/custom-media-element.ts
  *     exports CustomMediaElement factory (with static properties), VideoCSSVars,
  *     AudioCSSVars
  *
@@ -66,7 +67,7 @@ interface StaticMediaProperty {
 /**
  * Resolve an import specifier to an absolute file path using TypeScript's
  * module resolution. Handles both relative paths and workspace package
- * imports (e.g., @videojs/core/dom/media/hls) via the project's tsconfig.
+ * imports (e.g., @videojs/media/dom/hls) via the project's tsconfig.
  *
  * Workspace imports go through `package.json#exports` and resolve to the
  * built `dist/dev/*.d.ts` files, where the TypeScript compiler has collapsed
@@ -86,15 +87,31 @@ function resolveModuleToFile(
 }
 
 function mapDistToSource(resolvedPath: string): string {
-  if (!resolvedPath.endsWith('.d.ts')) return resolvedPath;
-  const match = resolvedPath.match(/^(.+\/packages\/[^/]+)\/dist\/dev\/(.+)\.d\.ts$/);
-  if (!match) return resolvedPath;
-  const [, pkgRoot, rest] = match;
-  const candidates = [`${pkgRoot}/src/${rest}.ts`, `${pkgRoot}/src/${rest}/index.ts`];
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
+  let sourcePath = resolvedPath;
+
+  if (resolvedPath.endsWith('.d.ts')) {
+    const match = resolvedPath.match(/^(.+\/packages\/[^/]+)\/dist\/dev\/(.+)\.d\.ts$/);
+    if (!match) return resolvedPath;
+    const [, pkgRoot, rest] = match;
+    const candidates = [
+      `${pkgRoot}/src/${rest}.ts`,
+      `${pkgRoot}/src/${rest}.tsx`,
+      `${pkgRoot}/src/${rest}/index.ts`,
+      `${pkgRoot}/src/${rest}/index.tsx`,
+    ];
+    const candidate = candidates.find((path) => fs.existsSync(path));
+    if (!candidate) return resolvedPath;
+    sourcePath = candidate;
   }
-  return resolvedPath;
+
+  if (sourcePath.endsWith('/index.ts') || sourcePath.endsWith('/index.tsx')) {
+    const mediaPath = ['media.ts', 'media.tsx']
+      .map((file) => path.join(path.dirname(sourcePath), file))
+      .find((file) => fs.existsSync(file));
+    if (mediaPath) return mediaPath;
+  }
+
+  return sourcePath;
 }
 
 // ─── Discovery ───────────────────────────────────────────────────────
@@ -1044,7 +1061,7 @@ function extractReactReference(
   propertyDefinitions: Record<string, HostPropertyDef>
 ): ReactMediaReference | undefined {
   const mediaDirectory = path.basename(path.dirname(source.mediaFilePath));
-  const reactFilePath = path.join(monorepoRoot, 'packages/react/src/media', mediaDirectory, 'index.tsx');
+  const reactFilePath = path.join(monorepoRoot, 'packages/react/src/media', mediaDirectory, 'media.tsx');
   if (!fs.existsSync(reactFilePath)) return undefined;
 
   const content = fs.readFileSync(reactFilePath, 'utf-8');
@@ -1518,14 +1535,17 @@ export function generateMediaElementReferences(monorepoRoot: string): MediaEleme
   const sources = discoverMediaElements(monorepoRoot, compilerOptions);
   if (sources.length === 0) return [];
 
-  const customMediaPath = path.join(monorepoRoot, 'packages/core/src/dom/media/custom-media-element/index.ts');
+  const customMediaPath = path.join(
+    monorepoRoot,
+    'packages/media/src/dom/custom-media-element/custom-media-element.ts'
+  );
   if (!fs.existsSync(customMediaPath)) return [];
 
   // Read shared data
   const staticProperties = extractStaticProperties(customMediaPath);
 
   // Extract events from capability contract types
-  const mediaTypesPath = path.join(monorepoRoot, 'packages/core/src/core/media/types.ts');
+  const mediaTypesPath = path.join(monorepoRoot, 'packages/media/src/core/types.ts');
   const videoEvents = fs.existsSync(mediaTypesPath) ? extractEventsFromTypes(mediaTypesPath, 'VideoEvents') : [];
   const audioEvents = fs.existsSync(mediaTypesPath) ? extractEventsFromTypes(mediaTypesPath, 'AudioEvents') : [];
 
@@ -1546,9 +1566,9 @@ export function generateMediaElementReferences(monorepoRoot: string): MediaEleme
   // from the shared base host classes — extracted ONCE per media type (mirroring
   // how events come from VideoEvents/AudioEvents), not per element. Video adds
   // the video-host methods; audio adds the audio-host methods.
-  const mediaHostPath = path.join(monorepoRoot, 'packages/core/src/dom/media/media-host.ts');
-  const videoHostPath = path.join(monorepoRoot, 'packages/core/src/dom/media/video-host.ts');
-  const audioHostPath = path.join(monorepoRoot, 'packages/core/src/dom/media/audio-host.ts');
+  const mediaHostPath = path.join(monorepoRoot, 'packages/media/src/dom/media-host/media-host.ts');
+  const videoHostPath = path.join(monorepoRoot, 'packages/media/src/dom/video-host/video-host.ts');
+  const audioHostPath = path.join(monorepoRoot, 'packages/media/src/dom/audio-host/audio-host.ts');
   const baseMethods = extractPublicMethodNames(mediaHostPath, 'HTMLMediaElementHost');
   const videoMethods = mergeMethodNames(baseMethods, extractPublicMethodNames(videoHostPath, 'HTMLVideoElementHost'));
   const audioMethods = mergeMethodNames(baseMethods, extractPublicMethodNames(audioHostPath, 'HTMLAudioElementHost'));

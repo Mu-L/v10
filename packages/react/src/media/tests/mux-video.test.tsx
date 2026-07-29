@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
-import { HlsJsMedia } from '@videojs/core/dom/media/hls-js';
-import { MuxData, MuxMedia } from '@videojs/core/dom/media/mux';
+import { HlsJsMedia } from '@videojs/media/dom/hls-js';
+import { MuxData, MuxMedia } from '@videojs/media/dom/mux';
 import { describe, expect, it, vi } from 'vitest';
 import { MuxVideo } from '../mux-video';
 
@@ -9,7 +9,7 @@ describe('MuxVideo', () => {
     const envKey = vi.spyOn(MuxData.prototype, 'envKey', 'set');
 
     // `useSyncProps` writes `media.config` during render, before the mount
-    // effect registers the components — `addComponent` adopts the early value.
+    // effect registers the components — `addMediaComponent` adopts the early value.
     const { container } = render(<MuxVideo config={{ muxData: { envKey: 'test-key' } }} />);
 
     expect(envKey).toHaveBeenCalledWith('test-key');

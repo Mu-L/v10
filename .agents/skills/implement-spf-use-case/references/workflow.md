@@ -366,16 +366,16 @@ After Step 1's report:
   effectively unconsumable through the existing player surface. Ask
   the user (multi-select `AskUserQuestion`) which downstream layers
   to bundle into this pass:
-  - **Core media wrapper** — `packages/core/src/dom/media/<key>/`
+  - **Media wrapper** — `packages/media/src/dom/<key>/`
     (~5 LOC; applies the SPF mixin to `HTMLVideoElementHost`). The
     minimum bridge between the SPF adapter and the player packages.
-    Worked example: `simple-hls/index.ts` →
+    Worked example: `simple-hls/media.ts` →
     `class SimpleHlsMedia extends SimpleHlsMediaMixin(HTMLVideoElementHost) {}`.
   - **HTML custom element** — `packages/html/src/media/<key>-video/`
-    (~5 LOC; wraps the core media in `CustomMediaElement` +
+    (~5 LOC; wraps the media host in `CustomMediaElement` +
     `MediaAttachMixin`) + `packages/html/src/define/media/<key>-video.ts`
     + `packages/html/src/cdn/media/<key>-video.ts` for the CDN entry.
-    Worked example: `simple-hls-video/index.ts` →
+    Worked example: `simple-hls-video/media.ts` →
     `class SimpleHlsVideo extends MediaAttachMixin(CustomMediaElement('video', SimpleHlsMedia)) {}`.
   - **React component** — `packages/react/src/media/<key>-video/`
     (~37 LOC; React adapter exposing props matching the HTML
@@ -438,15 +438,15 @@ typical for use-case implementations:
 
 **Implementation-scope-extension layers (opt-in per Step 2):**
 
-- **Core media wrapper** — `packages/core/src/dom/media/<key>/index.ts`
+- **Media wrapper** — `packages/media/src/dom/<key>/media.ts`
   applying the SPF mixin to `HTMLVideoElementHost` (or audio host for
-  audio-only variants). Inline implementation; ~5 LOC.
+  audio-only variants), exported through the adjacent `index.ts`; ~5 LOC.
 - **HTML custom element + define entry + CDN entry** —
-  `packages/html/src/media/<key>-video/index.ts`,
+  `packages/html/src/media/<key>-video/media.ts`,
   `packages/html/src/define/media/<key>-video.ts`,
   `packages/html/src/cdn/media/<key>-video.ts`. Inline implementation;
   ~5 LOC + boilerplate.
-- **React component** — `packages/react/src/media/<key>-video/index.tsx`
+- **React component** — `packages/react/src/media/<key>-video/media.tsx`
   exposing the props surface; ~37 LOC. Inline implementation.
 - **Sandbox demo(s)** — `apps/sandbox/templates/{html,react}-<key>-video/`
   (each ~50–80 LOC). **Write to `templates/`, not `src/`** (which is
@@ -592,7 +592,7 @@ docs (cascade):
     always present.
   - *Adapter* table (Export / File / Purpose) — always present.
   - *Composed behaviors* paragraph — always present.
-  - *Core media wrapper* table — if the core wrapper layer
+  - *Media wrapper* table — if the media wrapper layer
     landed (`packages/core/...`).
   - *HTML custom element* table — if the HTML element layer
     landed (`packages/html/...`).

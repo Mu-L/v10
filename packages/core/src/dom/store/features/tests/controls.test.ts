@@ -1,6 +1,6 @@
 import { createStore, flush } from '@videojs/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PlayerTarget } from '../../../media/types';
+import type { PlayerTarget } from '../../../player';
 import { createMockVideo } from '../../../tests/test-helpers';
 import { controlsFeature } from '../controls';
 

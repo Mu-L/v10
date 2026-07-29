@@ -4,7 +4,27 @@ export type { IndicatorStatus, InputAction, InputIndicatorLabels } from '@videoj
 // Core
 export * from '@videojs/core/dom';
 // Media predicates
-export * from '@videojs/core/media/predicate';
+export {
+  hasMetadata,
+  isMediaAudioTrackCapable,
+  isMediaBufferCapable,
+  isMediaErrorCapable,
+  isMediaLiveCapable,
+  isMediaPauseCapable,
+  isMediaPlaybackRateCapable,
+  isMediaRemotePlaybackCapable,
+  isMediaSeekCapable,
+  isMediaSourceCapable,
+  isMediaStreamTypeCapable,
+  isMediaTextTrackCapable,
+  isMediaVideoDimensionsCapable,
+  isMediaVideoRenditionCapable,
+  isMediaVolumeCapable,
+  isQuerySelectorAllCapable,
+  type NodeListLike,
+} from '@videojs/media';
+// Media
+export * from '@videojs/media/dom';
 // Store
 export type { Comparator, Selector } from '@videojs/store';
 export { createSelector, shallowEqual } from '@videojs/store';

@@ -1,5 +1,5 @@
-import { getComponents } from '@videojs/core/dom/media/media-host';
-import { MuxData } from '@videojs/core/dom/media/mux';
+import { getMediaComponents } from '@videojs/media/dom/media-host';
+import { MuxData } from '@videojs/media/dom/mux';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MuxVideo } from '../mux-video';
 
@@ -20,7 +20,7 @@ afterEach(() => {
 describe('MuxVideo', () => {
   it('constructs the mux data component with the player software name', () => {
     const el = createMuxVideo();
-    const muxData = getComponents(el.host).get(MuxData);
+    const muxData = getMediaComponents(el.host).get(MuxData);
 
     expect(muxData).toBeInstanceOf(MuxData);
     expect(muxData?.playerSoftwareName).toBe('mux-video');
@@ -36,7 +36,7 @@ describe('MuxVideo', () => {
 
   it('routes component config writes to the component', () => {
     const el = createMuxVideo();
-    const muxData = getComponents(el.host).get(MuxData);
+    const muxData = getMediaComponents(el.host).get(MuxData);
 
     el.config = { muxData: { envKey: 'test-key' } };
 
