@@ -38,13 +38,16 @@ function defineElement(tagName: string, Base: CustomElementConstructor): void {
   }
 }
 
-function createControlsStore(): AnyPlayerStore {
+function createControlsStore(
+  requestControlsLock: MediaControlsState['requestControlsLock'] = () => () => {}
+): AnyPlayerStore {
   return createStore<unknown>()<MediaControlsState>({
     name: 'controls',
     state: ({ get, set }) => {
       return {
         userActive: true,
         controlsVisible: true,
+        requestControlsLock,
         toggleControls() {
           const visible = !(get().controlsVisible as boolean);
 
@@ -58,7 +61,9 @@ function createControlsStore(): AnyPlayerStore {
 }
 
 class TestPlayerProviderElement extends MediaElement {
-  store = createControlsStore();
+  readonly releaseControlsLock = vi.fn();
+  readonly requestControlsLock = vi.fn(() => this.releaseControlsLock);
+  store = createControlsStore(this.requestControlsLock);
 
   readonly #provider = new ContextProvider(this, { context: playerContext, initialValue: this.store });
 
@@ -805,5 +810,29 @@ describe('MenuElement', () => {
       expect.objectContaining({ detail: expect.objectContaining({ open: false, reason: 'imperative-action' }) })
     );
     expect(focus).not.toHaveBeenCalled();
+  });
+
+  it('holds a controls visibility lock while a root menu is open', async () => {
+    const provider = document.createElement('test-menu-player-provider') as TestPlayerProviderElement;
+    const root = createElement(MenuElement);
+
+    root.open = true;
+    provider.append(root);
+    document.body.append(provider);
+
+    await root.updateComplete;
+
+    expect(root.hasAttribute('data-open')).toBe(true);
+
+    await waitForAssertion(() => {
+      expect(provider.requestControlsLock).toHaveBeenCalledTimes(1);
+    });
+
+    root.open = false;
+    await root.updateComplete;
+
+    await waitForAssertion(() => {
+      expect(provider.releaseControlsLock).toHaveBeenCalledTimes(1);
+    });
   });
 });
