@@ -7,7 +7,10 @@ import {
   DEFAULT_AUDIO_SOURCE,
   DEFAULT_DASH_SOURCE,
   DEFAULT_SOURCE,
+  HLSJS_SOURCE_IDS,
+  isDrmSource,
   MP4_SOURCE_IDS,
+  MUX_SOURCE_IDS,
   NON_DASH_SOURCE_IDS,
   SOURCES,
 } from '@app/shared/sources';
@@ -60,6 +63,21 @@ export function App() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const pagePath = getPagePath(platform, preset);
+
+  // `MuxVideo` is the only preset that turns a Mux DRM token into license URLs;
+  // any hls.js-backed one can take license servers through `source.engine`. The
+  // CDN sandbox builds elements from attributes alone, so neither reaches it.
+  const structuredSource = platform !== 'cdn';
+  const availableSources =
+    preset === 'audio'
+      ? MP4_SOURCE_IDS
+      : preset === 'dash-video'
+        ? DASH_SOURCE_IDS
+        : structuredSource && preset === 'mux-video'
+          ? MUX_SOURCE_IDS
+          : structuredSource && preset === 'hlsjs-video'
+            ? HLSJS_SOURCE_IDS
+            : NON_DASH_SOURCE_IDS;
 
   // Keep the URL in sync with all state.
   useEffect(() => {
@@ -127,15 +145,19 @@ export function App() {
     }
   }, [preset, source]);
 
+  // Constrain source away from DRM the preset cannot license
+  useEffect(() => {
+    if (isDrmSource(source) && !availableSources.includes(source)) {
+      setSource(DEFAULT_SOURCE);
+    }
+  }, [availableSources, source]);
+
   // CDN, background video, and vimeo video do not have a Tailwind skin variant.
   useEffect(() => {
     if ((platform === 'cdn' || preset === 'background-video' || preset === 'vimeo-video') && styling === 'tailwind') {
       setStyling('css');
     }
   }, [platform, preset, styling]);
-
-  const availableSources =
-    preset === 'audio' ? MP4_SOURCE_IDS : preset === 'dash-video' ? DASH_SOURCE_IDS : NON_DASH_SOURCE_IDS;
 
   const handleSourceChange = useCallback((value: string) => setSource(value as SourceId), []);
 
