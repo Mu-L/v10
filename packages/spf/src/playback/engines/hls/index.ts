@@ -1,3 +1,8 @@
+// HLS media-playlist metadata, including `playlistType` ('VOD' | 'EVENT'). Lets
+// consumers distinguish an EVENT / DVR source from sliding-window live directly
+// from the manifest, rather than inferring it from the seekable window size.
+export type { MediaPlaylistMetadata } from '../../../media/types';
+export { getMediaPlaylistMetadata } from '../../../media/types';
 // Non-zero-PTS relocation (spike): the coordination seam type + the shared-`min`
 // default and the per-type alternative, for a consumer swapping the policy via
 // `config.deriveStartMediaTime`.
@@ -6,7 +11,7 @@ export {
   derivePerTypeStartMediaTime,
   deriveSharedMinStartMediaTime,
 } from '../../behaviors/establish-start-media-time';
-export type { SimpleHlsMediaAPI, SimpleHlsMediaProps } from './adapter';
+export type { SimpleHlsMediaAPI, SimpleHlsMediaProps, SimpleHlsMediaStreamType } from './adapter';
 export { SimpleHlsMediaElement, SimpleHlsMediaMixin, simpleHlsMediaDefaultProps } from './adapter';
 export type { SimpleHlsAudioOnlyMediaAPI, SimpleHlsAudioOnlyMediaProps } from './adapter-audio-only';
 export {
