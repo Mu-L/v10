@@ -21,7 +21,7 @@ describe('buildSkinArtifactGraph', () => {
       {
         id: 'default-video-controls',
         dependencies: {
-          artifacts: ['fullscreen-button', 'play-button', 'seek-button', 'time-slider'],
+          artifacts: ['fullscreen-button', 'play-button', 'seek-button', 'time-slider', 'volume-popover'],
           packages: ['@videojs/core'],
           symbols: {
             components: ['Controls', 'Time', 'Tooltip'],
@@ -37,6 +37,17 @@ describe('buildSkinArtifactGraph', () => {
           symbols: {
             components: ['FullscreenButton'],
             icons: ['FullscreenEnterIcon', 'FullscreenExitIcon'],
+          },
+        },
+      },
+      {
+        id: 'mute-button',
+        dependencies: {
+          artifacts: [],
+          packages: ['@videojs/core', '@videojs/icons'],
+          symbols: {
+            components: ['MuteButton'],
+            icons: ['VolumeHighIcon', 'VolumeLowIcon', 'VolumeOffIcon'],
           },
         },
       },
@@ -66,9 +77,20 @@ describe('buildSkinArtifactGraph', () => {
         id: 'time-slider',
         dependencies: {
           artifacts: [],
-          packages: ['@videojs/core'],
+          packages: ['@videojs/core', '@videojs/icons'],
           symbols: {
             components: ['Slider', 'TimeSlider'],
+            icons: ['SpinnerIcon'],
+          },
+        },
+      },
+      {
+        id: 'volume-popover',
+        dependencies: {
+          artifacts: ['mute-button', 'volume-slider'],
+          packages: ['@videojs/core'],
+          symbols: {
+            components: ['Popover'],
           },
         },
       },
@@ -91,23 +113,49 @@ describe('buildSkinArtifactGraph', () => {
         'play-button',
         'seek-button',
         'time-slider',
+        'mute-button',
+        'volume-slider',
+        'volume-popover',
         'default-video-controls',
       ],
-      artifacts: ['button-tooltip', 'fullscreen-button', 'play-button', 'seek-button', 'time-slider'],
+      artifacts: [
+        'button-tooltip',
+        'fullscreen-button',
+        'play-button',
+        'seek-button',
+        'time-slider',
+        'mute-button',
+        'volume-slider',
+        'volume-popover',
+      ],
       packages: ['@videojs/core', '@videojs/icons'],
       symbols: {
         components: [
           'Controls',
           'FullscreenButton',
+          'MuteButton',
           'PlayButton',
+          'Popover',
           'SeekButton',
           'Slider',
           'Text',
           'Time',
           'TimeSlider',
           'Tooltip',
+          'VolumeSlider',
         ],
-        icons: ['FullscreenEnterIcon', 'FullscreenExitIcon', 'PauseIcon', 'PlayIcon', 'RestartIcon', 'SeekIcon'],
+        icons: [
+          'FullscreenEnterIcon',
+          'FullscreenExitIcon',
+          'PauseIcon',
+          'PlayIcon',
+          'RestartIcon',
+          'SeekIcon',
+          'SpinnerIcon',
+          'VolumeHighIcon',
+          'VolumeLowIcon',
+          'VolumeOffIcon',
+        ],
       },
     });
   });

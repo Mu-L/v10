@@ -33,7 +33,7 @@
       ],
       "resources": {},
       "dependencies": {
-        "artifacts": ["fullscreen-button", "play-button", "seek-button", "time-slider"],
+        "artifacts": ["fullscreen-button", "play-button", "seek-button", "time-slider", "volume-popover"],
         "packages": ["@videojs/core"],
         "symbols": {
           "components": ["Controls", "Time", "Tooltip"],
@@ -58,6 +58,26 @@
         "symbols": {
           "components": ["FullscreenButton"],
           "icons": ["FullscreenEnterIcon", "FullscreenExitIcon"]
+        }
+      }
+    },
+    {
+      "id": "mute-button",
+      "kind": "component",
+      "entry": "./canonical/components/buttons/mute-button.skin.tsx",
+      "files": [
+        {
+          "path": "./canonical/components/buttons/mute-button.skin.tsx",
+          "role": "entry"
+        }
+      ],
+      "resources": {},
+      "dependencies": {
+        "artifacts": [],
+        "packages": ["@videojs/core", "@videojs/icons"],
+        "symbols": {
+          "components": ["MuteButton"],
+          "icons": ["VolumeHighIcon", "VolumeLowIcon", "VolumeOffIcon"]
         }
       }
     },
@@ -114,9 +134,29 @@
       "resources": {},
       "dependencies": {
         "artifacts": [],
-        "packages": ["@videojs/core"],
+        "packages": ["@videojs/core", "@videojs/icons"],
         "symbols": {
           "components": ["Slider", "TimeSlider"],
+          "icons": ["SpinnerIcon"]
+        }
+      }
+    },
+    {
+      "id": "volume-popover",
+      "kind": "component",
+      "entry": "./canonical/components/controls/volume-popover.skin.tsx",
+      "files": [
+        {
+          "path": "./canonical/components/controls/volume-popover.skin.tsx",
+          "role": "entry"
+        }
+      ],
+      "resources": {},
+      "dependencies": {
+        "artifacts": ["mute-button", "volume-slider"],
+        "packages": ["@videojs/core"],
+        "symbols": {
+          "components": ["Popover"],
           "icons": []
         }
       }
