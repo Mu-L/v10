@@ -2,6 +2,26 @@
   "version": 1,
   "artifacts": [
     {
+      "id": "play-button",
+      "kind": "component",
+      "entry": "./canonical/components/buttons/play-button.skin.tsx",
+      "files": [
+        {
+          "path": "./canonical/components/buttons/play-button.skin.tsx",
+          "role": "entry"
+        }
+      ],
+      "resources": {},
+      "dependencies": {
+        "artifacts": [],
+        "packages": ["@videojs/core", "@videojs/icons"],
+        "symbols": {
+          "components": ["PlayButton", "Tooltip"],
+          "icons": ["PauseIcon", "PlayIcon", "RestartIcon"]
+        }
+      }
+    },
+    {
       "id": "time-slider",
       "kind": "component",
       "entry": "./canonical/components/sliders/time-slider.skin.tsx",
@@ -16,7 +36,8 @@
         "artifacts": [],
         "packages": ["@videojs/core"],
         "symbols": {
-          "components": ["Slider", "TimeSlider"]
+          "components": ["Slider", "TimeSlider"],
+          "icons": []
         }
       }
     },
@@ -35,7 +56,8 @@
         "artifacts": [],
         "packages": ["@videojs/core"],
         "symbols": {
-          "components": ["VolumeSlider"]
+          "components": ["VolumeSlider"],
+          "icons": []
         }
       }
     }

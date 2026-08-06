@@ -30,8 +30,9 @@ describe('checkCanonicalImports', () => {
       'components/control.tsx': `
         import { Controls } from '@videojs/core/components';
         import type { ComponentNode } from '@videojs/jsx';
+        import { PlayIcon } from '@videojs/icons/components';
         export { helper } from './helper';
-        export const value: ComponentNode | typeof Controls = Controls;
+        export const value: ComponentNode | typeof Controls | typeof PlayIcon = Controls;
       `,
       'components/helper.ts': 'export const helper = true;',
     });

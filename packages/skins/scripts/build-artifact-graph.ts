@@ -7,6 +7,7 @@ export const skinsRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const dependencyModules = {
   '@videojs/core/components': 'components',
+  '@videojs/icons/components': 'icons',
 } as const satisfies Readonly<Record<string, SkinArtifactSymbolKind>>;
 
 export function buildSkinArtifactGraph(): Promise<BuildArtifactGraphResult> {

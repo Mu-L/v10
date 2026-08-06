@@ -9,6 +9,11 @@ export type SkinArtifactDefinition = Omit<ArtifactDefinition<SkinArtifactKind>, 
 
 export const skinArtifacts = [
   defineArtifact({
+    id: 'play-button',
+    kind: 'component',
+    entry: './canonical/components/buttons/play-button.skin.tsx',
+  }),
+  defineArtifact({
     id: 'time-slider',
     kind: 'component',
     entry: './canonical/components/sliders/time-slider.skin.tsx',
