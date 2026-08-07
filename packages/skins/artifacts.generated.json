@@ -33,7 +33,7 @@
     },
     {
       "id": "default-video-controls",
-      "kind": "component",
+      "kind": "skin",
       "entry": "./canonical/skins/default/video-controls.skin.tsx",
       "files": [
         {
@@ -62,6 +62,12 @@
         "symbols": {
           "components": ["Controls", "Time", "Tooltip"],
           "icons": []
+        }
+      },
+      "metadata": {
+        "registry": {
+          "description": "A video control bar with play, seek, current and remaining time, volume, fullscreen, tooltips, and thumbnail previews.",
+          "title": "Core Video Controls"
         }
       }
     },
@@ -92,6 +98,12 @@
         "symbols": {
           "components": ["FullscreenButton"],
           "icons": ["FullscreenEnterIcon", "FullscreenExitIcon"]
+        }
+      },
+      "metadata": {
+        "registry": {
+          "description": "A button that enters and exits fullscreen with state-aware icons and an accessible tooltip.",
+          "title": "Fullscreen Button"
         }
       }
     },
@@ -153,6 +165,12 @@
           "components": ["PlayButton"],
           "icons": ["PauseIcon", "PlayIcon", "RestartIcon"]
         }
+      },
+      "metadata": {
+        "registry": {
+          "description": "A three-state button that plays, pauses, or restarts media with matching icons and an accessible tooltip.",
+          "title": "Play Button"
+        }
       }
     },
     {
@@ -182,6 +200,12 @@
         "symbols": {
           "components": ["SeekButton", "Text"],
           "icons": ["SeekIcon"]
+        }
+      },
+      "metadata": {
+        "registry": {
+          "description": "A button that skips playback forward or backward by a configurable number of seconds, with a direction-aware icon and accessible tooltip.",
+          "title": "Seek Button"
         }
       }
     },
@@ -217,6 +241,12 @@
           "components": ["Slider", "TimeSlider"],
           "icons": ["SpinnerIcon"]
         }
+      },
+      "metadata": {
+        "registry": {
+          "description": "A playback timeline for seeking, with current and buffered progress plus time and thumbnail previews.",
+          "title": "Time Slider"
+        }
       }
     },
     {
@@ -246,6 +276,12 @@
         "symbols": {
           "components": ["Popover"],
           "icons": []
+        }
+      },
+      "metadata": {
+        "registry": {
+          "description": "A mute toggle with a vertical slider for adjusting playback volume in a popover.",
+          "title": "Volume Control"
         }
       }
     },
@@ -280,6 +316,12 @@
         "symbols": {
           "components": ["VolumeSlider"],
           "icons": []
+        }
+      },
+      "metadata": {
+        "registry": {
+          "description": "A horizontal or vertical slider for adjusting playback volume by dragging, using the keyboard, or scrolling.",
+          "title": "Volume Slider"
         }
       }
     }
