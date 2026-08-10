@@ -38,6 +38,25 @@ const DRM_TOKENS = {
     'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IndGcXlSYlRjZDZSaEJkMDJ3Wnd6YTAwR0htNnFVOUlQZTFJS1kwMHgzMDE2dUhBIn0.eyJzdWIiOiJGZWZoV25TTXpEcXo1ejl5eHNzaWhkUng4ZFY2c3JoWUo4MzAxdVFCaFJhayIsImF1ZCI6InMiLCJleHAiOjIxNDc0ODM2NDd9.Eh5a51KEYRbwWIvX7M3Z-9hMwmydt2XC9kq0m-oCmnSegnN0l-GOQoUvzFMOOCKJHbfVRTuLkEvoCjCgo1JEmTHKRDo7u_V5JDZbQf6xKjtJXlTEibNEi_wD3M_3DiuYYv3R5sNol97j-yGbJQ8_16HTv7muJhr7qI8S9sKr_zJgp_E0PyFBm6plaigWcDBMcXfcvK4I9IwTKBehlXw2sVy6eUarhmS_wtA6sNXJk8f2RG2fUnt6jq8HWQlpkrXTqJCDcQ69dwDzl_TOdDWWLN3dNBlmGyEjEZyHJD2podRdddV4Yu78_bq7ImCH05JpJqY_caX9seXS6uJh38HuIA',
 } as const;
 
+/**
+ * License servers for the DRM asset below, named outright rather than derived
+ * from a Mux token. `source.drm` is engine neutral, so naming every system here
+ * licenses whichever path the browser takes — native HLS reads the FairPlay
+ * entry and leaves the rest to hls.js.
+ */
+const DRM_SYSTEMS = {
+  'com.apple.fps': {
+    licenseUrl: `https://license.mux.com/license/fairplay/${DRM_PLAYBACK_ID}?token=${DRM_TOKENS.drm}`,
+    serverCertificateUrl: `https://license.mux.com/appcert/fairplay/${DRM_PLAYBACK_ID}?token=${DRM_TOKENS.drm}`,
+  },
+  'com.widevine.alpha': {
+    licenseUrl: `https://license.mux.com/license/widevine/${DRM_PLAYBACK_ID}?token=${DRM_TOKENS.drm}`,
+  },
+  'com.microsoft.playready': {
+    licenseUrl: `https://license.mux.com/license/playready/${DRM_PLAYBACK_ID}?token=${DRM_TOKENS.drm}`,
+  },
+} as const;
+
 const SOURCE_MAP = {
   'hls-1': {
     label: 'HLS - Big Buck Bunny',
@@ -106,32 +125,16 @@ const SOURCE_MAP = {
     },
   },
   'hls-drm': {
-    // The same asset, licensed the generic way: hls.js's own `drmSystems`, keyed
-    // by EME key system id and naming each license server outright. Works on any
-    // hls.js-backed element, and shows what `source.engine` still reaches.
-    label: 'HLS - DRM protected (engine config)',
+    // The same asset, licensed the generic way: `source.drm` naming the license
+    // servers outright. Works on any HLS element, whichever path it takes.
+    label: 'HLS - DRM protected (license servers)',
     type: 'hls',
     subType: 'mp4',
     drm: true,
     poster: `https://image.mux.com/${DRM_PLAYBACK_ID}/thumbnail.webp?token=${DRM_TOKENS.thumbnail}`,
     source: {
       src: `https://stream.mux.com/${DRM_PLAYBACK_ID}.m3u8?token=${DRM_TOKENS.playback}`,
-      engine: {
-        // hls.js only listens for `encrypted` when EME is switched on.
-        emeEnabled: true,
-        drmSystems: {
-          'com.apple.fps': {
-            licenseUrl: `https://license.mux.com/license/fairplay/${DRM_PLAYBACK_ID}?token=${DRM_TOKENS.drm}`,
-            serverCertificateUrl: `https://license.mux.com/appcert/fairplay/${DRM_PLAYBACK_ID}?token=${DRM_TOKENS.drm}`,
-          },
-          'com.widevine.alpha': {
-            licenseUrl: `https://license.mux.com/license/widevine/${DRM_PLAYBACK_ID}?token=${DRM_TOKENS.drm}`,
-          },
-          'com.microsoft.playready': {
-            licenseUrl: `https://license.mux.com/license/playready/${DRM_PLAYBACK_ID}?token=${DRM_TOKENS.drm}`,
-          },
-        },
-      },
+      drm: DRM_SYSTEMS,
     },
   },
   'hls-live': {
@@ -206,8 +209,12 @@ export const SOURCES: Record<SourceId, SandboxSource> = SOURCE_MAP;
 
 export const SOURCE_IDS = Object.keys(SOURCES) as SourceId[];
 export const NON_DASH_SOURCE_IDS = SOURCE_IDS.filter((id) => SOURCES[id].type !== 'dash' && !isDrmSource(id));
-/** hls.js-backed presets add the DRM asset that names its license servers outright. */
-export const HLSJS_SOURCE_IDS = SOURCE_IDS.filter(
+/**
+ * HLS presets add the DRM asset that names its license servers outright. Both
+ * hls.js and native HLS read it, each from its own half of the source — which
+ * half depends on the path the browser ends up taking.
+ */
+export const HLS_SOURCE_IDS = SOURCE_IDS.filter(
   (id) => SOURCES[id].type !== 'dash' && id !== 'mux-drm' && id !== 'hls-drm-unlicensed'
 );
 /** Mux presets add the DRM asset licensed by a Mux token, which only they can read. */
