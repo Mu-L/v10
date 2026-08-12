@@ -1,10 +1,6 @@
 import type { Constructor, MixinReturn } from '@videojs/utils/types';
 import type { Composition } from '../../../core/composition/create-composition';
-import {
-  maxResolutionToPixelArea,
-  pickTrackUnderPixelArea,
-  type TrackPicker,
-} from '../../../media/primitives/select-tracks';
+import { pickTrackUnderPixelArea, type TrackPicker } from '../../../media/primitives/select-tracks';
 import type { VideoSelectionSet } from '../../../media/types';
 import {
   type BackgroundVideoEngineConfig,
@@ -14,17 +10,15 @@ import {
   createBackgroundVideoEngine,
 } from '../../engines/hls/engine-background-video';
 
-export interface BackgroundVideoMediaProps {
+export interface MuxBackgroundVideoMediaProps {
   src: string;
-  maxResolution: string | number | undefined;
 }
 
-export const backgroundVideoMediaDefaultProps: BackgroundVideoMediaProps = {
+export const muxBackgroundVideoMediaDefaultProps: MuxBackgroundVideoMediaProps = {
   src: '',
-  maxResolution: undefined,
 };
 
-export interface BackgroundVideoMediaAPI extends BackgroundVideoMediaProps {
+export interface MuxBackgroundVideoMediaAPI extends MuxBackgroundVideoMediaProps {
   readonly engine: Composition<BackgroundVideoEngineState, BackgroundVideoEngineContext>;
   attach(mediaElement: HTMLMediaElement): void;
   detach(): void;
@@ -33,40 +27,42 @@ export interface BackgroundVideoMediaAPI extends BackgroundVideoMediaProps {
 }
 
 /**
- * Mixin that adds the background-video SPF playback engine to any
- * base class.
+ * Mixin that adds the background-video SPF playback engine to any base class,
+ * for a Mux stream URL.
  *
- * Implements the WHATWG HTML media element contract (`src`, `play()`) so it can
- * be dropped in anywhere a media element API is expected. Compared to
- * `SimpleHlsMediaMixin`, this variant:
+ * `src` is the whole surface. What a consumer would otherwise reach for an
+ * attribute to do — capping which rendition is fetched — is a Mux stream URL
+ * param (`?max_resolution=720p`), so the cap is applied server-side and the
+ * manifest never offers the renditions it excludes. This adapter therefore has
+ * no cap of its own and always pins the top rendition on offer.
  *
- * - fixes silent autoplay-looping playback at `attach` rather than exposing it:
- *   muted and autoplay are what let it start without a gesture, loop is the
- *   defining behavior, and `preload` says out loud what the engine does anyway.
- *   Nothing here declares those four, so a base that has them — a host — keeps
- *   answering for them, and reads describe the element instead of an intention;
- * - drives the underlying engine with the background-video
- *   composition (single-rendition, video-only, autoplay-from-construction).
+ * Deliberately a sibling of `../background-video` rather than a layer over it.
+ * They share the engine, not the adapter: that one exposes a client-side
+ * `maxResolution` this one has no use for, and it binds no host. The two are
+ * otherwise line-for-line the same today — **changes to one usually belong in
+ * both** until the Mux flavor grows something of its own, which the screen
+ * resolution and pixel-density capping on the roadmap is expected to be.
  *
- * A new src re-resolves the presentation, tearing down the state,
- * SourceBuffers, and in-flight requests the previous one built before the next
- * begins. The engine instance and the attached media element are both kept, so
- * neither has to be rewired.
+ * Everything else the use case fixes rather than exposes: video-only, looping,
+ * muted, autoplaying, loading as soon as there is a source. `attach` writes that
+ * onto the element and nothing here declares `loop` / `muted` / `autoplay` /
+ * `preload` of its own — a host-bound Media inherits all four from the host
+ * already, and shadowing them with fixed values would only make reads describe
+ * an intention rather than what the element is doing.
  *
  * @example
- * class BackgroundVideoMedia extends BackgroundVideoMediaMixin(HTMLVideoElementHost) {}
+ * class MuxBackgroundVideoMedia extends MuxBackgroundVideoMediaMixin(BackgroundVideoHost) {}
  *
- * const media = new BackgroundVideoMedia();
+ * const media = new MuxBackgroundVideoMedia();
  * media.attach(document.querySelector('video'));
- * media.src = 'https://stream.mux.com/abc123.m3u8';
+ * media.src = 'https://stream.mux.com/PLAYBACK_ID.m3u8?max_resolution=720p';
  * media.play();
  */
-export function BackgroundVideoMediaMixin<Base extends Constructor<any>>(BaseClass: Base) {
-  class BackgroundVideoMediaImpl extends BaseClass {
+export function MuxBackgroundVideoMediaMixin<Base extends Constructor<any>>(BaseClass: Base) {
+  class MuxBackgroundVideoMediaImpl extends BaseClass {
     #engine: Composition<BackgroundVideoEngineState, BackgroundVideoEngineContext>;
     #config: BackgroundVideoEngineConfig;
     #signals!: BackgroundVideoEngineSignals;
-    #maxResolution: string | number | undefined;
 
     /** Pending loadstart listener from a deferred play() retry, if any. */
     #loadstartListener: (() => void) | null = null;
@@ -76,8 +72,6 @@ export function BackgroundVideoMediaMixin<Base extends Constructor<any>>(BaseCla
 
       const { config } = args?.[0] ?? {};
       this.#config = config;
-
-      this.#maxResolution = config?.maxResolution;
       this.#engine = this.#createEngine();
     }
 
@@ -91,7 +85,10 @@ export function BackgroundVideoMediaMixin<Base extends Constructor<any>>(BaseCla
 
     attach(mediaElement: HTMLMediaElement): void {
       super.attach?.(mediaElement);
-      // The one place the fixed behavior is stated — see the mixin note.
+      // The one place the fixed behavior is stated. Muted and autoplay are what
+      // let it start without a gesture, loop is the defining behavior, and
+      // `preload` says out loud what the engine does regardless — it subtracts
+      // preload monitoring and loads from the moment it has a source.
       mediaElement.loop = true;
       mediaElement.muted = true;
       mediaElement.autoplay = true;
@@ -112,27 +109,6 @@ export function BackgroundVideoMediaMixin<Base extends Constructor<any>>(BaseCla
     }
 
     // -------------------------------------------------------------------------
-    // maxResolution — adapter-owned cap on the picked rendition. The engine's
-    // closure picker (see `#createEngine`) reads this field at pick time, so
-    // setter writes take effect on the next `presentation-resolved` transition
-    // without an engine rebuild.
-    // -------------------------------------------------------------------------
-
-    get maxResolution(): string | number | undefined {
-      return this.#maxResolution;
-    }
-
-    /**
-     * Set the cap. Accepts `"720p"` / `"1080p"` etc., a bare number
-     * (interpreted as pixel area), or `undefined` to clear. Unrecognized
-     * values are treated as no cap.
-     */
-    set maxResolution(value: string | number | undefined) {
-      if (value === this.#maxResolution) return;
-      this.#maxResolution = value;
-    }
-
-    // -------------------------------------------------------------------------
     // src — synchronous IDL attribute (WHATWG §4.8.11.2)
     // -------------------------------------------------------------------------
 
@@ -147,12 +123,7 @@ export function BackgroundVideoMediaMixin<Base extends Constructor<any>>(BaseCla
       if (value === this.src) return;
 
       this.#cancelPendingPlay();
-
-      if (value) {
-        this.#signals.state.presentation.set({ url: value });
-      } else {
-        this.#signals.state.presentation.set(undefined);
-      }
+      this.#signals.state.presentation.set(value ? { url: value } : undefined);
     }
 
     // -------------------------------------------------------------------------
@@ -163,15 +134,15 @@ export function BackgroundVideoMediaMixin<Base extends Constructor<any>>(BaseCla
     async play(): Promise<void> {
       const mediaElement = this.#signals.context.mediaElement.get();
       if (!mediaElement) {
-        return Promise.reject(new Error('BackgroundVideoMediaElement: no media element attached'));
+        return Promise.reject(new Error('MuxBackgroundVideoMediaElement: no media element attached'));
       }
 
       try {
         return await mediaElement.play();
       } catch (err) {
         // If we have a pending HLS source, the rejection may be because MSE
-        // hasn't attached a blob URL yet. Wait for loadstart (src assigned
-        // by MSE setup) and retry once.
+        // hasn't attached a blob URL yet. Wait for loadstart (src assigned by
+        // MSE setup) and retry once.
         if (this.src) {
           return new Promise<void>((resolve, reject) => {
             const listener = () => {
@@ -191,10 +162,12 @@ export function BackgroundVideoMediaMixin<Base extends Constructor<any>>(BaseCla
     // -------------------------------------------------------------------------
 
     #createEngine(): Composition<BackgroundVideoEngineState, BackgroundVideoEngineContext> {
+      // No cap to apply, so the pick is whichever rendition is largest. Passing
+      // no maximum is what makes that the answer, rather than a rule of its own.
       const adapterPicker: TrackPicker = (presentation) => {
         const videoSet = presentation.selectionSets?.find((s) => s.type === 'video') as VideoSelectionSet | undefined;
         const tracks = videoSet?.switchingSets[0]?.tracks ?? [];
-        return pickTrackUnderPixelArea(tracks, maxResolutionToPixelArea(this.#maxResolution))?.id;
+        return pickTrackUnderPixelArea(tracks)?.id;
       };
 
       return createBackgroundVideoEngine({
@@ -214,8 +187,8 @@ export function BackgroundVideoMediaMixin<Base extends Constructor<any>>(BaseCla
     }
   }
 
-  return BackgroundVideoMediaImpl as unknown as MixinReturn<Base, BackgroundVideoMediaAPI>;
+  return MuxBackgroundVideoMediaImpl as unknown as MixinReturn<Base, MuxBackgroundVideoMediaAPI>;
 }
 
-/** Standalone SPF background-video adapter with no base class. */
-export class BackgroundVideoMediaElement extends BackgroundVideoMediaMixin(class {}) {}
+/** Standalone Mux background-video adapter with no base class. */
+export class MuxBackgroundVideoMediaElement extends MuxBackgroundVideoMediaMixin(class {}) {}
