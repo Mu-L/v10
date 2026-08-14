@@ -18,6 +18,7 @@ export interface PlaybackRateOptionsResult {
   state: PlaybackRateRadioGroupCore.State;
   rate: number;
   value: string;
+  selectedLabel: string;
   options: PlaybackRateOption[];
   disabled: boolean;
   hidden: boolean;

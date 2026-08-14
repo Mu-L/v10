@@ -12,6 +12,7 @@ export type AudioTrackOption = TranslatedRadioOption<AudioTrackRadioGroupOption>
 export interface AudioTrackOptionsResult {
   state: AudioTrackRadioGroupCore.State;
   value: string;
+  selectedLabel: string;
   options: AudioTrackOption[];
   disabled: boolean;
   hidden: boolean;

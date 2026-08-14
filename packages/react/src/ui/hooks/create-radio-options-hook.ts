@@ -33,6 +33,7 @@ export type TranslatedRadioOption<Option extends RadioOption> = Omit<Option, 'la
 export interface RadioOptionsHookResult<Option extends RadioOption, State extends RadioOptionsState> {
   state: State;
   value: string;
+  selectedLabel: string;
   options: TranslatedRadioOption<Option>[];
   disabled: boolean;
   hidden: boolean;
@@ -79,6 +80,7 @@ export function createRadioOptionsHook<Props, Media, State extends RadioOptionsS
     return {
       state,
       value: state.value,
+      selectedLabel: options.find((option) => option.value === state.value)?.label ?? '',
       options,
       disabled: state.disabled,
       hidden: state.hidden,
