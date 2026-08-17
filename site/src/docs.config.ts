@@ -32,6 +32,7 @@ export const sidebar: Sidebar = [
           { slug: 'how-to/migrate-from-video-js-8', sidebarLabel: 'From Video.js 8' },
           { slug: 'how-to/migrate-from-mux-player', sidebarLabel: 'From Mux Player' },
           { slug: 'how-to/migrate-from-plyr', sidebarLabel: 'From Plyr' },
+          { slug: 'how-to/migrate-from-media-chrome', sidebarLabel: 'From Media Chrome' },
         ],
       },
       { slug: 'concepts/why-videojs' },
