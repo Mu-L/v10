@@ -1,23 +1,25 @@
-import {
-  AudioTrackRadioGroup as AudioTrackRadioGroupPrimitive,
-  CaptionsRadioGroup as CaptionsRadioGroupPrimitive,
-  PlaybackRateRadioGroup as PlaybackRateRadioGroupPrimitive,
-  QualityRadioGroup as QualityRadioGroupPrimitive,
-} from '@videojs/core/components';
+import type {
+  AudioTrackRadioGroupProps as CoreAudioTrackRadioGroupProps,
+  CaptionsRadioGroupProps as CoreCaptionsRadioGroupProps,
+  PlaybackRateRadioGroupProps as CorePlaybackRateRadioGroupProps,
+  QualityRadioGroupProps as CoreQualityRadioGroupProps,
+} from '@videojs/core';
+import * as $ from '@videojs/core/vjsc';
+import type { PropsWithChildren } from 'vjsc/components';
 import styles from '../../styles/components/menu.styles';
 
-export function QualityRadioGroup({ children }: { children?: unknown }) {
-  return <QualityRadioGroupPrimitive className={styles.radioGroup}>{children}</QualityRadioGroupPrimitive>;
+export function QualityRadioGroup({ className, ...props }: PropsWithChildren<CoreQualityRadioGroupProps>) {
+  return <$.QualityRadioGroup className={[styles.radioGroup, className]} {...props} />;
 }
 
-export function AudioTrackRadioGroup({ children }: { children?: unknown }) {
-  return <AudioTrackRadioGroupPrimitive className={styles.radioGroup}>{children}</AudioTrackRadioGroupPrimitive>;
+export function AudioTrackRadioGroup({ className, ...props }: PropsWithChildren<CoreAudioTrackRadioGroupProps>) {
+  return <$.AudioTrackRadioGroup className={[styles.radioGroup, className]} {...props} />;
 }
 
-export function PlaybackRateRadioGroup({ children }: { children?: unknown }) {
-  return <PlaybackRateRadioGroupPrimitive className={styles.radioGroup}>{children}</PlaybackRateRadioGroupPrimitive>;
+export function PlaybackRateRadioGroup({ className, ...props }: PropsWithChildren<CorePlaybackRateRadioGroupProps>) {
+  return <$.PlaybackRateRadioGroup className={[styles.radioGroup, className]} {...props} />;
 }
 
-export function CaptionsRadioGroup({ children }: { children?: unknown }) {
-  return <CaptionsRadioGroupPrimitive className={styles.radioGroup}>{children}</CaptionsRadioGroupPrimitive>;
+export function CaptionsRadioGroup({ className, ...props }: PropsWithChildren<CoreCaptionsRadioGroupProps>) {
+  return <$.CaptionsRadioGroup className={[styles.radioGroup, className]} {...props} />;
 }

@@ -1,6 +1,5 @@
 import { resolve } from 'node:path';
-import { type Catalog, loadCatalog } from '@videojs/compiler/catalog';
-import { pascalCase } from '@videojs/utils/string';
+import { type Catalog, loadCatalog } from 'vjsc/catalog';
 import { skinCatalog } from '../canonical/catalog';
 
 export type SkinCatalog = Catalog<typeof skinCatalog>;
@@ -15,16 +14,14 @@ export function loadSkinCatalog(): Promise<SkinCatalog> {
   return loadCatalog(skinCatalog, { rootDir: canonicalRoot });
 }
 
-/** Derive the classes that identify a generated Skin root. */
-export function skinRootClassName(skin: SkinCatalogSkin): string {
-  return ['media-skin', skin.style.scope, `media-theme-${skin.style.theme}`].join(' ');
-}
-
-/** Derive the canonical root component export from a catalog Skin name. */
-export function skinRootComponentName(skin: SkinCatalogSkin): string {
-  return `${pascalCase(skin.name)}Skin`;
-}
-
 export function catalogSourcePath(path: string): string {
   return path.replace(/^\.\//, '');
+}
+
+export function getCatalogSkin(catalog: SkinCatalog, name: SkinCatalogSkin['name']): SkinCatalogSkin {
+  const skin = catalog.items.find((item) => item.name === name && item.type === 'skin');
+
+  if (skin?.type !== 'skin') throw new Error(`Skin \`${name}\` does not exist.`);
+
+  return skin;
 }

@@ -18,11 +18,21 @@ export interface BuildOptions {
   cwd?: string | undefined;
 }
 
-export interface OutputFile {
-  type: 'chunk' | 'asset';
-  fileName: string;
-  source: string;
+export interface OutputChunkFile {
+  readonly type: 'chunk';
+  readonly fileName: string;
+  readonly source: string;
+  /** External module imports retained by an emitted chunk. */
+  readonly imports: readonly string[];
 }
+
+export interface OutputAssetFile {
+  readonly type: 'asset';
+  readonly fileName: string;
+  readonly source: string;
+}
+
+export type OutputFile = OutputChunkFile | OutputAssetFile;
 
 export interface BuildResult {
   files: readonly OutputFile[];
@@ -89,8 +99,10 @@ async function buildEntry(entry: BuildEntry, config: CompilerConfig, configDir: 
     ...(external ? { external } : {}),
     plugins: [compilerPlugin(config, configDir, entry.outputFile, diagnostics, assets, isHtml)],
     transform: {
-      jsx: isHtml ? { runtime: 'automatic', importSource: '@videojs/compiler/html-runtime' } : 'preserve',
+      jsx: isHtml ? { runtime: 'automatic', importSource: 'vjsc/html-runtime' } : 'preserve',
     },
+    // The output target intentionally overrides source-project JSX settings.
+    checks: { configurationFieldConflict: false },
     experimental: { attachDebugInfo: 'none' },
   });
 
@@ -107,7 +119,9 @@ async function buildEntry(entry: BuildEntry, config: CompilerConfig, configDir: 
       );
     }
 
-    const source = isHtml ? renderHtmlChunk(chunks[0].code, entry.inputFile) : chunks[0].code;
+    const imports = [...chunks[0].imports].sort();
+    const source = isHtml ? renderHtmlChunk(chunks[0].code, entry.inputFile, imports) : chunks[0].code;
+
     return {
       diagnostics,
       files: [
@@ -115,6 +129,7 @@ async function buildEntry(entry: BuildEntry, config: CompilerConfig, configDir: 
           type: 'chunk',
           fileName: entry.outputFile,
           source: `${config.output?.banner ?? ''}${source}`,
+          imports,
         },
         ...assets.map((asset) => outputFromAsset(asset, entry.outputFile)),
       ],
@@ -133,7 +148,7 @@ function compilerPlugin(
   html: boolean
 ): Plugin {
   return {
-    name: '@videojs/compiler:build',
+    name: 'vjsc:build',
     resolveId(source) {
       if (html && source === HTML_RUNTIME_IMPORT) return HTML_RUNTIME_ID;
       return null;
@@ -210,7 +225,7 @@ function inputEntries(input: CompilerInput, configDir: string): Array<Omit<Build
   return Object.entries(input).map(([name, file]) => ({ name, inputFile: resolve(configDir, file) }));
 }
 
-function outputFromAsset(asset: CompilerAsset, entryOutputFile: string): OutputFile {
+function outputFromAsset(asset: CompilerAsset, entryOutputFile: string): OutputAssetFile {
   const fileName = isAbsolute(asset.fileName) ? asset.fileName : resolve(dirname(entryOutputFile), asset.fileName);
   return { type: 'asset', fileName, source: asset.source };
 }

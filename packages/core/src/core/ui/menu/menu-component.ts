@@ -1,25 +1,14 @@
-import { defineComponent } from '@videojs/jsx';
-import type { MenuProps } from './menu-core';
+import { defineComponent } from 'vjsc/components';
+import type { MenuItemIndicatorProps, MenuItemProps, MenuProps, MenuTriggerProps } from './menu-core';
 import { MenuDataAttrs } from './menu-data-attrs';
-
-export interface MenuTriggerProps {
-  disabled?: boolean | undefined;
-}
-
-export interface MenuItemProps {
-  disabled?: boolean | undefined;
-}
-
-export interface MenuItemIndicatorProps {
-  checked?: boolean | undefined;
-  forceMount?: boolean | undefined;
-}
 
 export default defineComponent({
   name: 'Menu',
+  root: 'Root',
   parts: {
     Root: defineComponent<MenuProps>(),
     Trigger: defineComponent<MenuTriggerProps>(),
+    SubmenuTrigger: defineComponent<MenuTriggerProps>(),
     Content: defineComponent(),
     Group: defineComponent(),
     GroupLabel: defineComponent(),

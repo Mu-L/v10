@@ -1,5 +1,5 @@
-import { Controls, Time as TimePrimitive, Tooltip } from '@videojs/core/components';
-import { Slot } from '@videojs/jsx';
+import * as $ from '@videojs/core/vjsc';
+import { type PropsOf, Slot, type VjscNode } from 'vjsc/components';
 import { AirPlayButton } from '../../components/buttons/airplay-button';
 import { CaptionsButton } from '../../components/buttons/captions-button';
 import { CastButton } from '../../components/buttons/cast-button';
@@ -19,44 +19,51 @@ import { VideoGestures } from '../../components/video-gestures';
 import { VideoHotkeys } from '../../components/video-hotkeys';
 import styles from '../../styles/skins/default-video.styles';
 
-export function DefaultVideoSkin() {
+export interface DefaultVideoSkinProps extends Omit<PropsOf<typeof Container>, 'children'> {
+  children?: VjscNode;
+  poster?: string | PropsOf<typeof Poster>['children'];
+}
+
+export function DefaultVideoSkin({ children, className, poster, ...props }: DefaultVideoSkinProps = {}) {
+  const isPosterString = typeof poster === 'string';
+
   return (
-    <Container>
-      <Slot />
-      <Poster />
+    <Container className={['media-skin media-skin-video media-theme-default', className]} {...props}>
+      <Slot>{children}</Slot>
+      <Poster src={isPosterString ? poster : undefined}>{isPosterString ? undefined : poster}</Poster>
       <BufferingIndicator />
       <ErrorDialog />
 
-      <Controls.Root className={styles.controls.root}>
-        <Tooltip.Provider>
-          <Controls.Group className={styles.controls.primary}>
-            <Controls.Group className={styles.buttons}>
+      <$.Controls.Root className={styles.controls.root}>
+        <$.Tooltip.Provider>
+          <$.Controls.Group className={styles.controls.primary}>
+            <$.Controls.Group className={styles.buttons}>
               <PlayButton />
               <VolumePopover />
-            </Controls.Group>
+            </$.Controls.Group>
 
-            <Controls.Group className={styles.timeline}>
-              <TimePrimitive.Value className={styles.time.current} type="current" />
+            <$.Controls.Group className={styles.timeline}>
+              <$.Time.Value className={styles.time.current} type="current" />
               <TimeSlider />
-              <TimePrimitive.Value className={styles.time.remaining} type="remaining" toggle />
-            </Controls.Group>
+              <$.Time.Value className={styles.time.remaining} type="remaining" toggle />
+            </$.Controls.Group>
 
-            <Controls.Group className={styles.buttons}>
+            <$.Controls.Group className={styles.buttons}>
               <CaptionsButton />
               <VideoSettingsMenu />
-            </Controls.Group>
-          </Controls.Group>
+            </$.Controls.Group>
+          </$.Controls.Group>
 
-          <Controls.Group className={styles.controls.secondary}>
-            <Controls.Group className={styles.buttons}>
+          <$.Controls.Group className={styles.controls.secondary}>
+            <$.Controls.Group className={styles.buttons}>
               <CastButton />
               <AirPlayButton />
               <PiPButton />
               <FullscreenButton />
-            </Controls.Group>
-          </Controls.Group>
-        </Tooltip.Provider>
-      </Controls.Root>
+            </$.Controls.Group>
+          </$.Controls.Group>
+        </$.Tooltip.Provider>
+      </$.Controls.Root>
 
       <Overlay />
       <VideoHotkeys />

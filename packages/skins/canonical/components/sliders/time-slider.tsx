@@ -1,33 +1,32 @@
-import { Slider, TimeSlider as TimeSliderPrimitive } from '@videojs/core/components';
-import { SpinnerIcon } from '@videojs/icons/components';
-import { type FunctionComponent, Template } from '@videojs/jsx';
+import type { TimeSliderProps as CoreProps } from '@videojs/core';
+import * as $ from '@videojs/core/vjsc';
+import { SpinnerIcon } from '@videojs/icons/vjsc';
+import { Group as PreviewValue, type Props, Template } from 'vjsc/components';
 import popupStyles from '../../styles/components/popup.styles';
 import styles from '../../styles/components/slider.styles';
 
-declare const PreviewValue: FunctionComponent;
-
-export function TimeSlider() {
+export function TimeSlider({ className, ...props }: Props<CoreProps> = {}) {
   return (
-    <TimeSliderPrimitive.Root className={styles.root}>
-      <TimeSliderPrimitive.Chapters className={styles.chapters}>
+    <$.TimeSlider.Root className={[styles.root, className]} {...props}>
+      <$.TimeSlider.Chapters className={styles.chapters}>
         <Template name="chapter" className={styles.chapter}>
-          <TimeSliderPrimitive.Track className={styles.chapterTrack}>
-            <TimeSliderPrimitive.Buffer className={styles.buffer} />
-            <TimeSliderPrimitive.Fill className={styles.fill} />
-          </TimeSliderPrimitive.Track>
+          <$.TimeSlider.Track className={styles.chapterTrack}>
+            <$.TimeSlider.Buffer className={styles.buffer} />
+            <$.TimeSlider.Fill className={styles.fill} />
+          </$.TimeSlider.Track>
         </Template>
-      </TimeSliderPrimitive.Chapters>
-      <TimeSliderPrimitive.Thumb className={[styles.thumb, styles.interactiveThumb]} />
-      <TimeSliderPrimitive.Preview className={styles.preview} overflow="visible">
-        <Slider.Thumbnail.Root className={[popupStyles.surface, styles.thumbnail]}>
-          <Slider.Thumbnail.Image className={styles.image} />
+      </$.TimeSlider.Chapters>
+      <$.TimeSlider.Thumb className={[styles.thumb, styles.interactiveThumb]} />
+      <$.TimeSlider.Preview className={styles.preview} overflow="visible">
+        <$.Slider.Thumbnail.Root className={[popupStyles.surface, styles.thumbnail]}>
+          <$.Slider.Thumbnail.Image className={styles.image} />
           <SpinnerIcon className={styles.spinner} />
-        </Slider.Thumbnail.Root>
+        </$.Slider.Thumbnail.Root>
         <PreviewValue className={styles.previewValue}>
-          <TimeSliderPrimitive.ChapterTitle className={styles.chapterTitle} />
-          <TimeSliderPrimitive.Value className={styles.value} type="pointer" />
+          <$.TimeSlider.ChapterTitle className={styles.chapterTitle} />
+          <$.TimeSlider.Value className={styles.value} type="pointer" />
         </PreviewValue>
-      </TimeSliderPrimitive.Preview>
-    </TimeSliderPrimitive.Root>
+      </$.TimeSlider.Preview>
+    </$.TimeSlider.Root>
   );
 }

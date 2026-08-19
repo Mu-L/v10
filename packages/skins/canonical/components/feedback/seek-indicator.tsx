@@ -1,12 +1,14 @@
-import { SeekIndicator as SeekIndicatorPrimitive } from '@videojs/core/components';
-import { ChevronIcon } from '@videojs/icons/components';
+import type { SeekIndicatorProps as CoreProps } from '@videojs/core';
+import * as $ from '@videojs/core/vjsc';
+import { ChevronIcon } from '@videojs/icons/vjsc';
+import type { Props } from 'vjsc/components';
 import styles from '../../styles/components/seek-indicator.styles';
 
-export function SeekIndicator() {
+export function SeekIndicator({ className, ...props }: Props<CoreProps> = {}) {
   return (
-    <SeekIndicatorPrimitive.Root className={styles.root}>
+    <$.SeekIndicator.Root className={[styles.root, className]} {...props}>
       <ChevronIcon className={styles.icon} />
-      <SeekIndicatorPrimitive.Value className={styles.value} />
-    </SeekIndicatorPrimitive.Root>
+      <$.SeekIndicator.Value className={styles.value} />
+    </$.SeekIndicator.Root>
   );
 }

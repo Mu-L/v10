@@ -1,5 +1,5 @@
 {
-  "name": "@videojs/compiler",
+  "name": "vjsc",
   "type": "module",
   "description": "Private compiler infrastructure for Video.js source transforms and builds",
   "license": "Apache-2.0",
@@ -8,6 +8,9 @@
     "type": "git",
     "url": "https://github.com/videojs/v10",
     "directory": "packages/compiler"
+  },
+  "bin": {
+    "vjsc": "./bin/vjsc.js"
   },
   "sideEffects": false,
   "exports": {
@@ -23,6 +26,34 @@
       "types": "./dist/catalog/index.d.ts",
       "default": "./dist/catalog/index.js"
     },
+    "./components": {
+      "types": "./dist/components/index.d.ts",
+      "default": "./dist/components/index.js"
+    },
+    "./components/jsx-runtime": {
+      "types": "./dist/components/jsx-runtime.d.ts",
+      "default": "./dist/components/jsx-runtime.js"
+    },
+    "./components/jsx-dev-runtime": {
+      "types": "./dist/components/jsx-dev-runtime.d.ts",
+      "default": "./dist/components/jsx-dev-runtime.js"
+    },
+    "./registry": {
+      "types": "./dist/registry/index.d.ts",
+      "default": "./dist/registry/index.js"
+    },
+    "./registry/jsx-runtime": {
+      "types": "./dist/registry/jsx-runtime.d.ts",
+      "default": "./dist/registry/jsx-runtime.js"
+    },
+    "./registry/jsx-dev-runtime": {
+      "types": "./dist/registry/jsx-dev-runtime.d.ts",
+      "default": "./dist/registry/jsx-dev-runtime.js"
+    },
+    "./generate": {
+      "types": "./dist/generate/index.d.ts",
+      "default": "./dist/generate/index.js"
+    },
     "./shadcn": {
       "types": "./dist/shadcn/index.d.ts",
       "default": "./dist/shadcn/index.js"
@@ -37,6 +68,7 @@
     }
   },
   "files": [
+    "bin",
     "dist"
   ],
   "scripts": {

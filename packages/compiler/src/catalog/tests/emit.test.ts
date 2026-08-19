@@ -2,7 +2,9 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { defineComponent, defineSchema } from '../../components';
 import { defineConfig, jsx } from '../../config';
+import { defineRegistry } from '../../registry';
 import { defineCatalog } from '../define';
 import { emitCatalog } from '../emit';
 import { loadCatalog } from '../resolve';
@@ -14,9 +16,40 @@ afterEach(() => {
 });
 
 describe('emitCatalog', () => {
+  it('uses a component registry without exposing compiler configuration', async () => {
+    const root = setup({
+      'entry.tsx': `import { PlayButton } from '@fixture/components'; export const entry = <PlayButton disabled />;`,
+    });
+    const components = defineSchema('@fixture/components', {
+      PlayButton: defineComponent<{ disabled?: boolean }>({ name: 'PlayButton' }),
+    });
+    const registry = defineRegistry({
+      schema: components,
+      entries: {
+        PlayButton: { import: { from: '@fixture/react', name: 'PlayButton' } },
+      },
+    });
+    const loaded = await loadCatalog(
+      defineCatalog({
+        components: [components.source],
+        allowedImports: ['@fixture/components'],
+        items: [{ name: 'entry', source: './entry.tsx' }],
+      }),
+      { rootDir: root }
+    );
+
+    const output = await emitCatalog(loaded, {
+      output: { componentRegistry: registry },
+      files: { source: ({ sourceFile }) => sourceFile },
+    });
+
+    expect(output.files.source[0]?.content).toContain('from "@fixture/react"');
+    expect(output.files.source[0]?.content).toContain('<PlayButton disabled/>');
+  });
+
   it('transforms, relinks, and collects dependencies for selected catalog items', async () => {
     const root = setup({
-      'entry.tsx': `import { dependency } from './dependency'; import { helper } from './private/helper'; import React from 'react'; export const entry = [dependency, helper, React];`,
+      'entry.tsx': `import { dependency } from './dependency'; import { helper } from './private/helper'; import React from 'react'; import { createElement } from 'react'; export const entry = [dependency, helper, React, createElement];`,
       'private/helper.ts': `export const helper: number = 1;`,
       'dependency.ts': `export const dependency: number = 2;`,
       'unused.ts': `export const unused = true;`,
@@ -32,7 +65,7 @@ describe('emitCatalog', () => {
 
     const output = await emitCatalog(loaded, {
       items: ['entry'],
-      transform: {
+      output: {
         compiler: defineConfig({ target: jsx() }),
       },
       files: {
@@ -58,6 +91,8 @@ describe('emitCatalog', () => {
       /from ["']\.\/private\/helper["']/
     );
     expect(output.items.entry?.dependencies).toEqual(['react']);
+    expect(output.items.entry?.imports).toEqual(['@/components/dependency', 'react']);
+    expect(output.items.dependency?.imports).toEqual([]);
     expect(output.items.unused).toBeUndefined();
     expect(output.files.source.map((file) => file.path)).toEqual([
       'dependency/index.ts',
@@ -69,7 +104,7 @@ describe('emitCatalog', () => {
 
   it('bundles each requested entry without separately emitting its catalog dependencies', async () => {
     const root = setup({
-      'entry.ts': `import { dependency } from './dependency'; export const entry = dependency + 1;`,
+      'entry.ts': `import React from 'react'; import { dependency } from './dependency'; export const entry = [dependency + 1, React];`,
       'dependency.ts': `export const dependency = 1;`,
     });
     const loaded = await loadCatalog(
@@ -84,9 +119,9 @@ describe('emitCatalog', () => {
 
     const output = await emitCatalog(loaded, {
       items: ['entry'],
-      transform: {
+      output: {
         mode: 'bundle',
-        compiler: defineConfig({ target: jsx() }),
+        compiler: defineConfig({ external: ['react'], target: jsx() }),
       },
       files: {
         source: ({ catalogItem }) => `${catalogItem.name}/bundle.js`,
@@ -96,14 +131,16 @@ describe('emitCatalog', () => {
     expect(Object.keys(output.items)).toEqual(['entry']);
     expect(output.files.source).toHaveLength(1);
     expect(output.files.source[0]?.path).toBe('entry/bundle.js');
-    expect(output.files.source[0]?.content).toContain('const entry = 2');
+    expect(output.files.source[0]?.content).toContain('const entry = [2, React]');
+    expect(output.items.entry?.imports).toEqual(['react']);
+    expect(output.items.entry?.dependencies).toEqual(['react']);
   });
 
   it('projects catalog styles and emits referenced vanilla CSS', async () => {
     const root = setup({
       'entry.tsx': `import styles from './button.styles'; export const entry = <button className={styles.root}/>;`,
       'button.styles.ts': `
-        import { styles } from '@videojs/compiler/styles';
+        import { styles } from 'vjsc/styles';
         export default styles({
           file: 'button.css',
           layer: 'fixture.components',
@@ -120,7 +157,7 @@ describe('emitCatalog', () => {
     });
     const loaded = await loadCatalog(
       defineCatalog({
-        allowedImports: ['@videojs/compiler/styles'],
+        allowedImports: ['vjsc/styles'],
         items: [{ name: 'entry', source: './entry.tsx' }],
       }),
       { rootDir: root }
@@ -128,14 +165,14 @@ describe('emitCatalog', () => {
 
     const output = await emitCatalog(loaded, {
       items: ['entry'],
-      transform: {
+      output: {
         compiler: defineConfig({ target: jsx() }),
-        styles: {
-          mode: 'css',
-          input: resolve(import.meta.dirname, '../../styles/tests/fixtures/tailwind.css'),
-          scope: '.fixture-skin',
-          variant: 'compact',
-        },
+      },
+      styles: {
+        mode: 'css',
+        input: resolve(import.meta.dirname, '../../styles/tests/fixtures/tailwind.css'),
+        scope: '.fixture-skin',
+        variant: 'compact',
       },
       files: {
         source: ({ sourceFile }) => sourceFile,

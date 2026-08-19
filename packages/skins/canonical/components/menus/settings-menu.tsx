@@ -1,31 +1,31 @@
-import { Menu, Text, Tooltip as TooltipPrimitive } from '@videojs/core/components';
+import type { MenuProps } from '@videojs/core';
 import { settingsText } from '@videojs/core/i18n/text/menu';
-import { GearIcon } from '@videojs/icons/components';
+import * as $ from '@videojs/core/vjsc';
+import { GearIcon } from '@videojs/icons/vjsc';
+import { type PropsWithChildren, Text } from 'vjsc/components';
 import buttonStyles from '../../styles/components/button.styles';
 import styles from '../../styles/components/menu.styles';
 import popupStyles from '../../styles/components/popup.styles';
 
-export interface SettingsMenuProps {
-  children?: unknown;
-}
-
-export function SettingsMenu({ children }: SettingsMenuProps) {
+export function SettingsMenu({ children, className, ...props }: PropsWithChildren<MenuProps>) {
   return (
-    <Menu.Root side="top" align="center">
-      <TooltipPrimitive.Root side="top">
-        <TooltipPrimitive.Trigger>
-          <Menu.Trigger className={[buttonStyles.root, styles.trigger]}>
+    <$.Menu.Root side="top" align="center" {...props}>
+      <$.Tooltip.Root side="top">
+        <$.Tooltip.Trigger>
+          <$.Menu.Trigger className={[buttonStyles.root, styles.trigger]}>
             <GearIcon className={[buttonStyles.icon, styles.triggerIcon]} />
-            <Text className={styles.srOnly}>{settingsText}</Text>
-          </Menu.Trigger>
-        </TooltipPrimitive.Trigger>
-        <TooltipPrimitive.Popup className={[popupStyles.surface, popupStyles.tooltip]}>
-          <Text>{settingsText}</Text>
-        </TooltipPrimitive.Popup>
-      </TooltipPrimitive.Root>
-      <Menu.Content className={[popupStyles.surface, popupStyles.popover, styles.root, styles.group]}>
-        <Menu.Group className={styles.group}>{children}</Menu.Group>
-      </Menu.Content>
-    </Menu.Root>
+            <Text className={styles.srOnly} token={settingsText.key}>
+              {settingsText.text}
+            </Text>
+          </$.Menu.Trigger>
+        </$.Tooltip.Trigger>
+        <$.Tooltip.Popup className={[popupStyles.surface, popupStyles.tooltip]}>
+          <Text token={settingsText.key}>{settingsText.text}</Text>
+        </$.Tooltip.Popup>
+      </$.Tooltip.Root>
+      <$.Menu.Content className={[popupStyles.surface, popupStyles.popover, styles.root, styles.group, className]}>
+        <$.Menu.Group className={styles.group}>{children}</$.Menu.Group>
+      </$.Menu.Content>
+    </$.Menu.Root>
   );
 }

@@ -33,7 +33,7 @@
     "check:skins": "vitest run scripts/generation/tests/generated-skins.test.ts",
     "dev": "vite --host",
     "test": "pnpm run test:types && vitest run",
-    "test:types": "tsgo --project ./tsconfig.canonical.json",
+    "test:types": "tsgo --project ./canonical/tsconfig.json",
     "clean": "rimraf --glob dist types '*.tsbuildinfo'"
   },
   "dependencies": {
@@ -44,10 +44,9 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
-    "@videojs/compiler": "workspace:*",
+    "vjsc": "workspace:*",
     "@videojs/core": "workspace:*",
     "@videojs/icons": "workspace:*",
-    "@videojs/jsx": "workspace:*",
     "clsx": "^2.1.1",
     "oxfmt": "^0.62.0",
     "react": "^19.2.8",

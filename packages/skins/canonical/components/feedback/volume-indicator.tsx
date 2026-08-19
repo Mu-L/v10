@@ -1,16 +1,18 @@
-import { VolumeIndicator as VolumeIndicatorPrimitive } from '@videojs/core/components';
-import { VolumeHighIcon, VolumeLowIcon, VolumeOffIcon } from '@videojs/icons/components';
+import type { VolumeIndicatorProps as CoreProps } from '@videojs/core';
+import * as $ from '@videojs/core/vjsc';
+import { VolumeHighIcon, VolumeLowIcon, VolumeOffIcon } from '@videojs/icons/vjsc';
+import type { Props } from 'vjsc/components';
 import styles from '../../styles/components/volume-indicator.styles';
 
-export function VolumeIndicator() {
+export function VolumeIndicator({ className, ...props }: Props<CoreProps> = {}) {
   return (
-    <VolumeIndicatorPrimitive.Root className={styles.root}>
-      <VolumeIndicatorPrimitive.Fill className={styles.fill}>
+    <$.VolumeIndicator.Root className={[styles.root, className]} {...props}>
+      <$.VolumeIndicator.Fill className={styles.fill}>
         <VolumeHighIcon className={[styles.icon, styles.icons.high]} />
         <VolumeLowIcon className={[styles.icon, styles.icons.low]} />
         <VolumeOffIcon className={[styles.icon, styles.icons.off]} />
-        <VolumeIndicatorPrimitive.Value className={styles.value} />
-      </VolumeIndicatorPrimitive.Fill>
-    </VolumeIndicatorPrimitive.Root>
+        <$.VolumeIndicator.Value className={styles.value} />
+      </$.VolumeIndicator.Fill>
+    </$.VolumeIndicator.Root>
   );
 }

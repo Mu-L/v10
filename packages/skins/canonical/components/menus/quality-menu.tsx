@@ -1,39 +1,30 @@
-import { Text } from '@videojs/core/components';
 import { qualityText } from '@videojs/core/i18n/text/menu';
-import { SwitchesIcon } from '@videojs/icons/components';
-import { type FunctionComponent, Template } from '@videojs/jsx';
+import { SwitchesIcon } from '@videojs/icons/vjsc';
+import { type PropsOf, Template, Text } from 'vjsc/components';
 import styles from '../../styles/components/menu.styles';
 import { QualityRadioGroup } from './radio-group';
 import { RadioItem } from './radio-item';
 import { Submenu } from './submenu';
 
-declare const QualityOptionLabel: FunctionComponent;
+export interface QualityMenuProps
+  extends Omit<PropsOf<typeof Submenu>, 'children' | 'icon' | 'label' | 'selectedLabel'> {}
 
-export function QualityMenu() {
+export function QualityMenu(props: QualityMenuProps = {}) {
   return (
     <Submenu
       icon={<SwitchesIcon className={styles.icon} />}
-      label={<Text>{qualityText}</Text>}
-      selectedLabel={
-        <Template.Part name="selected-label">
-          <Text className={styles.hintLabel} />
-        </Template.Part>
-      }
+      label={<Text token={qualityText.key}>{qualityText.text}</Text>}
+      selectedLabel={<Text className={styles.hintLabel} data-part="hint" />}
+      {...props}
     >
       <QualityRadioGroup>
         <Template name="quality-option">
           <RadioItem>
-            <QualityOptionLabel>
-              <Template.Part name="label">
-                <Text />
-              </Template.Part>
-              <Template.Part name="tier">
-                <Text className={styles.tier} />
-              </Template.Part>
-            </QualityOptionLabel>
-            <Template.Part name="badge">
-              <Text className={styles.badge} />
-            </Template.Part>
+            <Text>
+              <Template.Part name="label" />
+              <Template.Part name="tier" className={styles.tier} />
+            </Text>
+            <Template.Part name="badge" className={styles.badge} />
           </RadioItem>
         </Template>
       </QualityRadioGroup>

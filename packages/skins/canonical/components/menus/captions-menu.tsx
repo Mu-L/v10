@@ -1,29 +1,26 @@
-import { Text } from '@videojs/core/components';
 import { captionsText } from '@videojs/core/i18n/text/menu';
-import { CaptionsOffIcon } from '@videojs/icons/components';
-import { Template } from '@videojs/jsx';
+import { CaptionsOffIcon } from '@videojs/icons/vjsc';
+import { type PropsOf, Template, Text } from 'vjsc/components';
 import styles from '../../styles/components/menu.styles';
 import { CaptionsRadioGroup } from './radio-group';
 import { RadioItem } from './radio-item';
 import { Submenu } from './submenu';
 
-export function CaptionsMenu() {
+export interface CaptionsMenuProps
+  extends Omit<PropsOf<typeof Submenu>, 'children' | 'icon' | 'label' | 'selectedLabel'> {}
+
+export function CaptionsMenu(props: CaptionsMenuProps = {}) {
   return (
     <Submenu
       icon={<CaptionsOffIcon className={styles.icon} />}
-      label={<Text>{captionsText}</Text>}
-      selectedLabel={
-        <Template.Part name="selected-label">
-          <Text className={styles.hintLabel} />
-        </Template.Part>
-      }
+      label={<Text token={captionsText.key}>{captionsText.text}</Text>}
+      selectedLabel={<Text className={styles.hintLabel} data-part="hint" />}
+      {...props}
     >
       <CaptionsRadioGroup>
         <Template name="captions-option">
           <RadioItem>
-            <Template.Part name="label">
-              <Text />
-            </Template.Part>
+            <Template.Part name="label" />
           </RadioItem>
         </Template>
       </CaptionsRadioGroup>
