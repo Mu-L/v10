@@ -1,38 +1,15 @@
-export interface SkinRegistryConfig {
-  name: string;
-  homepage: string;
-  namespace: string;
-  installRoot: string;
-  outputDir: string;
-  sourceRoot: string;
-  skin: string;
-  framework: 'react';
-  style: 'tailwind';
-  styleItem: {
-    name: string;
-    title: string;
-    description: string;
-  };
-  utilityItem: {
-    name: string;
-    title: string;
-    description: string;
-    source: string;
-    target: string;
-    dependencies: readonly string[];
-  };
-  items: readonly string[];
-}
+import { defineRegistry } from '@videojs/compiler/shadcn';
+import { skinCatalog } from '../catalog';
 
 /** React/Tailwind publication policy for the canonical Skin inventory. */
-export const skinRegistry = {
+export const skinRegistry = defineRegistry(skinCatalog, {
   name: 'videojs',
   homepage: 'https://videojs.org',
   namespace: '@videojs',
   installRoot: 'components/videojs',
   outputDir: 'canonical/registry',
   sourceRoot: 'default',
-  skin: 'default-video',
+  entry: 'default-video',
   framework: 'react',
   style: 'tailwind',
   styleItem: {
@@ -44,7 +21,7 @@ export const skinRegistry = {
     name: 'utils',
     title: 'Video.js Utilities',
     description: 'Class-name composition and state resolution utilities used by editable Video.js Skin components.',
-    source: '../build/registry/templates/utils.ts',
+    source: './registry/utils.ts',
     target: 'utils.ts',
     dependencies: ['clsx', 'tailwind-merge'],
   },
@@ -70,4 +47,4 @@ export const skinRegistry = {
     'volume-indicator',
     'volume-slider',
   ],
-} as const satisfies SkinRegistryConfig;
+});

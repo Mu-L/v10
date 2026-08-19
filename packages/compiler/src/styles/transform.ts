@@ -1,14 +1,14 @@
-import { dirname, resolve } from 'node:path';
-
 import ts from 'typescript';
 
 import { replaceJsxPropValue } from '../utils/jsx';
 import { collectReferencedIdentifiers } from '../utils/references';
 
+import { splitClassNames } from './class-names';
 import { type ClassNameInfo, type ClassNameSegment, classNameSegment, readClassName } from './jsx-class-name';
 import { isGroupPeerMarker, ruleForToken, type StyleManifest, utilityGroupsForRule } from './manifest';
+import { resolveManifestStyleModule } from './modules';
 
-export type StyleOutput = 'tailwind' | 'css';
+export type StyleMode = 'tailwind' | 'css';
 
 interface TokenReference {
   modulePath: string;
@@ -28,9 +28,9 @@ interface ResolvedClassName {
 
 export interface StyleTransformOptions {
   manifest: StyleManifest;
-  output: StyleOutput;
+  mode: StyleMode;
   variant?: string | undefined;
-  composeClassNames?: boolean | undefined;
+  compose?: boolean | undefined;
 }
 
 /** Project explicit style references to Tailwind utilities or semantic classes. */
@@ -87,7 +87,7 @@ function transformStyleAttribute(
     if (!whenTrue || !whenFalse || whenTrue.passThrough.length > 0 || whenFalse.passThrough.length > 0) {
       return info.element;
     }
-    const composition = options.composeClassNames
+    const composition = options.compose
       ? composeConditionalClasses(info.expression, whenTrue.classes, whenFalse.classes, factory)
       : undefined;
     const replacement = composition
@@ -106,7 +106,7 @@ function transformStyleAttribute(
 
   const resolved = resolveSegments(info.segments, bindings, options);
   if (!resolved || (resolved.classes.length === 0 && resolved.passThrough.length === 0)) return info.element;
-  if (options.composeClassNames && resolved.groups.length + resolved.passThrough.length > 1) {
+  if (options.compose && resolved.groups.length + resolved.passThrough.length > 1) {
     return replaceJsxPropValue(
       info,
       factory.createArrayLiteralExpression([
@@ -210,7 +210,7 @@ function resolveSegments(
 
   for (const segment of segments) {
     if (segment.kind === 'literal') {
-      addGroup(splitClasses(segment.value));
+      addGroup(splitClassNames(segment.value));
       continue;
     }
     if (segment.kind === 'opaque') {
@@ -223,14 +223,14 @@ function resolveSegments(
       passThrough.push(segment.node);
       continue;
     }
-    if (options.output === 'css') {
+    if (options.mode === 'css') {
       addGroup([rule.className]);
     } else {
-      for (const group of utilityGroupsForRule(rule, options.variant)) addGroup(splitClasses(group));
+      for (const group of utilityGroupsForRule(rule, options.variant)) addGroup(splitClassNames(group));
     }
   }
 
-  if (options.output === 'css') {
+  if (options.mode === 'css') {
     const outputClasses = classes.filter((className) => !isGroupPeerMarker(className));
     return { classes: outputClasses, groups: groups.filter((group) => !isGroupPeerMarker(group)), passThrough };
   }
@@ -244,7 +244,7 @@ function sourceBindings(sourceFile: ts.SourceFile, manifest: StyleManifest): Sou
 
   for (const statement of sourceFile.statements) {
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
-    const modulePath = resolveStyleModule(sourceFile.fileName, statement.moduleSpecifier.text, manifest);
+    const modulePath = resolveManifestStyleModule(sourceFile.fileName, statement.moduleSpecifier.text, manifest);
     if (!modulePath) continue;
     const importClause = statement.importClause;
     if (!importClause?.name || importClause.namedBindings) {
@@ -259,15 +259,6 @@ function sourceBindings(sourceFile: ts.SourceFile, manifest: StyleManifest): Sou
   return { styleImports, importedModules };
 }
 
-function resolveStyleModule(sourceFile: string, specifier: string, manifest: StyleManifest): string | undefined {
-  if (!specifier.startsWith('.')) return undefined;
-  const imported = resolve(dirname(sourceFile), specifier);
-  for (const modulePath of manifest.modules.keys()) {
-    if (modulePath === imported || modulePath === `${imported}.ts`) return modulePath;
-  }
-  return undefined;
-}
-
 function resolveTokenReference(
   path: readonly string[],
   styleImports: ReadonlyMap<string, string>
@@ -276,8 +267,4 @@ function resolveTokenReference(
   if (!root) return undefined;
   const modulePath = styleImports.get(root);
   return modulePath ? { modulePath, tokenPath: tail } : undefined;
-}
-
-function splitClasses(value: string): string[] {
-  return value.split(/\s+/).filter(Boolean);
 }
