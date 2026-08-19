@@ -49,37 +49,39 @@ export const slider = {
   fill: {
     base: cn(
       'absolute rounded-[inherit] pointer-events-none',
-      'motion-safe:duration-200 motion-safe:ease-linear',
+      'motion-safe:transition-[clip-path] motion-safe:duration-200 motion-safe:ease-out',
       'data-dragging:duration-0 data-seeking:duration-0'
     ),
     fill: cn(
       'bg-(--accent-color)',
       // Horizontal
       'data-[orientation=horizontal]:inset-y-0 data-[orientation=horizontal]:left-0 data-[orientation=horizontal]:w-full',
-      'data-[orientation=horizontal]:transition-[clip-path] data-[orientation=horizontal]:[clip-path:inset(0_calc(100%-var(--media-slider-fill))_0_0_round_var(--track-border-radius))]',
+      'data-[orientation=horizontal]:[clip-path:inset(0_calc(100%-var(--media-slider-fill))_0_0_round_var(--track-border-radius))]',
       'group-data-dragging/slider:data-[orientation=horizontal]:[clip-path:inset(0_calc(100%-var(--media-slider-pointer))_0_0_round_var(--track-border-radius))]',
       // Vertical
       'data-[orientation=vertical]:inset-x-0 data-[orientation=vertical]:bottom-0 data-[orientation=vertical]:h-full',
-      'data-[orientation=vertical]:transition-[clip-path] data-[orientation=vertical]:[clip-path:inset(calc(100%-var(--media-slider-fill))_0_0_0_round_var(--track-border-radius))]',
+      'data-[orientation=vertical]:[clip-path:inset(calc(100%-var(--media-slider-fill))_0_0_0_round_var(--track-border-radius))]',
       'group-data-dragging/slider:data-[orientation=vertical]:[clip-path:inset(calc(100%-var(--media-slider-pointer))_0_0_0_round_var(--track-border-radius))]'
     ),
     buffer: cn(
-      'bg-current/20 motion-safe:duration-250 motion-safe:ease-out',
+      'bg-current/20',
       // Horizontal
       'data-[orientation=horizontal]:inset-y-0 data-[orientation=horizontal]:left-0 data-[orientation=horizontal]:w-full',
-      'data-[orientation=horizontal]:transition-[clip-path] data-[orientation=horizontal]:[clip-path:inset(0_calc(100%-var(--media-slider-buffer))_0_0_round_var(--track-border-radius))]',
+      'data-[orientation=horizontal]:[clip-path:inset(0_calc(100%-var(--media-slider-buffer))_0_0_round_var(--track-border-radius))]',
       // Vertical
       'data-[orientation=vertical]:inset-x-0 data-[orientation=vertical]:bottom-0 data-[orientation=vertical]:h-full',
-      'data-[orientation=vertical]:transition-[clip-path] data-[orientation=vertical]:[clip-path:inset(calc(100%-var(--media-slider-buffer))_0_0_0_round_var(--track-border-radius))]'
+      'data-[orientation=vertical]:[clip-path:inset(calc(100%-var(--media-slider-buffer))_0_0_0_round_var(--track-border-radius))]'
     ),
   },
   thumb: {
     base: cn(
-      'z-10 absolute -translate-x-1/2 -translate-y-1/2',
+      'z-10 absolute size-2.5 -translate-x-1/2 -translate-y-1/2',
       'bg-current rounded-full',
+      'opacity-0 scale-80',
       'shadow-[0_0_0_1px_var(--shadow-current-color,oklch(0_0_0/0.1)),0_1px_3px_0_oklch(0_0_0/0.35),0_1px_2px_-1px_oklch(0_0_0/0.35)]',
-      'transition-[opacity,height,width,outline-offset] motion-safe:transition-[opacity,height,width,outline-offset,left,top] duration-150 ease-out select-none',
+      'transition-none motion-safe:transition-[opacity,height,width,outline-offset,left,top,scale] duration-150 ease-out select-none',
       'data-dragging:duration-0 data-seeking:duration-0',
+      'group-active/slider:size-3',
       'outline-4 outline-transparent -outline-offset-4',
       'hover:outline-current/15 hover:outline-offset-0',
       'focus-visible:outline-current/15 focus-visible:outline-offset-0',
@@ -96,15 +98,18 @@ export const slider = {
       'data-[orientation=vertical]:left-1/2 data-[orientation=vertical]:top-[calc(100%-var(--media-slider-fill))]',
       'group-data-dragging/slider:data-[orientation=vertical]:top-[calc(100%-var(--media-slider-pointer))]'
     ),
-    persistent: 'size-3',
+    persistent: 'opacity-100 scale-100',
     interactive: cn(
-      'size-2.5',
-      'opacity-0 focus-visible:opacity-100 pointer-fine:group-hover/slider:opacity-100',
-      'group-active/slider:size-3 group-focus-within/slider:size-3'
+      'focus-visible:opacity-100',
+      'pointer-fine:group-hover/slider:opacity-100 pointer-fine:group-hover/slider:scale-100'
     ),
   },
   preview: cn(
-    '[--max-width:min(--spacing(48),100cqi)] [--max-height:--spacing(32)] min-w-(--max-width) h-1',
+    '[--max-width-factor:36]',
+    '[--max-width:min(calc(var(--spacing)*var(--max-width-factor)),100cqi)]',
+    '[--max-height:calc(var(--max-width)*(100cqb/100cqi))]',
+    '@2xl/media-root:[--max-width-factor:48]',
+    'min-w-(--max-width) h-1',
     'before:absolute before:z-1 before:top-1/2 before:left-1/2 before:size-1 before:bg-current before:rounded-full before:pointer-events-none',
     'before:shadow-[0_0_0_1px_var(--shadow-current-color,oklch(0_0_0/0.15)),0_1px_2px_0_oklch(0_0_0/0.35)]',
     'before:-translate-1/2 before:opacity-0 before:scale-50',
