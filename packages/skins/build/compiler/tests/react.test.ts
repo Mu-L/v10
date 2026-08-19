@@ -94,6 +94,7 @@ describe('createCompilerReactConfig', () => {
     expect(posterResult.code).toContain('PosterProps');
     expect(posterResult.code).not.toContain('Parameters<');
     expect(posterResult.code).toContain('<PosterPrimitive {...props}');
+    expect(posterResult.code).toContain('[&[data-visible][src]:not([data-loaded])]:opacity-0');
     expect(posterResult.code).not.toContain('Slot');
     expect(`${result.code}\n${posterResult.code}`).not.toContain('SkinContainer');
     expect(`${result.code}\n${posterResult.code}`).not.toContain('SkinPoster');
@@ -118,6 +119,7 @@ describe('createCompilerReactConfig', () => {
     expect(result.code).toContain('<Container {...containerProps}');
     expect(result.code).toContain('{children}');
     expect(result.code).toContain('poster && <Poster');
+    expect(result.code).not.toContain('SeekButton');
     expect(result.code).not.toContain('<Slot');
     expect(result.code).not.toContain('placeholder');
     expect(result.code).not.toContain('CSSProperties');
