@@ -1,8 +1,8 @@
-import type { ComponentNode } from '@videojs/jsx';
+import type { ComponentProps, FunctionComponent } from '@videojs/jsx';
 import styles from '../../styles/components/overlay.tailwind';
 
-declare const OverlayPrimitive: (props: { className?: unknown }) => ComponentNode;
+declare const OverlayRoot: FunctionComponent<ComponentProps>;
 
 export function Overlay() {
-  return <OverlayPrimitive className={styles.overlay} />;
+  return <OverlayRoot className={styles.overlay} />;
 }

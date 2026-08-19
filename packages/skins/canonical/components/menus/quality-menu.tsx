@@ -1,13 +1,13 @@
 import { Text } from '@videojs/core/components';
 import { qualityText } from '@videojs/core/i18n/text/menu';
 import { SwitchesIcon } from '@videojs/icons/components';
-import { type ComponentNode, Template } from '@videojs/jsx';
+import { type FunctionComponent, Template } from '@videojs/jsx';
 import styles from '../../styles/components/menu.tailwind';
 import { QualityRadioGroup } from './radio-group';
 import { RadioItem } from './radio-item';
 import { Submenu } from './submenu';
 
-declare const OptionLabelPrimitive: (props: { children?: unknown }) => ComponentNode;
+declare const QualityOptionLabel: FunctionComponent;
 
 export function QualityMenu() {
   return (
@@ -23,14 +23,14 @@ export function QualityMenu() {
       <QualityRadioGroup>
         <Template name="quality-option">
           <RadioItem>
-            <OptionLabelPrimitive>
+            <QualityOptionLabel>
               <Template.Part name="label">
                 <Text />
               </Template.Part>
               <Template.Part name="tier">
                 <Text className={styles.tier} />
               </Template.Part>
-            </OptionLabelPrimitive>
+            </QualityOptionLabel>
             <Template.Part name="badge">
               <Text className={styles.badge} />
             </Template.Part>

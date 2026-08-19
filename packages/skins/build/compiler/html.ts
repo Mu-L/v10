@@ -1,5 +1,14 @@
-import { defineConfig, html, rewrite } from '@videojs/compiler';
-import { lowerTemplateParts, lowerTemplates, lowerText } from '@videojs/compiler/ast';
+import {
+  createJsxEditor,
+  DiagnosticError,
+  defineConfig,
+  diagnosticLocationFromNode,
+  html,
+  rewrite,
+  type TransformHelpers,
+} from '@videojs/compiler';
+import type { JsxElementLike } from '@videojs/compiler/ast';
+import ts from 'typescript';
 import type { SkinStyleManifest } from '../styles/manifest';
 import { type SkinStyleTarget, skinStyles } from '../styles/transform';
 
@@ -222,6 +231,13 @@ const iconNames = {
   VolumeOffIcon: 'volume-off',
 } as const;
 
+const SETTINGS_SUBMENUS = [
+  ['QualityMenu', 'settings-quality-menu'],
+  ['AudioTrackMenu', 'settings-audio-menu'],
+  ['PlaybackRateMenu', 'settings-speed-menu'],
+  ['CaptionsMenu', 'settings-captions-menu'],
+] as const;
+
 /** Create the compiler policy for an HTML Skin projection. */
 export function createCompilerHtmlConfig(styleTarget: CreateCompilerHtmlConfigOptions) {
   const rootComponentName = styleTarget.rootComponentName ?? 'DefaultVideoSkin';
@@ -235,89 +251,6 @@ export function createCompilerHtmlConfig(styleTarget: CreateCompilerHtmlConfigOp
     }),
     plugins: [
       skinStyles({ manifest: styleTarget.styles, target: styleTarget.style }),
-      {
-        name: '@videojs/skins:html-text',
-        setup: () => ({
-          transform: lowerText({
-            targetTag: 'media-text',
-            descriptors: ['settingsText', 'qualityText', 'audioText', 'speedText', 'captionsText'],
-            lowering: { kind: 'descriptor' },
-          }),
-        }),
-      },
-      {
-        name: '@videojs/skins:html-template-parts',
-        setup: () => ({
-          transform: lowerTemplateParts({
-            parts: {
-              'QualityMenu:selected-label': {
-                kind: 'attribute',
-                attribute: 'data-part',
-                value: 'hint',
-                tag: 'span',
-              },
-              'AudioTrackMenu:selected-label': {
-                kind: 'attribute',
-                attribute: 'data-part',
-                value: 'hint',
-                tag: 'span',
-              },
-              'PlaybackRateMenu:selected-label': {
-                kind: 'attribute',
-                attribute: 'data-part',
-                value: 'hint',
-                tag: 'span',
-              },
-              'CaptionsMenu:selected-label': {
-                kind: 'attribute',
-                attribute: 'data-part',
-                value: 'hint',
-                tag: 'span',
-              },
-              'quality-option:label': { kind: 'attribute', attribute: 'data-part', value: 'label', tag: 'span' },
-              'quality-option:tier': {
-                kind: 'attribute',
-                attribute: 'data-part',
-                value: 'tier',
-                tag: 'sup',
-              },
-              'quality-option:badge': { kind: 'attribute', attribute: 'data-part', value: 'badge', tag: 'span' },
-              'audio-track-option:label': {
-                kind: 'attribute',
-                attribute: 'data-part',
-                value: 'label',
-                tag: 'span',
-              },
-              'playback-rate-option:label': {
-                kind: 'attribute',
-                attribute: 'data-part',
-                value: 'label',
-                tag: 'span',
-              },
-              'captions-option:label': {
-                kind: 'attribute',
-                attribute: 'data-part',
-                value: 'label',
-                tag: 'span',
-              },
-            },
-          }),
-        }),
-      },
-      {
-        name: '@videojs/skins:html-templates',
-        setup: () => ({
-          transform: lowerTemplates({
-            templates: {
-              chapter: { kind: 'element', parent: 'TimeSliderPrimitive.Chapters', rootTag: 'div' },
-              'quality-option': { kind: 'element', parent: 'QualityRadioGroup' },
-              'audio-track-option': { kind: 'element', parent: 'AudioTrackRadioGroup' },
-              'playback-rate-option': { kind: 'element', parent: 'PlaybackRateRadioGroup' },
-              'captions-option': { kind: 'element', parent: 'CaptionsRadioGroup' },
-            },
-          }),
-        }),
-      },
       rewrite(
         (code) => {
           const cn = code.import('@videojs/utils/style', 'cn');
@@ -326,14 +259,12 @@ export function createCompilerHtmlConfig(styleTarget: CreateCompilerHtmlConfigOp
             .function('Container')
             .jsx.props('className')
             .on('ContainerPrimitive');
-          const submenus = [
-            ['QualityMenu', 'settings-quality-menu'],
-            ['AudioTrackMenu', 'settings-audio-menu'],
-            ['PlaybackRateMenu', 'settings-speed-menu'],
-            ['CaptionsMenu', 'settings-captions-menu'],
-          ] as const;
-
           return [
+            // Lower constrained canonical JSX before target element rewrites.
+            ...createHtmlTemplatePartTransforms(code),
+            ...createHtmlTemplateTransforms(code),
+
+            // Establish the Skin root, component content slot, and Container API.
             rootContainer.addProp('className', () => {
               if (!styleTarget.rootClassName) {
                 throw new Error('HTML Skin root lowering requires `rootClassName`.');
@@ -343,12 +274,17 @@ export function createCompilerHtmlConfig(styleTarget: CreateCompilerHtmlConfigOp
             containerPrimitiveClassName.replace(({ value }) => code.value.array([value, 'className'])),
             code.function('Container').setProps(['children', 'className']),
             code.jsx.element('Slot').replace('slot'),
+
+            // Target-neutral presentational roles become native HTML elements.
             code.jsx.element('ErrorDialogPrimitive.Root').unwrap(),
-            code.jsx.element('OverlayPrimitive').replace('div'),
-            code.jsx.element('InputIndicatorOverlayPrimitive').replace('div'),
-            code.jsx.element('PreviewValuePrimitive').replace('div'),
-            code.jsx.element('HintPrimitive').replace('span'),
-            code.jsx.element('OptionLabelPrimitive').replace('span'),
+            code.jsx.element('OverlayRoot').replace('div'),
+            code.jsx.element('StatusIndicatorGroup').replace('div'),
+            code.jsx.element('PreviewValue').replace('div'),
+            code.jsx.element('SubmenuHint').replace('span'),
+            code.jsx.element('QualityOptionLabel').replace('span'),
+            code.jsx.element('Text').replace(({ element, factory }) => lowerHtmlText(element, factory)),
+
+            // Flatten compound target components into their HTML element protocols.
             code.jsx.element('Popover.Root').unwrap({ forwardPropsTo: 'Popover.Popup' }),
             code.jsx.element('Popover.Trigger').unwrap(),
             code.jsx.element('TooltipPrimitive.Root').unwrap({ forwardPropsTo: 'TooltipPrimitive.Popup' }),
@@ -364,7 +300,11 @@ export function createCompilerHtmlConfig(styleTarget: CreateCompilerHtmlConfigOp
             code.function('Submenu').jsx.element('Menu.Trigger').addProp('commandfor', code.value.identifier('menuId')),
             code.function('Submenu').jsx.element('Menu.Trigger').replace('media-menu-item'),
             code.function('Submenu').jsx.element('Menu.Content').addProp('id', code.value.identifier('menuId')),
-            ...submenus.map(([component, id]) => code.function(component).jsx.element('Submenu').addProp('menuId', id)),
+            ...SETTINGS_SUBMENUS.map(([component, id]) =>
+              code.function(component).jsx.element('Submenu').addProp('menuId', id)
+            ),
+
+            // Forward authored props before mapping canonical components and icons.
             code.function('MuteButton').addProps([{ name: 'props', spread: true }]),
             code.jsx.element('MuteButtonPrimitive').spreadProps('props'),
             ...Object.entries(componentTags).map(([source, target]) => code.jsx.element(source).replace(target)),
@@ -372,6 +312,8 @@ export function createCompilerHtmlConfig(styleTarget: CreateCompilerHtmlConfigOp
               code.jsx.element(source).addProp('name', name),
               code.jsx.element(source).replace('media-icon'),
             ]),
+
+            // Compose class arrays, then emit native HTML attribute and child types.
             code.jsx
               .props('className')
               .on(/^[a-z]/)
@@ -390,6 +332,131 @@ export function createCompilerHtmlConfig(styleTarget: CreateCompilerHtmlConfigOp
       ),
     ],
   });
+}
+
+interface HtmlTemplatePart {
+  name: string;
+  value: string;
+  tag: string;
+}
+
+interface HtmlTemplate {
+  name: string;
+  parent: string;
+  rootTag?: string | undefined;
+}
+
+function createHtmlTemplatePartTransforms(code: TransformHelpers) {
+  const parts: readonly HtmlTemplatePart[] = [
+    { name: 'selected-label', value: 'hint', tag: 'span' },
+    { name: 'label', value: 'label', tag: 'span' },
+    { name: 'tier', value: 'tier', tag: 'sup' },
+    { name: 'badge', value: 'badge', tag: 'span' },
+  ];
+
+  return [
+    ...parts.map((part) =>
+      code.jsx.element('Template.Part').replace(({ element, factory }) => lowerHtmlTemplatePart(element, part, factory))
+    ),
+    code.jsx
+      .element('Template.Part')
+      .replace(({ element }) =>
+        failTemplate(element, `No HTML lowering is configured for <Template.Part name="${readRequiredName(element)}">.`)
+      ),
+  ];
+}
+
+function createHtmlTemplateTransforms(code: TransformHelpers) {
+  const templates: readonly HtmlTemplate[] = [
+    { name: 'chapter', parent: 'TimeSliderPrimitive.Chapters', rootTag: 'div' },
+    { name: 'quality-option', parent: 'QualityRadioGroup' },
+    { name: 'audio-track-option', parent: 'AudioTrackRadioGroup' },
+    { name: 'playback-rate-option', parent: 'PlaybackRateRadioGroup' },
+    { name: 'captions-option', parent: 'CaptionsRadioGroup' },
+  ];
+
+  return [
+    ...templates.map((template) =>
+      code.jsx.element(template.parent).replace(({ element, factory }) => lowerHtmlTemplate(element, template, factory))
+    ),
+    code.jsx
+      .element('Template')
+      .replace(({ element }) =>
+        failTemplate(element, `No HTML lowering is configured for <Template name="${readRequiredName(element)}">.`)
+      ),
+  ];
+}
+
+function lowerHtmlTemplatePart(element: JsxElementLike, part: HtmlTemplatePart, factory: ts.NodeFactory): ts.Node {
+  const jsx = createJsxEditor(factory);
+  if (readRequiredName(element) !== part.name) return element;
+  return jsx.apply(
+    jsx.children.onlyElement(element),
+    jsx.tag.replace(part.tag),
+    jsx.props.set('data-part', part.value)
+  );
+}
+
+function lowerHtmlTemplate(parent: JsxElementLike, template: HtmlTemplate, factory: ts.NodeFactory): JsxElementLike {
+  const jsx = createJsxEditor(factory);
+  const extracted = jsx.children.extractOne(
+    parent,
+    (child) => jsx.tag.name(child) === 'Template' && readRequiredName(child) === template.name
+  );
+  if (!extracted) return parent;
+  const authored = extracted.child;
+  const root = createHtmlTemplateRoot(authored, template, factory);
+  return jsx.apply(parent, jsx.children.replace(authored, jsx.create.element('template', [root])));
+}
+
+function createHtmlTemplateRoot(
+  authored: JsxElementLike,
+  template: HtmlTemplate,
+  factory: ts.NodeFactory
+): JsxElementLike {
+  const jsx = createJsxEditor(factory);
+  if (template.rootTag) {
+    return jsx.apply(authored, jsx.props.remove('name'), jsx.tag.replace(template.rootTag));
+  }
+  return jsx.children.onlyElement(authored);
+}
+
+function readRequiredName(element: JsxElementLike): string {
+  const jsx = createJsxEditor(ts.factory);
+  const name = jsx.props.staticString(element, 'name');
+  if (name === undefined) failTemplate(element, `<${jsx.tag.name(element)}> requires a static \`name\` prop.`);
+  if (name === null || name.length === 0)
+    failTemplate(element, `<${jsx.tag.name(element)} name> must be a string literal.`);
+  return name;
+}
+
+function failTemplate(node: ts.Node, message: string): never {
+  throw new DiagnosticError(message, {
+    ...diagnosticLocationFromNode(node),
+    diagnosticCode: 'jsx-template-invalid',
+  });
+}
+
+const textDescriptors = new Set(['settingsText', 'qualityText', 'audioText', 'speedText', 'captionsText']);
+
+function lowerHtmlText(element: JsxElementLike, factory: ts.NodeFactory): JsxElementLike {
+  const jsx = createJsxEditor(factory);
+  const descriptor = readTextDescriptor(element);
+  return jsx.apply(
+    element,
+    jsx.tag.replace('media-text'),
+    ...(descriptor
+      ? [
+          jsx.props.set('token', factory.createPropertyAccessExpression(descriptor, 'key')),
+          jsx.children.set([jsx.create.expression(factory.createPropertyAccessExpression(descriptor, 'text'))]),
+        ]
+      : [])
+  );
+}
+
+function readTextDescriptor(element: JsxElementLike): ts.Identifier | undefined {
+  const child = createJsxEditor(ts.factory).children.singleExpression(element);
+  return child && ts.isIdentifier(child) && textDescriptors.has(child.text) ? child : undefined;
 }
 
 const markupElementModules = {

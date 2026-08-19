@@ -1,13 +1,14 @@
-import { defineConfig, jsx, rewrite } from '@videojs/compiler';
 import {
-  anyTag,
-  childAsProp,
-  type ImportRef,
-  lowerTemplateParts,
-  lowerTemplates,
-  lowerText,
-} from '@videojs/compiler/ast';
-import type { Expression } from 'typescript';
+  createJsxEditor,
+  DiagnosticError,
+  defineConfig,
+  diagnosticLocationFromNode,
+  jsx,
+  rewrite,
+  type TransformHelpers,
+} from '@videojs/compiler';
+import { anyTag, childAsProp, hasJsxAttribute, type ImportRef, type JsxElementLike } from '@videojs/compiler/ast';
+import ts, { type Expression } from 'typescript';
 import type { SkinStyleManifest } from '../styles/manifest';
 import { type SkinStyleTarget, skinStyles } from '../styles/transform';
 
@@ -24,6 +25,42 @@ interface CreateCompilerReactConfigOptions {
 }
 
 export type ReactImportResolver = (reference: ImportRef) => ImportRef | false;
+
+const SETTINGS_SUBMENU_FUNCTIONS = ['QualityMenu', 'AudioTrackMenu', 'PlaybackRateMenu', 'CaptionsMenu'] as const;
+
+const DIRECT_COMPONENTS = [
+  ['AirPlayButton', 'AirPlayButtonPrimitive', 'AirPlayButtonPrimitive.Props'],
+  ['BufferingIndicator', 'BufferingIndicatorPrimitive', 'BufferingIndicatorPrimitive.Props'],
+  ['CaptionsButton', 'CaptionsButtonPrimitive', 'CaptionsButtonPrimitive.Props'],
+  ['CastButton', 'CastButtonPrimitive', 'CastButtonPrimitive.Props'],
+  ['FullscreenButton', 'FullscreenButtonPrimitive', 'FullscreenButtonPrimitive.Props'],
+  ['MuteButton', 'MuteButtonPrimitive', 'MuteButtonPrimitive.Props'],
+  ['PiPButton', 'PiPButtonPrimitive', 'PiPButtonPrimitive.Props'],
+  ['PlayButton', 'PlayButtonPrimitive', 'PlayButtonPrimitive.Props'],
+  ['SeekButton', 'SeekButtonPrimitive', 'SeekButtonPrimitive.Props'],
+  ['SeekIndicator', 'SeekIndicatorPrimitive.Root', 'SeekIndicatorPrimitive.RootProps'],
+  ['StatusAnnouncer', 'StatusAnnouncerPrimitive', 'StatusAnnouncerPrimitive.Props'],
+  ['TimeSlider', 'TimeSliderPrimitive.Root', 'TimeSliderPrimitive.RootProps'],
+  ['VolumeSlider', 'VolumeSliderPrimitive.Root', 'VolumeSliderPrimitive.RootProps'],
+] as const;
+
+const COMPOSED_COMPONENTS = [
+  ['StatusIndicator', 'StatusIndicatorPrimitive.Root', 'StatusIndicatorPrimitive.RootProps', ['children', 'actions']],
+  [
+    'PlaybackStatusIndicator',
+    'StatusIndicatorPrimitive.Root',
+    'StatusIndicatorPrimitive.RootProps',
+    ['children', 'actions'],
+  ],
+  ['VolumeIndicator', 'VolumeIndicatorPrimitive.Root', 'VolumeIndicatorPrimitive.RootProps', ['children']],
+] as const;
+
+const RADIO_GROUP_COMPONENTS = [
+  ['QualityRadioGroup', 'QualityRadioGroupPrimitive', 'QualityRadioGroupPrimitive.Props'],
+  ['AudioTrackRadioGroup', 'AudioTrackRadioGroupPrimitive', 'AudioTrackRadioGroupPrimitive.Props'],
+  ['PlaybackRateRadioGroup', 'PlaybackRateRadioGroupPrimitive', 'PlaybackRateRadioGroupPrimitive.Props'],
+  ['CaptionsRadioGroup', 'CaptionsRadioGroupPrimitive', 'CaptionsRadioGroupPrimitive.Props'],
+] as const;
 
 /** Create the compiler policy for a React Skin projection. */
 export function createCompilerReactConfig(options: CreateCompilerReactConfigOptions) {
@@ -83,100 +120,6 @@ export function createCompilerReactConfig(options: CreateCompilerReactConfigOpti
         target: options.style,
         composeClassNames: options.composeClassNames,
       }),
-      {
-        name: '@videojs/skins:react-text',
-        setup: () => ({
-          transform: lowerText({
-            targetTag: 'span',
-            descriptors: ['settingsText', 'qualityText', 'audioText', 'speedText', 'captionsText'],
-            lowering: { kind: 'translate', translator: 't' },
-          }),
-        }),
-      },
-      {
-        name: '@videojs/skins:react-template-parts',
-        setup: () => ({
-          transform: lowerTemplateParts({
-            parts: {
-              'QualityMenu:selected-label': {
-                kind: 'value',
-                root: 'quality',
-                property: 'selectedLabel',
-                optionalAccess: true,
-              },
-              'AudioTrackMenu:selected-label': {
-                kind: 'value',
-                root: 'audioTrack',
-                property: 'selectedLabel',
-                optionalAccess: true,
-              },
-              'PlaybackRateMenu:selected-label': {
-                kind: 'value',
-                root: 'playbackRate',
-                property: 'selectedLabel',
-                optionalAccess: true,
-              },
-              'CaptionsMenu:selected-label': {
-                kind: 'value',
-                root: 'captions',
-                property: 'selectedLabel',
-                optionalAccess: true,
-              },
-              'quality-option:label': { kind: 'value', root: 'item', property: 'label' },
-              'quality-option:tier': {
-                kind: 'value',
-                root: 'item',
-                property: 'tier',
-                optional: true,
-                tag: 'sup',
-              },
-              'quality-option:badge': { kind: 'value', root: 'item', property: 'badge', optional: true },
-              'audio-track-option:label': { kind: 'value', root: 'item', property: 'label' },
-              'playback-rate-option:label': { kind: 'value', root: 'item', property: 'label' },
-              'captions-option:label': { kind: 'value', root: 'item', property: 'label' },
-            },
-          }),
-        }),
-      },
-      {
-        name: '@videojs/skins:react-templates',
-        setup: () => ({
-          transform: lowerTemplates({
-            templates: {
-              chapter: {
-                kind: 'render-prop',
-                parent: 'TimeSliderPrimitive.Chapters',
-                prop: 'renderChapter',
-                rootTag: 'div',
-              },
-              'quality-option': {
-                kind: 'render-prop',
-                parent: 'QualityRadioGroup',
-                prop: 'renderItem',
-                parameters: ['props', 'item'],
-              },
-              'audio-track-option': {
-                kind: 'render-prop',
-                parent: 'AudioTrackRadioGroup',
-                prop: 'renderItem',
-                parameters: ['props', 'item'],
-              },
-              'playback-rate-option': {
-                kind: 'render-prop',
-                parent: 'PlaybackRateRadioGroup',
-                prop: 'renderItem',
-                parameters: ['props', 'item'],
-              },
-              'captions-option': {
-                kind: 'render-prop',
-                parent: 'CaptionsRadioGroup',
-                prop: 'renderItem',
-                parameters: ['props', 'item'],
-              },
-            },
-          }),
-        }),
-      },
       rewrite(
         (code) => {
           const cn = code.import(cnReference.source, cnReference.name);
@@ -194,8 +137,7 @@ export function createCompilerReactConfig(options: CreateCompilerReactConfigOpti
           const container = code.function('Container');
           const poster = code.function('Poster');
           const volumePopover = code.function('VolumePopover');
-          const settingsSubmenuFunctions = ['QualityMenu', 'AudioTrackMenu', 'PlaybackRateMenu', 'CaptionsMenu'];
-          const settingsFunctions = ['SettingsMenu', ...settingsSubmenuFunctions];
+          const settingsFunctions = ['SettingsMenu', ...SETTINGS_SUBMENU_FUNCTIONS];
           const useTranslator = code.import(useTranslatorRef.source, useTranslatorRef.name);
           const useQualityOptions = code.import(useQualityOptionsRef.source, useQualityOptionsRef.name);
           const useAudioTrackOptions = code.import(useAudioTrackOptionsRef.source, useAudioTrackOptionsRef.name);
@@ -231,47 +173,16 @@ export function createCompilerReactConfig(options: CreateCompilerReactConfigOpti
               code.type.named(type),
               code.type.union(...omitted.map((name) => code.type.literal(name))),
             ]);
-          const directComponents = [
-            ['AirPlayButton', 'AirPlayButtonPrimitive', 'AirPlayButtonPrimitive.Props'],
-            ['BufferingIndicator', 'BufferingIndicatorPrimitive', 'BufferingIndicatorPrimitive.Props'],
-            ['CaptionsButton', 'CaptionsButtonPrimitive', 'CaptionsButtonPrimitive.Props'],
-            ['CastButton', 'CastButtonPrimitive', 'CastButtonPrimitive.Props'],
-            ['FullscreenButton', 'FullscreenButtonPrimitive', 'FullscreenButtonPrimitive.Props'],
-            ['MuteButton', 'MuteButtonPrimitive', 'MuteButtonPrimitive.Props'],
-            ['PiPButton', 'PiPButtonPrimitive', 'PiPButtonPrimitive.Props'],
-            ['PlayButton', 'PlayButtonPrimitive', 'PlayButtonPrimitive.Props'],
-            ['SeekButton', 'SeekButtonPrimitive', 'SeekButtonPrimitive.Props'],
-            ['SeekIndicator', 'SeekIndicatorPrimitive.Root', 'SeekIndicatorPrimitive.RootProps'],
-            ['StatusAnnouncer', 'StatusAnnouncerPrimitive', 'StatusAnnouncerPrimitive.Props'],
-            ['TimeSlider', 'TimeSliderPrimitive.Root', 'TimeSliderPrimitive.RootProps'],
-            ['VolumeSlider', 'VolumeSliderPrimitive.Root', 'VolumeSliderPrimitive.RootProps'],
-          ] as const;
-          const composedComponents = [
-            [
-              'StatusIndicator',
-              'StatusIndicatorPrimitive.Root',
-              'StatusIndicatorPrimitive.RootProps',
-              ['children', 'actions'],
-            ],
-            [
-              'PlaybackStatusIndicator',
-              'StatusIndicatorPrimitive.Root',
-              'StatusIndicatorPrimitive.RootProps',
-              ['children', 'actions'],
-            ],
-            ['VolumeIndicator', 'VolumeIndicatorPrimitive.Root', 'VolumeIndicatorPrimitive.RootProps', ['children']],
-          ] as const;
-          const radioGroupComponents = [
-            ['QualityRadioGroup', 'QualityRadioGroupPrimitive', 'QualityRadioGroupPrimitive.Props'],
-            ['AudioTrackRadioGroup', 'AudioTrackRadioGroupPrimitive', 'AudioTrackRadioGroupPrimitive.Props'],
-            ['PlaybackRateRadioGroup', 'PlaybackRateRadioGroupPrimitive', 'PlaybackRateRadioGroupPrimitive.Props'],
-            ['CaptionsRadioGroup', 'CaptionsRadioGroupPrimitive', 'CaptionsRadioGroupPrimitive.Props'],
-          ] as const;
-
           return [
+            // Lower constrained canonical JSX before target component rewrites.
+            ...createReactTemplatePartTransforms(code),
+            ...createReactTemplateTransforms(code),
+
+            // Registry output opts into editable props on every component boundary.
             ...(options.extendComponents
               ? [
-                  ...directComponents.flatMap(([name, primitive, primitiveProps]) => {
+                  // Components backed by one target primitive.
+                  ...DIRECT_COMPONENTS.flatMap(([name, primitive, primitiveProps]) => {
                     const propsName = `${name}Props`;
                     const component = code.function(name);
                     return [
@@ -293,7 +204,8 @@ export function createCompilerReactConfig(options: CreateCompilerReactConfigOpti
                         .replace(({ value }) => composeStateClassName(value)),
                     ];
                   }),
-                  ...composedComponents.flatMap(([name, primitive, primitiveProps, omitted]) => {
+                  // Components that own children or behavioral props internally.
+                  ...COMPOSED_COMPONENTS.flatMap(([name, primitive, primitiveProps, omitted]) => {
                     const propsName = `${name}Props`;
                     const component = code.function(name);
                     return [
@@ -315,6 +227,7 @@ export function createCompilerReactConfig(options: CreateCompilerReactConfigOpti
                         .replace(({ value }) => composeStateClassName(value)),
                     ];
                   }),
+                  // Presentational roots and dialogs expose their rendered target element.
                   code.function('Overlay').insertBefore(() =>
                     code.statement.interface({
                       name: 'OverlayProps',
@@ -331,11 +244,11 @@ export function createCompilerReactConfig(options: CreateCompilerReactConfigOpti
                   code
                     .function('Overlay')
                     .setProps(['className', { name: 'props', spread: true }], { type: 'OverlayProps' }),
-                  code.function('Overlay').jsx.element('OverlayPrimitive').spreadProps('props', { position: 'start' }),
+                  code.function('Overlay').jsx.element('OverlayRoot').spreadProps('props', { position: 'start' }),
                   code
                     .function('Overlay')
                     .jsx.props('className')
-                    .on('OverlayPrimitive')
+                    .on('OverlayRoot')
                     .replace(({ value }) => code.value.call(cn, [...classNameValues(value), 'className'])),
                   code.function('ErrorDialog').insertBefore(() =>
                     code.statement.interface({
@@ -356,6 +269,7 @@ export function createCompilerReactConfig(options: CreateCompilerReactConfigOpti
                     .jsx.props('className')
                     .on('ErrorDialogPrimitive.Popup')
                     .replace(({ value }) => composeStateClassName(value)),
+                  // Popovers and menus forward root behavior plus popup class names.
                   code.interface('VolumePopoverProps').addProperties([
                     {
                       name: 'className',
@@ -379,7 +293,7 @@ export function createCompilerReactConfig(options: CreateCompilerReactConfigOpti
                     .jsx.props('className')
                     .on('Popover.Popup')
                     .replace(({ value }) => composeStateClassName(value)),
-                  ...settingsSubmenuFunctions.flatMap((name) => {
+                  ...SETTINGS_SUBMENU_FUNCTIONS.flatMap((name) => {
                     const propsName = `${name}Props`;
                     const component = code.function(name);
                     const submenuProps = code.import('./submenu', 'SubmenuProps', { type: true });
@@ -453,6 +367,7 @@ export function createCompilerReactConfig(options: CreateCompilerReactConfigOpti
                     initializer: code.value.object(),
                   }),
                   code.function('VideoSettingsMenu').jsx.element('SettingsMenu').spreadProps('props'),
+                  // Internal menu and feedback pieces remain editable in registry output.
                   code.function('MenuChevron').insertBefore(() =>
                     code.statement.interface({
                       name: 'MenuChevronProps',
@@ -482,9 +397,9 @@ export function createCompilerReactConfig(options: CreateCompilerReactConfigOpti
                     .jsx.props('className')
                     .on('ChevronIcon')
                     .replace(({ value }) => code.value.call(cn, [value, 'className'])),
-                  code.function('VideoInputIndicators').insertBefore(() =>
+                  code.function('VideoStatusIndicators').insertBefore(() =>
                     code.statement.interface({
-                      name: 'VideoInputIndicatorsProps',
+                      name: 'VideoStatusIndicatorsProps',
                       export: true,
                       extends: [
                         code.type.named('Omit', [
@@ -495,38 +410,57 @@ export function createCompilerReactConfig(options: CreateCompilerReactConfigOpti
                       properties: [],
                     })
                   ),
-                  code.function('VideoInputIndicators').setProps(['className', { name: 'props', spread: true }], {
-                    type: 'VideoInputIndicatorsProps',
+                  code.function('VideoStatusIndicators').setProps(['className', { name: 'props', spread: true }], {
+                    type: 'VideoStatusIndicatorsProps',
                     initializer: code.value.object(),
                   }),
                   code
-                    .function('VideoInputIndicators')
-                    .jsx.element('InputIndicatorOverlayPrimitive')
+                    .function('VideoStatusIndicators')
+                    .jsx.element('StatusIndicatorGroup')
                     .spreadProps('props', { position: 'start' }),
                   code
-                    .function('VideoInputIndicators')
+                    .function('VideoStatusIndicators')
                     .jsx.props('className')
-                    .on('InputIndicatorOverlayPrimitive')
+                    .on('StatusIndicatorGroup')
                     .replace(({ value }) => code.value.call(cn, [...classNameValues(value), 'className'])),
-                  code.function('VideoInputBindings').insertBefore(() =>
+                  code.function('VideoHotkeys').insertBefore(() =>
                     code.statement.interface({
-                      name: 'VideoInputBindingsProps',
+                      name: 'VideoHotkeysProps',
                       export: true,
                       properties: [{ name: 'disabled', optional: true, type: code.type.boolean() }],
                     })
                   ),
                   code
-                    .function('VideoInputBindings')
+                    .function('VideoHotkeys')
                     .setProps([{ name: 'disabled', initializer: code.value.boolean(false) }], {
-                      type: 'VideoInputBindingsProps',
+                      type: 'VideoHotkeysProps',
                       initializer: code.value.object(),
                     }),
                   code
-                    .function('VideoInputBindings')
-                    .jsx.element(/^(?:Hotkey|Gesture)$/)
+                    .function('VideoHotkeys')
+                    .jsx.element('Hotkey')
+                    .addProp('disabled', code.value.identifier('disabled')),
+                  code.function('VideoGestures').insertBefore(() =>
+                    code.statement.interface({
+                      name: 'VideoGesturesProps',
+                      export: true,
+                      properties: [{ name: 'disabled', optional: true, type: code.type.boolean() }],
+                    })
+                  ),
+                  code
+                    .function('VideoGestures')
+                    .setProps([{ name: 'disabled', initializer: code.value.boolean(false) }], {
+                      type: 'VideoGesturesProps',
+                      initializer: code.value.object(),
+                    }),
+                  code
+                    .function('VideoGestures')
+                    .jsx.element('Gesture')
                     .addProp('disabled', code.value.identifier('disabled')),
                 ]
               : []),
+
+            // Public root composition and always-supported Container/Poster APIs.
             rootSkin.insertBefore(() =>
               code.statement.interface({
                 name: rootPropsName,
@@ -610,7 +544,7 @@ export function createCompilerReactConfig(options: CreateCompilerReactConfigOpti
               .on('PosterPrimitive')
               .replace(({ value }) => composeStateClassName(value)),
             poster.jsx.element('PosterPrimitive').selfClosing(),
-            ...radioGroupComponents.flatMap(([name, primitive, primitiveProps]) => {
+            ...RADIO_GROUP_COMPONENTS.flatMap(([name, primitive, primitiveProps]) => {
               const propsName = `${name}Props`;
               const component = code.function(name);
               return [
@@ -631,6 +565,7 @@ export function createCompilerReactConfig(options: CreateCompilerReactConfigOpti
                 component.jsx.element(primitive).selfClosing(),
               ];
             }),
+            // Runtime availability and settings state used by the React projection.
             volumePopover.prepend(() =>
               code.statement.const(
                 'volumeAvailability',
@@ -710,7 +645,8 @@ export function createCompilerReactConfig(options: CreateCompilerReactConfigOpti
               .function('VideoSettingsMenu')
               .jsx.element('SettingsMenu')
               .replace(({ element }) => code.value.and('hasSettings', element)),
-            ...['QualityMenu', 'AudioTrackMenu', 'PlaybackRateMenu', 'CaptionsMenu'].map((name) =>
+            // Menu item behavior shared by every settings submenu.
+            ...SETTINGS_SUBMENU_FUNCTIONS.map((name) =>
               code.function(name).jsx.element('RadioItem').addProp('checked', code.value.property('item', 'checked'))
             ),
             code.interface('RadioItemProps').extends('Menu.RadioItemProps'),
@@ -728,19 +664,21 @@ export function createCompilerReactConfig(options: CreateCompilerReactConfigOpti
               .function('RadioItem')
               .jsx.element('Menu.ItemIndicator')
               .addProp('checked', code.value.identifier('checked')),
-            code.variable('OverlayPrimitive').remove(),
-            code.jsx.element('OverlayPrimitive').replace('div'),
-            code.variable('InputIndicatorOverlayPrimitive').remove(),
-            code.jsx.element('InputIndicatorOverlayPrimitive').replace('div'),
-            code.variable('PreviewValuePrimitive').remove(),
-            code.jsx.element('PreviewValuePrimitive').replace('div'),
-            code.variable('HintPrimitive').remove(),
-            code.jsx.element('HintPrimitive').replace('span'),
-            code.variable('OptionLabelPrimitive').remove(),
-            code.jsx.element('OptionLabelPrimitive').replace('span'),
-            code.jsx.element('Text').replace('span'),
+            // Target-neutral presentational roles become native React elements.
+            code.variable('OverlayRoot').remove(),
+            code.jsx.element('OverlayRoot').replace('div'),
+            code.variable('StatusIndicatorGroup').remove(),
+            code.jsx.element('StatusIndicatorGroup').replace('div'),
+            code.variable('PreviewValue').remove(),
+            code.jsx.element('PreviewValue').replace('div'),
+            code.variable('SubmenuHint').remove(),
+            code.jsx.element('SubmenuHint').replace('span'),
+            code.variable('QualityOptionLabel').remove(),
+            code.jsx.element('QualityOptionLabel').replace('span'),
+            code.jsx.element('Text').replace(({ element, factory }) => lowerReactText(element, factory)),
             code.jsx.element('Slider.Thumbnail.Root').replace('div'),
             code.jsx.element('Slider.Thumbnail.Image').replace('Slider.Thumbnail'),
+            // Normalize canonical class arrays and target-facing prop types last.
             code.jsx
               .props('className')
               .where(code.value.isArray())
@@ -774,6 +712,219 @@ export function createCompilerReactConfig(options: CreateCompilerReactConfigOpti
       ),
     ],
   });
+}
+
+interface ReactTemplatePart {
+  name: string;
+  root: string;
+  property?: string | undefined;
+  optionalAccess?: boolean | undefined;
+  optional?: boolean | undefined;
+  tag?: string | undefined;
+}
+
+interface ReactTemplate {
+  name: string;
+  parent: string;
+  prop: string;
+  parameters: readonly string[];
+  rootTag?: string | undefined;
+}
+
+function createReactTemplatePartTransforms(code: TransformHelpers) {
+  const selectedLabelParts: ReadonlyArray<ReactTemplatePart & { scope: string }> = [
+    { scope: 'QualityMenu', name: 'selected-label', root: 'quality', property: 'selectedLabel', optionalAccess: true },
+    {
+      scope: 'AudioTrackMenu',
+      name: 'selected-label',
+      root: 'audioTrack',
+      property: 'selectedLabel',
+      optionalAccess: true,
+    },
+    {
+      scope: 'PlaybackRateMenu',
+      name: 'selected-label',
+      root: 'playbackRate',
+      property: 'selectedLabel',
+      optionalAccess: true,
+    },
+    {
+      scope: 'CaptionsMenu',
+      name: 'selected-label',
+      root: 'captions',
+      property: 'selectedLabel',
+      optionalAccess: true,
+    },
+  ];
+  const itemParts: readonly ReactTemplatePart[] = [
+    { name: 'label', root: 'item', property: 'label' },
+    { name: 'tier', root: 'item', property: 'tier', optional: true, tag: 'sup' },
+    { name: 'badge', root: 'item', property: 'badge', optional: true },
+  ];
+
+  return [
+    ...selectedLabelParts.map(({ scope, ...part }) =>
+      code
+        .function(scope)
+        .jsx.element('Template.Part')
+        .replace(({ element, factory }) => lowerReactTemplatePart(element, part, factory))
+    ),
+    ...itemParts.map((part) =>
+      code.jsx
+        .element('Template.Part')
+        .replace(({ element, factory }) => lowerReactTemplatePart(element, part, factory))
+    ),
+    code.jsx
+      .element('Template.Part')
+      .replace(({ element }) =>
+        failTemplate(
+          element,
+          `No React lowering is configured for <Template.Part name="${readRequiredName(element)}">.`
+        )
+      ),
+  ];
+}
+
+function createReactTemplateTransforms(code: TransformHelpers) {
+  const templates: readonly ReactTemplate[] = [
+    {
+      name: 'chapter',
+      parent: 'TimeSliderPrimitive.Chapters',
+      prop: 'renderChapter',
+      parameters: ['props'],
+      rootTag: 'div',
+    },
+    { name: 'quality-option', parent: 'QualityRadioGroup', prop: 'renderItem', parameters: ['props', 'item'] },
+    { name: 'audio-track-option', parent: 'AudioTrackRadioGroup', prop: 'renderItem', parameters: ['props', 'item'] },
+    {
+      name: 'playback-rate-option',
+      parent: 'PlaybackRateRadioGroup',
+      prop: 'renderItem',
+      parameters: ['props', 'item'],
+    },
+    { name: 'captions-option', parent: 'CaptionsRadioGroup', prop: 'renderItem', parameters: ['props', 'item'] },
+  ];
+
+  return [
+    ...templates.map((template) =>
+      code.jsx
+        .element(template.parent)
+        .replace(({ element, factory }) => lowerReactTemplate(element, template, factory))
+    ),
+    code.jsx
+      .element('Template')
+      .replace(({ element }) =>
+        failTemplate(element, `No React lowering is configured for <Template name="${readRequiredName(element)}">.`)
+      ),
+  ];
+}
+
+function lowerReactTemplatePart(element: JsxElementLike, part: ReactTemplatePart, factory: ts.NodeFactory): ts.Node {
+  const jsx = createJsxEditor(factory);
+  if (readRequiredName(element) !== part.name) return element;
+  let rendered = jsx.children.onlyElement(element);
+  if (part.tag) rendered = jsx.apply(rendered, jsx.tag.replace(part.tag));
+  const root = factory.createIdentifier(part.root);
+  const value = part.property
+    ? part.optionalAccess
+      ? factory.createPropertyAccessChain(root, factory.createToken(ts.SyntaxKind.QuestionDotToken), part.property)
+      : factory.createPropertyAccessExpression(root, part.property)
+    : root;
+  rendered = jsx.apply(rendered, jsx.children.set([jsx.create.expression(value)]));
+  return part.optional
+    ? factory.createJsxExpression(
+        undefined,
+        factory.createConditionalExpression(
+          value,
+          factory.createToken(ts.SyntaxKind.QuestionToken),
+          rendered,
+          factory.createToken(ts.SyntaxKind.ColonToken),
+          factory.createNull()
+        )
+      )
+    : rendered;
+}
+
+function lowerReactTemplate(parent: JsxElementLike, template: ReactTemplate, factory: ts.NodeFactory): JsxElementLike {
+  const jsx = createJsxEditor(factory);
+  const extracted = jsx.children.extractOne(
+    parent,
+    (child) => jsx.tag.name(child) === 'Template' && readRequiredName(child) === template.name
+  );
+  if (!extracted) return parent;
+  if (hasJsxAttribute(ts.isJsxElement(parent) ? parent.openingElement.attributes : parent.attributes, template.prop)) {
+    failTemplate(parent, `<${template.parent}> already declares \`${template.prop}\`.`);
+  }
+  const authored = extracted.child;
+  const root = createReactTemplateRoot(authored, template, factory);
+  const callback = factory.createArrowFunction(
+    undefined,
+    undefined,
+    template.parameters.map((name) => factory.createParameterDeclaration(undefined, undefined, name)),
+    undefined,
+    factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+    factory.createParenthesizedExpression(root)
+  );
+  return jsx.apply(
+    parent,
+    jsx.props.set(template.prop, callback),
+    jsx.children.set(extracted.rest),
+    jsx.selfCloseIfEmpty()
+  );
+}
+
+function createReactTemplateRoot(
+  authored: JsxElementLike,
+  template: ReactTemplate,
+  factory: ts.NodeFactory
+): JsxElementLike {
+  const jsx = createJsxEditor(factory);
+  let root: JsxElementLike;
+  if (template.rootTag) {
+    root = jsx.apply(authored, jsx.props.remove('name'), jsx.tag.replace(template.rootTag));
+  } else {
+    root = jsx.children.onlyElement(authored);
+  }
+  return jsx.apply(root, jsx.props.spread(factory.createIdentifier(template.parameters[0]!), 'start'));
+}
+
+function readRequiredName(element: JsxElementLike): string {
+  const jsx = createJsxEditor(ts.factory);
+  const name = jsx.props.staticString(element, 'name');
+  if (name === undefined) failTemplate(element, `<${jsx.tag.name(element)}> requires a static \`name\` prop.`);
+  if (name === null || name.length === 0)
+    failTemplate(element, `<${jsx.tag.name(element)} name> must be a string literal.`);
+  return name;
+}
+
+function failTemplate(node: ts.Node, message: string): never {
+  throw new DiagnosticError(message, {
+    ...diagnosticLocationFromNode(node),
+    diagnosticCode: 'jsx-template-invalid',
+  });
+}
+
+const textDescriptors = new Set(['settingsText', 'qualityText', 'audioText', 'speedText', 'captionsText']);
+
+function lowerReactText(element: JsxElementLike, factory: ts.NodeFactory): JsxElementLike {
+  const jsx = createJsxEditor(factory);
+  const descriptor = readTextDescriptor(element);
+  return jsx.apply(
+    element,
+    jsx.tag.replace('span'),
+    ...(descriptor
+      ? [
+          jsx.children.set([
+            jsx.create.expression(factory.createCallExpression(factory.createIdentifier('t'), undefined, [descriptor])),
+          ]),
+        ]
+      : [])
+  );
+}
+
+function readTextDescriptor(element: JsxElementLike): ts.Identifier | undefined {
+  const child = createJsxEditor(ts.factory).children.singleExpression(element);
+  return child && ts.isIdentifier(child) && textDescriptors.has(child.text) ? child : undefined;
 }
 
 function requiredReactImport(resolveImport: (reference: ImportRef) => ImportRef | false, name: string): ImportRef {

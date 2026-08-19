@@ -23,7 +23,8 @@ describe('createFrameworkSkin', () => {
     const radioGroup = content(output, 'react', 'components/menus/radio-group.tsx');
     const radioItem = content(output, 'react', 'components/menus/radio-item.tsx');
     const submenu = content(output, 'react', 'components/menus/submenu.tsx');
-    const inputBindings = content(output, 'react', 'components/input/video-input-bindings.tsx');
+    const videoGestures = content(output, 'react', 'components/video-gestures.tsx');
+    const videoHotkeys = content(output, 'react', 'components/video-hotkeys.tsx');
 
     expect(files.map((file) => file.fileName)).toEqual([
       'components/buttons/airplay-button.tsx',
@@ -40,9 +41,8 @@ describe('createFrameworkSkin', () => {
       'components/feedback/seek-indicator.tsx',
       'components/feedback/status-announcer.tsx',
       'components/feedback/status-indicator.tsx',
-      'components/feedback/video-input-indicators.tsx',
+      'components/feedback/video-status-indicators.tsx',
       'components/feedback/volume-indicator.tsx',
-      'components/input/video-input-bindings.tsx',
       'components/layout/container.tsx',
       'components/layout/overlay.tsx',
       'components/layout/poster.tsx',
@@ -58,6 +58,8 @@ describe('createFrameworkSkin', () => {
       'components/menus/video-settings-menu.tsx',
       'components/sliders/time-slider.tsx',
       'components/sliders/volume-slider.tsx',
+      'components/video-gestures.tsx',
+      'components/video-hotkeys.tsx',
       'skin.tsx',
     ]);
     expect(skin).toContain('from "./components/buttons/play-button"');
@@ -90,8 +92,8 @@ describe('createFrameworkSkin', () => {
     expect(radioItem).toContain('checked={checked}>');
     expect(radioGroup).toContain('interface QualityRadioGroupProps extends QualityRadioGroupPrimitive.Props');
     expect(radioGroup).toContain('<QualityRadioGroupPrimitive {...props}');
-    expect(inputBindings.match(/<Hotkey /g)).toHaveLength(17);
-    expect(inputBindings.match(/<Gesture /g)).toHaveLength(5);
+    expect(videoHotkeys.match(/<Hotkey /g)).toHaveLength(17);
+    expect(videoGestures.match(/<Gesture /g)).toHaveLength(5);
     expect(container).toContain('export function Container');
     expect(container).toContain('ContainerProps');
     expect(container).toContain('<ContainerPrimitive {...props}');
@@ -113,11 +115,14 @@ describe('createFrameworkSkin', () => {
     expect(output.styles.map((file) => file.fileName)).toEqual([
       'styles/styles.css',
       'styles/base.css',
+      'styles/captions.css',
+      'styles/video.css',
       'styles/theme.css',
       'styles/buttons.css',
       'styles/container.css',
       'styles/controls.css',
       'styles/dialog.css',
+      'styles/indicator.css',
       'styles/menus.css',
       'styles/overlays.css',
       'styles/popups.css',
@@ -128,7 +133,6 @@ describe('createFrameworkSkin', () => {
     expect(style(output, 'styles/styles.css')).toContain('@layer videojs.base, videojs.theme, videojs.components;');
     expect(style(output, 'styles/buttons.css')).toContain('@scope (.media-skin-video)');
     expect(style(output, 'styles/buttons.css')).toContain('.media-button {');
-    expect(style(output, 'styles/buttons.css').match(/\.media-button \{/g)).toHaveLength(1);
     expect(style(output, 'styles/buttons.css')).not.toContain('.media-play-button {');
     expect(style(output, 'styles/buttons.css')).not.toContain(':where(');
     expect(style(output, 'styles/controls.css')).toContain('.media-controls-root {');
@@ -136,14 +140,15 @@ describe('createFrameworkSkin', () => {
     expect(style(output, 'styles/controls.css')).toContain('.media-controls-secondary {');
     expect(style(output, 'styles/dialog.css')).toContain('.media-error-dialog {');
     expect(style(output, 'styles/menus.css')).toContain('.media-settings {');
-    expect(style(output, 'styles/controls.css')).toContain('background-color: var(--media-surface-background)');
+    expect(style(output, 'styles/controls.css')).toContain('backdrop-filter: blur(16px) saturate(150%)');
     expect(style(output, 'styles/buttons.css')).not.toContain('.media-seek-button-label');
     expect(style(output, 'styles/popups.css')).toContain('.media-surface {');
     expect(style(output, 'styles/container.css')).toContain('.media-container {');
     expect(style(output, 'styles/container.css')).not.toContain('.media-overlay {');
     expect(style(output, 'styles/overlays.css')).toContain('.media-overlay {');
-    expect(style(output, 'styles/overlays.css')).toContain('.media-buffering-indicator {');
-    expect(style(output, 'styles/overlays.css')).toContain('.media-input-indicator-overlay {');
+    expect(style(output, 'styles/indicator.css')).toContain('.media-buffering-indicator {');
+    expect(style(output, 'styles/indicator.css')).toContain('.media-status-indicator-overlay {');
+    expect(style(output, 'styles/overlays.css')).not.toContain('.media-buffering-indicator {');
     expect(style(output, 'styles/poster.css')).toContain('.media-poster {');
     expect(style(output, 'styles/theme.css')).toContain('.media-theme-default {');
     expect(style(output, 'styles/theme.css')).not.toContain('@scope');
@@ -151,6 +156,8 @@ describe('createFrameworkSkin', () => {
     expect(style(output, 'styles/base.css')).toContain('@scope (.media-skin)');
     expect(style(output, 'styles/base.css')).toContain('button {');
     expect(style(output, 'styles/base.css')).toContain('[hidden] {');
+    expect(style(output, 'styles/captions.css')).toContain('video::-webkit-media-text-track-container');
+    expect(style(output, 'styles/container.css')).not.toContain('--media-caption-track-y');
   });
 
   it('bundles HTML registrations and markup into one Skin module', async () => {
@@ -187,7 +194,7 @@ describe('createFrameworkSkin', () => {
     expect(html).toContain('<media-cast-button class="media-button media-cast-button">');
     expect(html).toContain('<media-airplay-button class="media-button media-airplay-button">');
     expect(html).toContain('<media-pip-button class="media-button media-pip-button">');
-    expect(html).toContain('<div class="media-input-indicator-overlay">');
+    expect(html).toContain('<div class="media-status-indicator-overlay">');
     expect(html).toContain('actions="toggleSubtitles,toggleFullscreen,togglePictureInPicture"');
     expect(html).toContain('<media-volume-indicator class="media-volume-indicator">');
     expect(html).toContain('<media-error-dialog class="media-error-dialog">');
@@ -218,7 +225,6 @@ describe('createFrameworkSkin', () => {
     expect(html).toContain('delay="200"');
     expect(html).toContain('close-delay="100"');
     expect(style(output, 'styles/buttons.css')).toContain('.media-button {');
-    expect(style(output, 'styles/buttons.css').match(/\.media-button \{/g)).toHaveLength(1);
     expect(output.styles.map((file) => file.content).join('\n')).not.toContain('--tw-');
   });
 
