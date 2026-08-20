@@ -18,4 +18,15 @@ describe('buildOptions', () => {
       { value: 'mux-audio', label: 'Mux' },
     ]);
   });
+
+  it('offers only live-aware media for live-video', () => {
+    expect(buildOptions('live-video')).toEqual([
+      { value: 'hls', label: 'HLS' },
+      { value: 'mux-video', label: 'Mux' },
+    ]);
+  });
+
+  it('offers only Mux for live-audio', () => {
+    expect(buildOptions('live-audio')).toEqual([{ value: 'mux-audio', label: 'Mux' }]);
+  });
 });
