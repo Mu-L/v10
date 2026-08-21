@@ -117,7 +117,7 @@ Installation flags (for docs how-to/installation):
   --preset <video|audio|live-video|live-audio|background-video>
   --skin <default|minimal|none>
   --source-url <url>
-  --media <html5-video|html5-audio|hls|dash|mux-video|mux-audio|vimeo|background-video>
+  --media <html5-video|html5-audio|hls|dash|mux-video|mux-audio|vimeo|youtube|cloudflare|tiktok|twitch|spotify|background-video>
   --install-method <cdn|npm|pnpm|yarn|bun>
 
 The live presets accept HLS or Mux video for live-video, and Mux audio for

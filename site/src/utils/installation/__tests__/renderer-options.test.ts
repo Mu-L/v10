@@ -9,6 +9,10 @@ describe('buildOptions', () => {
       { value: 'dash', label: 'DASH' },
       { value: 'mux-video', label: 'Mux' },
       { value: 'vimeo', label: 'Vimeo' },
+      { value: 'youtube', label: 'YouTube' },
+      { value: 'cloudflare', label: 'Cloudflare Stream' },
+      { value: 'tiktok', label: 'TikTok' },
+      { value: 'twitch', label: 'Twitch' },
     ]);
   });
 
@@ -16,6 +20,7 @@ describe('buildOptions', () => {
     expect(buildOptions('default-audio')).toEqual([
       { value: 'html5-audio', label: 'HTML5 Audio' },
       { value: 'mux-audio', label: 'Mux' },
+      { value: 'spotify', label: 'Spotify' },
     ]);
   });
 

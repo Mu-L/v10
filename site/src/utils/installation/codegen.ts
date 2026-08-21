@@ -1,4 +1,14 @@
-import { VJS10_DEMO_DASH, VJS10_DEMO_LIVE, VJS10_DEMO_VIDEO, VJS10_DEMO_VIMEO } from '@/consts';
+import {
+  VJS10_DEMO_CLOUDFLARE,
+  VJS10_DEMO_DASH,
+  VJS10_DEMO_LIVE,
+  VJS10_DEMO_SPOTIFY,
+  VJS10_DEMO_TIKTOK,
+  VJS10_DEMO_TWITCH,
+  VJS10_DEMO_VIDEO,
+  VJS10_DEMO_VIMEO,
+  VJS10_DEMO_YOUTUBE,
+} from '@/consts';
 import { generateCdnCode } from '@/utils/installation/cdn-code';
 import {
   getInstallationPreset,
@@ -57,6 +67,11 @@ function getDefaultSourceUrl(renderer: Renderer, useCase: UseCase): string {
     'mux-video': VJS10_DEMO_VIDEO.hls,
     'mux-audio': VJS10_DEMO_VIDEO.hls,
     vimeo: VJS10_DEMO_VIMEO,
+    youtube: VJS10_DEMO_YOUTUBE,
+    cloudflare: VJS10_DEMO_CLOUDFLARE,
+    spotify: VJS10_DEMO_SPOTIFY,
+    tiktok: VJS10_DEMO_TIKTOK,
+    twitch: VJS10_DEMO_TWITCH,
   };
   return map[renderer];
 }
@@ -65,8 +80,9 @@ function resolveSourceUrl(sourceUrl: string, renderer: Renderer, useCase: UseCas
   return sourceUrl.trim() || getDefaultSourceUrl(renderer, useCase);
 }
 
-// Whether the rendered media element takes the `playsinline` attribute. Vimeo
-// renders an <iframe> and mux-audio renders audio, so neither gets it.
+// Whether the rendered media element takes the `playsinline` attribute. The
+// embed providers render an <iframe> and play inline on their own, and the
+// audio renderers render audio, so none of them get it.
 function isVideoLikeRenderer(renderer: Renderer): boolean {
   return (
     renderer === 'html5-video' ||
@@ -126,6 +142,11 @@ function getRendererTag(renderer: Renderer): string {
     'mux-audio': 'mux-audio',
     'mux-video': 'mux-video',
     vimeo: 'vimeo-video',
+    youtube: 'youtube-video',
+    cloudflare: 'cloudflare-video',
+    spotify: 'spotify-audio',
+    tiktok: 'tiktok-video',
+    twitch: 'twitch-video',
   };
   return map[renderer];
 }
@@ -227,6 +248,11 @@ function getRendererComponent(renderer: Renderer): string {
     'mux-audio': 'MuxAudio',
     'mux-video': 'MuxVideo',
     vimeo: 'VimeoVideo',
+    youtube: 'YouTubeVideo',
+    cloudflare: 'CloudflareVideo',
+    spotify: 'SpotifyAudio',
+    tiktok: 'TikTokVideo',
+    twitch: 'TwitchVideo',
   };
   return map[renderer];
 }

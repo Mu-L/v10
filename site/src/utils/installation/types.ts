@@ -7,13 +7,18 @@
  */
 export const RENDERERS = [
   'background-video',
+  'cloudflare',
   'dash',
   'hls',
   'html5-audio',
   'html5-video',
   'mux-audio',
   'mux-video',
+  'spotify',
+  'tiktok',
+  'twitch',
   'vimeo',
+  'youtube',
 ] as const;
 
 export type Renderer = (typeof RENDERERS)[number];
@@ -49,7 +54,7 @@ export const INSTALLATION_PRESETS = {
     componentPrefix: 'Video',
     mediaType: 'video',
     live: false,
-    renderers: ['html5-video', 'hls', 'dash', 'mux-video', 'vimeo'],
+    renderers: ['html5-video', 'hls', 'dash', 'mux-video', 'vimeo', 'youtube', 'cloudflare', 'tiktok', 'twitch'],
   },
   'default-audio': {
     label: 'Audio',
@@ -59,7 +64,7 @@ export const INSTALLATION_PRESETS = {
     componentPrefix: 'Audio',
     mediaType: 'audio',
     live: false,
-    renderers: ['html5-audio', 'mux-audio'],
+    renderers: ['html5-audio', 'mux-audio', 'spotify'],
   },
   'live-video': {
     label: 'Live Video',
@@ -111,6 +116,11 @@ export function getMediaSubpath(renderer: Renderer): string | null {
     'mux-video': 'mux-video',
     'mux-audio': 'mux-audio',
     vimeo: 'vimeo-video',
+    youtube: 'youtube-video',
+    cloudflare: 'cloudflare-video',
+    spotify: 'spotify-audio',
+    tiktok: 'tiktok-video',
+    twitch: 'twitch-video',
   };
   return map[renderer] ?? null;
 }

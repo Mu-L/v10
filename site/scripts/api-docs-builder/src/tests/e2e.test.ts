@@ -1440,6 +1440,12 @@ describe('Media element pipeline (end-to-end)', () => {
     it('produces one result per media element', () => {
       expect(results.length).toBe(6);
     });
+
+    it('omits engineOptions for hosts with no structured source', () => {
+      // SimpleVideo exposes `engine` (the live player instance) but no `source`,
+      // so there is no engine config to document.
+      expect(findElement('SimpleVideo')!.reference.engineOptions).toBeUndefined();
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────
@@ -1739,7 +1745,39 @@ describe('Media element pipeline (end-to-end)', () => {
     it('extracts custom React props without claiming native media props', () => {
       const react = findElement('EmbedVideo')!.reference.platforms.react;
       expect(react).toMatchObject({ target: 'iframe', acceptsNativeProps: false });
-      expect(Object.keys(react!.props).sort()).toEqual(['autoplay', 'src']);
+      expect(Object.keys(react!.props).sort()).toEqual(['autoplay', 'source', 'src']);
+    });
+
+    it('extracts engine options by following the source property type', () => {
+      const ref = findElement('EmbedVideo')!.reference;
+      expect(Object.keys(ref.engineOptions ?? {})).toEqual(['embed']);
+      expect(ref.engineOptions?.embed).toEqual([
+        {
+          name: 'cc_load_policy',
+          type: '0 | 1 | undefined',
+          description: 'Show captions by default. Defaults to `0`.',
+        },
+        {
+          name: 'hl',
+          type: 'string | undefined',
+          description: 'Player interface language, as a BCP 47 tag.',
+        },
+        {
+          name: 'referrerPolicy',
+          type: 'ReferrerPolicy | undefined',
+          description: '`referrerpolicy` for the embed iframe. Not an embed parameter.',
+        },
+        // Present in the API surface, so documented as existing even with no
+        // description to give it.
+        { name: 'undocumented', type: 'string | undefined' },
+      ]);
+    });
+
+    it('keeps an engine option that carries no JSDoc, without a description', () => {
+      const options = findElement('EmbedVideo')!.reference.engineOptions?.embed ?? [];
+      const undocumented = options.find((option) => option.name === 'undocumented');
+      expect(undocumented).toBeDefined();
+      expect(undocumented?.description).toBeUndefined();
     });
   });
 
