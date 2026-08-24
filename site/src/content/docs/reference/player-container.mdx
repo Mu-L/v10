@@ -149,55 +149,12 @@ A <DocsLink slug="concepts/skins">skin</DocsLink> is a container plus UI control
 <FrameworkCase frameworks={["react"]}>
 Style `VideoSkin` for the player's outer size and aspect ratio. Its `skin.css` import makes the built-in container fill that space and positions the media, controls, poster, and overlays.
 
-If you omit `VideoSkin` to build custom UI, render `Container` yourself and supply its size and positioning styles:
-
-```tsx
-{/* Packaged skin — container is inside VideoSkin */}
-<Player>
-  <VideoSkin style={{ width: '100%', aspectRatio: '16/9' }}>
-    <Video src="video.mp4" />
-  </VideoSkin>
-</Player>
-
-{/* Custom UI — you use Container directly */}
-<Player>
-  <Container style={{ position: 'relative', width: '100%', aspectRatio: '16/9' }}>
-    <video src="video.mp4" />
-    <PlayButton />
-  </Container>
-</Player>
-```
+If you omit `VideoSkin` to build custom UI, render and style `Container` yourself. See [Layout and fullscreen](#layout-and-fullscreen) for the complete layout example.
 </FrameworkCase>
 <FrameworkCase frameworks={["html"]}>
 Style `<video-skin>` for the player's outer size and aspect ratio. Importing the skin registers the styles that make the built-in container fill that space and position the media, controls, poster, and overlays.
 
-If you omit `<video-skin>` to build custom UI, render `<media-container>` yourself and supply its display, size, and positioning styles:
-
-```html
-<!-- Packaged skin — container is inside video-skin -->
-<video-player>
-  <video-skin class="player-surface">
-    <video src="video.mp4"></video>
-  </video-skin>
-</video-player>
-
-<!-- Custom UI — you use media-container directly -->
-<video-player>
-  <media-container class="player-surface">
-    <video src="video.mp4"></video>
-    <media-play-button></media-play-button>
-  </media-container>
-</video-player>
-```
-
-```css
-.player-surface {
-  position: relative;
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-}
-```
+If you omit `<video-skin>` to build custom UI, render and style `<media-container>` yourself. See [Layout and fullscreen](#layout-and-fullscreen) for the complete layout example.
 </FrameworkCase>
 
 ## Inside vs. outside the container
