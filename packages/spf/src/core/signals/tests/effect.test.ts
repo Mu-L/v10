@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { effect } from '../effect';
 import { computed, signal } from '../primitives';
 

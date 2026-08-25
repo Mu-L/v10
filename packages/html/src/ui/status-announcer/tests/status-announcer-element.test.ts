@@ -1,6 +1,7 @@
 import type { AnyPlayerStore } from '@videojs/core/dom';
 import { ContextProvider } from '@videojs/element/context';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+
 import { containerContext, playerContext } from '../../../player/context';
 import { UIElement } from '../../ui-element';
 import { StatusAnnouncerElement } from '../status-announcer-element';

@@ -8,7 +8,6 @@ import '@app/styles.css';
 //   autoplay=true        Start with autoplay enabled
 //   loop=true            Loop playback
 //   preload=auto|metadata|none  Initial preload mode
-
 import { SOURCE_IDS, SOURCES } from '@app/shared/sources';
 import { effect, snapshot } from '@videojs/spf';
 import type { HlsVideoEngineSignals, HlsVideoEngineState } from '@videojs/spf/hls';

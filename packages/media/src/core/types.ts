@@ -579,15 +579,15 @@ export interface MediaVideoDimensionsCapability {
 export interface MediaEvents extends MediaPlaybackEvents {}
 
 export interface Media<Events extends { [K in keyof Events]: EventLike } = MediaEvents>
-  extends MediaPlaybackCapability,
-    EventTargetLike<Events> {}
+  extends MediaPlaybackCapability, EventTargetLike<Events> {}
 
 // ----------------------------------------
 // Composed shapes
 // ----------------------------------------
 
 export interface MediaFullEvents
-  extends MediaEvents,
+  extends
+    MediaEvents,
     MediaPauseEvents,
     MediaSeekEvents,
     MediaSourceEvents,
@@ -601,7 +601,8 @@ export interface MediaFullEvents
     MediaContentDataEvents {}
 
 export interface MediaFull<Events extends { [K in keyof Events]: EventLike } = MediaFullEvents>
-  extends Media<Events>,
+  extends
+    Media<Events>,
     MediaPauseCapability,
     MediaSeekCapability,
     MediaSourceCapability,
@@ -621,7 +622,8 @@ export interface MediaFull<Events extends { [K in keyof Events]: EventLike } = M
 export interface VideoEvents extends MediaFullEvents, MediaPictureInPictureEvents, MediaVideoDimensionsEvents {}
 
 export interface Video
-  extends MediaFull<VideoEvents>,
+  extends
+    MediaFull<VideoEvents>,
     MediaPlaysInlineCapability,
     MediaPosterCapability,
     MediaFullscreenCapability,
@@ -637,7 +639,8 @@ export interface Audio extends MediaFull<AudioEvents> {}
 // ----------------------------------------
 
 export interface MediaTargetLike
-  extends MediaPlaybackCapability,
+  extends
+    MediaPlaybackCapability,
     MediaPauseCapability,
     MediaSeekCapability,
     MediaSourceCapability,
@@ -657,10 +660,7 @@ export interface MediaTargetLike
 }
 
 export interface VideoTargetLike
-  extends MediaTargetLike,
-    MediaPosterCapability,
-    MediaPlaysInlineCapability,
-    MediaVideoDimensionsCapability {
+  extends MediaTargetLike, MediaPosterCapability, MediaPlaysInlineCapability, MediaVideoDimensionsCapability {
   disablePictureInPicture: boolean;
   requestPictureInPicture(): Promise<unknown>;
   requestFullscreen(): Promise<unknown>;

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import { UIElement } from '../ui-element';
 
 let tagCounter = 0;

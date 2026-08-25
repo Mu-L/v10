@@ -3,7 +3,8 @@ import type { Media } from '@videojs/media/dom';
 import { getMediaComponents } from '@videojs/media/dom/media-host';
 import { MuxData } from '@videojs/media/dom/mux';
 import { HTMLVideoElementHost } from '@videojs/media/dom/video-host';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
+
 import { mediaContext } from '../../player/context';
 import { UIElement } from '../../ui/ui-element';
 import { MuxDataElement } from '../mux-data';
