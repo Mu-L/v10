@@ -60,17 +60,15 @@ export function ruleForToken(
   return manifest.modules.get(modulePath)?.get(tokenKey(tokenPath));
 }
 
-export function utilityGroupsForRule(rule: StyleManifestRule, variant?: string): readonly string[] {
-  if (!variant || Object.keys(rule.variantGroups).length === 0) return rule.utilityGroups;
-
-  const selected = rule.variantGroups[variant];
-  if (!selected) throw new Error(`Style rule \`${displayRule(rule)}\` does not define the \`${variant}\` variant.`);
+export function utilityGroupsForRule(rule: StyleManifestRule, variants: readonly string[] = []): readonly string[] {
+  const selected = variants.flatMap((variant) => rule.variantGroups[variant] ?? []);
+  if (selected.length === 0) return rule.utilityGroups;
 
   return mergeUtilityGroups([...rule.utilityGroups, ...selected]);
 }
 
-export function utilitiesForRule(rule: StyleManifestRule, variant?: string): readonly string[] {
-  return utilityGroupsForRule(rule, variant).flatMap(splitClassNames);
+export function utilitiesForRule(rule: StyleManifestRule, variants: readonly string[] = []): readonly string[] {
+  return utilityGroupsForRule(rule, variants).flatMap(splitClassNames);
 }
 
 /** Collect the exact semantic rules referenced by JSX source. */
@@ -247,7 +245,7 @@ function splitUtilityGroups(value: StyleValue): string[] {
   return values.map((part) => part.trim().replace(/\s+/g, ' ')).filter(Boolean);
 }
 
-/** Preserve authored groups while removing utilities superseded by the selected variant. */
+/** Preserve authored groups while removing utilities superseded by the selected variants. */
 function mergeUtilityGroups(groups: readonly string[]): readonly string[] {
   const merged = twMerge(groups.join(' ')).split(/\s+/).filter(Boolean);
   const retained = new Map<string, number>();

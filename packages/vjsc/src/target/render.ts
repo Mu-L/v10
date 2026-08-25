@@ -213,6 +213,8 @@ function renderChildrenAttribute(token: SourceChildrenToken): string {
 
   if (value.startsWith('{') && value.endsWith('}')) return value;
 
+  if (token.rootOpeningEnd !== undefined) return `{${value}}`;
+
   return `{<>${token.value}</>}`;
 }
 

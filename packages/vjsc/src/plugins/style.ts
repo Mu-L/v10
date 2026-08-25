@@ -100,21 +100,23 @@ export function stylePlugin(config: StylePluginConfig): Plugin {
 
         for (const file of manifest.watchFiles) this.addWatchFile(file);
 
-        const changed = transformStyles(filename, transform.ast, transform.magicString, manifest, options);
+        const referencedRules = transformStyles(filename, transform.ast, transform.magicString, manifest, options);
 
-        if (!changed) {
+        if (referencedRules.size === 0) {
           replaceVirtualCss(cssById, cssByOwner, id, []);
           return null;
         }
 
         if (options.mode === 'css' && options.stylesheet) {
           const input = resolve(cwd, options.stylesheet.input);
+          const base = options.stylesheet.base ? resolve(cwd, options.stylesheet.base) : undefined;
           const cachedDesign = await cachedDesignSystem(designs, input);
           const assets = await compileStyles({
             design: cachedDesign.design,
             manifest,
             ...(options.stylesheet.scope ? { scope: options.stylesheet.scope } : {}),
-            ...(options.variant ? { variant: options.variant } : {}),
+            ...(options.variants ? { variants: options.variants } : {}),
+            ruleClassNames: referencedRules,
           });
 
           cachedDesign.versions = await fileVersions(cachedDesign.design.watchFiles);
@@ -123,6 +125,15 @@ export function stylePlugin(config: StylePluginConfig): Plugin {
 
           const imports: string[] = [];
           const modules: Array<readonly [string, string]> = [];
+
+          if (base) {
+            this.addWatchFile(base);
+            const source = `@import ${JSON.stringify(base.replaceAll('\\', '/'))};`;
+            const publicId = cssVirtualId('base.css', source);
+
+            modules.push([publicId, source]);
+            imports.push(`import ${JSON.stringify(publicId)};`);
+          }
 
           for (const [fileName, source] of assets) {
             const publicId = cssVirtualId(fileName, source);
@@ -181,11 +192,12 @@ function transformStyles(
   magicString: RolldownMagicString,
   manifest: StyleManifest,
   options: StylePluginOptions
-): boolean {
+): ReadonlySet<string> {
   const bindings = styleBindings(filename, ast, manifest);
-  if (bindings.size === 0) return false;
+  if (bindings.size === 0) return new Set();
 
   const edits: SourceEdit[] = [];
+  const referencedRules = new Set<string>();
   const transformedRanges: Array<readonly [number, number]> = [];
 
   walk(ast, {
@@ -215,6 +227,7 @@ function transformStyles(
             end: expression.end,
             content: renderStyleRule(rule, options, isListItem(expression, parent)),
           });
+          referencedRules.add(rule.className);
           transformedRanges.push([expression.start, expression.end]);
           this.skip();
         },
@@ -230,7 +243,7 @@ function transformStyles(
     magicString.remove(binding.declaration.start, binding.declaration.end);
   }
 
-  return true;
+  return referencedRules;
 }
 
 function styleBindings(filename: string, ast: Program, manifest: StyleManifest): ReadonlyMap<string, StyleBinding> {
@@ -245,7 +258,7 @@ function styleBindings(filename: string, ast: Program, manifest: StyleManifest):
     const defaults = statement.specifiers.filter((specifier) => specifier.type === 'ImportDefaultSpecifier');
 
     if (defaults.length !== 1 || statement.specifiers.length !== 1) {
-      throw new Error(`Style import \`${statement.source.value}\` must use a default import.`);
+      throw sourceError(`Style import \`${statement.source.value}\` must use a default import.`, statement.start);
     }
 
     bindings.set(defaults[0]!.local.name, { declaration: statement, modulePath });
@@ -264,7 +277,10 @@ function importedStyleFiles(filename: string, ast: Program): string[] {
     if (!specifier.startsWith('.') || !isStyleModulePath(specifier)) continue;
 
     const file = resolveStyleModuleFile(filename, specifier);
-    if (!file) throw new Error(`Cannot resolve style module \`${specifier}\` imported by \`${filename}\`.`);
+
+    if (!file) {
+      throw sourceError(`Cannot resolve style module \`${specifier}\` imported by \`${filename}\`.`, statement.start);
+    }
 
     files.push(file);
   }
@@ -295,7 +311,7 @@ function renderStyleRule(rule: StyleManifestRule, options: StylePluginOptions, l
       ? isGroupPeerMarker(rule.className)
         ? []
         : [rule.className]
-      : utilityGroupsForRule(rule, options.variant);
+      : utilityGroupsForRule(rule, options.variants);
   const values = groups.filter(Boolean);
 
   if (listItem) return values.length > 0 ? values.map((value) => JSON.stringify(value)).join(', ') : '""';
@@ -335,12 +351,17 @@ function assertNoUntransformedReferences(
   });
 
   if (unresolved.size > 0) {
-    throw new Error(
+    throw sourceError(
       `Styles must use static className references. Could not transform: ${[...unresolved]
         .map(([name, positions]) => `${name} at ${positions.join(', ')}`)
-        .join('; ')}.`
+        .join('; ')}.`,
+      Math.min(...[...unresolved.values()].flat())
     );
   }
+}
+
+function sourceError(message: string, pos: number): Error {
+  return Object.assign(new Error(message), { pos });
 }
 
 async function cachedManifest(cache: Map<string, CachedManifest>, files: readonly string[]): Promise<StyleManifest> {
