@@ -210,6 +210,7 @@ describe('createMenu', () => {
       expect(b.getAttribute(MenuItemDataAttrs.highlighted)).toBe('');
       expect(a.hasAttribute(MenuItemDataAttrs.highlighted)).toBe(false);
       expect(focus).toHaveBeenCalledOnce();
+      expect(focus).toHaveBeenCalledWith({ preventScroll: true });
 
       vi.useRealTimers();
     });
@@ -234,6 +235,7 @@ describe('createMenu', () => {
       expect(b.getAttribute(MenuItemDataAttrs.highlighted)).toBe('');
       expect(a.hasAttribute(MenuItemDataAttrs.highlighted)).toBe(false);
       expect(focus).toHaveBeenCalledOnce();
+      expect(focus).toHaveBeenCalledWith({ preventScroll: true });
 
       vi.useRealTimers();
     });
@@ -291,6 +293,7 @@ describe('createMenu', () => {
 
       menu.setTriggerElement(trigger);
       menu.setContentElement(content);
+      menu.setPopupElement(content);
       menu.open();
       onOpenChange.mockClear();
 
@@ -306,6 +309,7 @@ describe('createMenu', () => {
 
       content.append(child);
       menu.setContentElement(content);
+      menu.setPopupElement(content);
       menu.open();
       onOpenChange.mockClear();
 
@@ -321,6 +325,7 @@ describe('createMenu', () => {
 
       menu.setTriggerElement(trigger);
       menu.setContentElement(content);
+      menu.setPopupElement(content);
       menu.open();
       onOpenChange.mockClear();
 
@@ -431,6 +436,7 @@ describe('createMenu', () => {
 
       menu.setTriggerElement(trigger);
       menu.setContentElement(content);
+      menu.setPopupElement(content);
       menu.open();
       menu.contentProps.onFocusOut(makeFocusEvent(outside));
 
