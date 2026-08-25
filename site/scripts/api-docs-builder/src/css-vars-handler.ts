@@ -18,10 +18,7 @@ import { unwrapObjectLiteral } from './utils.js';
  */
 export function extractCSSVars(filePath: string, program: ts.Program, componentName: string): CSSVarsExtraction | null {
   const sourceFile = program.getSourceFile(filePath);
-
-  if (!sourceFile) {
-    return null;
-  }
+  if (!sourceFile) return null;
 
   const vars: Array<{ name: string; description: string }> = [];
   const expectedName = `${componentName}CSSVars`;
@@ -34,7 +31,6 @@ export function extractCSSVars(filePath: string, program: ts.Program, componentN
         }
 
         const objLiteral = unwrapObjectLiteral(decl.initializer);
-
         if (!objLiteral) continue;
 
         for (const prop of objLiteral.properties) {

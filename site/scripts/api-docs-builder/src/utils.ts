@@ -17,7 +17,6 @@ export function getJSDocNodes(node: ts.Node): readonly ts.JSDoc[] {
 
 export function getJSDocDescription(node: ts.Node): string | undefined {
   const doc = getJSDocNodes(node)[0];
-
   if (!doc?.comment) return undefined;
 
   if (typeof doc.comment === 'string') return doc.comment;
@@ -108,7 +107,6 @@ export function sortProps(props: Record<string, PropDef>): Record<string, PropDe
     // Required first
     const aRequired = a[1].required ?? false;
     const bRequired = b[1].required ?? false;
-
     if (aRequired && !bRequired) return -1;
 
     if (!aRequired && bRequired) return 1;

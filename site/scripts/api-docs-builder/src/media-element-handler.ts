@@ -89,7 +89,6 @@ function resolveModuleToFile(
 ): string | undefined {
   const result = ts.resolveModuleName(importSpecifier, fromFile, compilerOptions, ts.sys);
   const resolved = result.resolvedModule?.resolvedFileName;
-
   if (!resolved) return undefined;
 
   return mapDistToSource(resolved);
@@ -100,7 +99,6 @@ function mapDistToSource(resolvedPath: string): string {
 
   if (resolvedPath.endsWith('.d.ts')) {
     const match = resolvedPath.match(/^(.+\/packages\/[^/]+)\/dist\/dev\/(.+)\.d\.ts$/);
-
     if (!match) return resolvedPath;
 
     const [, pkgRoot, rest] = match;
@@ -111,7 +109,6 @@ function mapDistToSource(resolvedPath: string): string {
       `${pkgRoot}/src/${rest}/index.tsx`,
     ];
     const candidate = candidates.find((path) => fs.existsSync(path));
-
     if (!candidate) return resolvedPath;
 
     sourcePath = candidate;
@@ -121,7 +118,6 @@ function mapDistToSource(resolvedPath: string): string {
     const mediaPath = ['media.ts', 'media.tsx']
       .map((file) => path.join(path.dirname(sourcePath), file))
       .find((file) => fs.existsSync(file));
-
     if (mediaPath) return mediaPath;
   }
 
@@ -132,7 +128,6 @@ function mapDistToSource(resolvedPath: string): string {
 
 function discoverMediaElements(monorepoRoot: string, compilerOptions: ts.CompilerOptions): MediaElementSource[] {
   const defineDir = path.join(monorepoRoot, 'packages/html/src/define/media');
-
   if (!fs.existsSync(defineDir)) return [];
 
   const files = fs.readdirSync(defineDir).filter((f) => f.endsWith('.ts'));
@@ -176,7 +171,6 @@ function parseDefineFile(
     if (!node.heritageClauses) return;
 
     const extendsClause = node.heritageClauses.find((h) => h.token === ts.SyntaxKind.ExtendsKeyword);
-
     if (!extendsClause || extendsClause.types.length === 0) return;
 
     for (const member of node.members) {
@@ -206,7 +200,6 @@ function parseDefineFile(
     if (!ts.isStringLiteral(node.moduleSpecifier)) return;
 
     const importClause = node.importClause;
-
     if (!importClause?.namedBindings || !ts.isNamedImports(importClause.namedBindings)) return;
 
     for (const specifier of importClause.namedBindings.elements) {
@@ -220,7 +213,6 @@ function parseDefineFile(
   if (!baseImportPath) return null;
 
   const mediaFilePath = resolveModuleToFile(filePath, baseImportPath, compilerOptions);
-
   if (!mediaFilePath) return null;
 
   // Parse the media element file to find the CustomMediaElement(tag, Host) call
@@ -228,7 +220,6 @@ function parseDefineFile(
   const mediaSourceFile = ts.createSourceFile(mediaFilePath, mediaContent, ts.ScriptTarget.Latest, true);
 
   const hostInfo = parseCustomMediaElementCall(mediaSourceFile, baseClassName);
-
   if (!hostInfo) return null;
 
   // Resolve host class import path
@@ -240,7 +231,6 @@ function parseDefineFile(
     if (!ts.isStringLiteral(node.moduleSpecifier)) return;
 
     const importClause = node.importClause;
-
     if (!importClause?.namedBindings || !ts.isNamedImports(importClause.namedBindings)) return;
 
     for (const specifier of importClause.namedBindings.elements) {
@@ -254,7 +244,6 @@ function parseDefineFile(
   if (!hostImportPath) return null;
 
   const hostFilePath = resolveModuleToFile(mediaFilePath, hostImportPath, compilerOptions);
-
   if (!hostFilePath) return null;
 
   return {
@@ -293,7 +282,6 @@ function parseCustomMediaElementCall(
     if (!node.heritageClauses) return;
 
     const extendsClause = node.heritageClauses.find((h) => h.token === ts.SyntaxKind.ExtendsKeyword);
-
     if (!extendsClause || extendsClause.types.length === 0) return;
 
     const extendsExpr = unwrapExpression(extendsClause.types[0]!.expression);
@@ -484,7 +472,6 @@ function processExtendsExpression(
 ): void {
   if (ts.isIdentifier(extendsExpr)) {
     const parentClassName = extendsExpr.text;
-
     if (HOST_BASE_CLASSES.has(parentClassName)) return;
 
     const parentImportPath = findImportPath(sourceFile, parentClassName);
@@ -571,11 +558,9 @@ function processMixin(
   visitedFiles: string[]
 ): void {
   const resolved = resolveMixinDeclaration(mixinName, callerSourceFile, callerFilePath, compilerOptions, new Set());
-
   if (!resolved) return;
 
   const seenKey = `${resolved.filePath}::mixin::${resolved.name}`;
-
   if (seen.has(seenKey)) return;
 
   seen.add(seenKey);
@@ -600,7 +585,6 @@ function resolveMixinDeclaration(
 
   if (importPath) {
     const resolved = resolveModuleToFile(callerFilePath, importPath, compilerOptions);
-
     if (!resolved) return undefined;
 
     mixinFilePath = resolved;
@@ -609,7 +593,6 @@ function resolveMixinDeclaration(
   }
 
   const visitKey = `${mixinFilePath}::${mixinName}`;
-
   if (visited.has(visitKey)) return undefined;
 
   visited.add(visitKey);
@@ -618,10 +601,7 @@ function resolveMixinDeclaration(
   const sourceFile = ts.createSourceFile(mixinFilePath, content, ts.ScriptTarget.Latest, true);
 
   const innerClass = findMixinInnerClass(sourceFile, mixinName);
-
-  if (innerClass) {
-    return { name: mixinName, filePath: mixinFilePath, sourceFile, innerClass };
-  }
+  if (innerClass) return { name: mixinName, filePath: mixinFilePath, sourceFile, innerClass };
 
   // Not declared here — follow a re-export if present.
   const reExport = findReExportSource(sourceFile, mixinName);
@@ -631,15 +611,12 @@ function resolveMixinDeclaration(
     // @videojs/spf/hls → dist/dev/hls.d.ts) import the implementation and
     // re-export it without a module specifier — follow the import binding.
     const importBinding = findImportPath(sourceFile, mixinName);
-
     if (!importBinding) return undefined;
 
     const importedFilePath = resolveModuleToFile(mixinFilePath, importBinding, compilerOptions);
-
     if (!importedFilePath || importedFilePath === mixinFilePath) return undefined;
 
     const importedVisitKey = `${importedFilePath}::${mixinName}`;
-
     if (visited.has(importedVisitKey)) return undefined;
 
     visited.add(importedVisitKey);
@@ -656,14 +633,12 @@ function resolveMixinDeclaration(
 
   const targetName = reExport.exportedName;
   const targetFilePath = resolveModuleToFile(mixinFilePath, reExport.moduleSpecifier, compilerOptions);
-
   if (!targetFilePath) return undefined;
 
   const targetContent = fs.readFileSync(targetFilePath, 'utf-8');
   const targetSourceFile = ts.createSourceFile(targetFilePath, targetContent, ts.ScriptTarget.Latest, true);
 
   const targetVisitKey = `${targetFilePath}::${targetName}`;
-
   if (visited.has(targetVisitKey)) return undefined;
 
   visited.add(targetVisitKey);
@@ -799,7 +774,6 @@ function applyClassMembers(
     if (!member.name || !ts.isIdentifier(member.name)) continue;
 
     const name = member.name.text;
-
     if (name.startsWith('_') || name.startsWith('#')) continue;
 
     // target is an internal reference to the native media element, not a user-facing property
@@ -849,7 +823,6 @@ function resolveInferredTypes(
 ): Map<string, string> {
   const types = new Map<string, string>();
   const sourceFile = program.getSourceFile(hostFilePath);
-
   if (!sourceFile) return types;
 
   let classNode: ts.ClassDeclaration | undefined;
@@ -864,7 +837,6 @@ function resolveInferredTypes(
   if (!classNode?.name) return types;
 
   const symbol = checker.getSymbolAtLocation(classNode.name);
-
   if (!symbol) return types;
 
   for (const prop of checker.getDeclaredTypeOfSymbol(symbol).getProperties()) {
@@ -895,7 +867,6 @@ function extractEngineOptions(
   checker: ts.TypeChecker
 ): Record<string, EngineOptionDef[]> | undefined {
   const sourceFile = program.getSourceFile(hostFilePath);
-
   if (!sourceFile) return undefined;
 
   let classNode: ts.ClassDeclaration | undefined;
@@ -915,18 +886,15 @@ function extractEngineOptions(
   const anchorName = classNode.name;
 
   const classSymbol = checker.getSymbolAtLocation(anchorName);
-
   if (!classSymbol) return undefined;
 
   const sourceProperty = checker.getDeclaredTypeOfSymbol(classSymbol).getProperty('source');
-
   if (!sourceProperty) return undefined;
 
   const engineProperty = checker
     .getTypeOfSymbolAtLocation(sourceProperty, anchor)
     .getNonNullableType()
     .getProperty('engine');
-
   if (!engineProperty) return undefined;
 
   const engines: Record<string, EngineOptionDef[]> = {};
@@ -975,7 +943,6 @@ function findImportPath(sourceFile: ts.SourceFile, name: string): string | undef
     if (!ts.isStringLiteral(node.moduleSpecifier)) return;
 
     const importClause = node.importClause;
-
     if (!importClause?.namedBindings || !ts.isNamedImports(importClause.namedBindings)) return;
 
     for (const specifier of importClause.namedBindings.elements) {
@@ -1000,7 +967,6 @@ const fileDefaultsCache = new Map<string, Map<string, string>>();
  */
 function collectFileDefaults(filePath: string, compilerOptions: ts.CompilerOptions): Map<string, string> {
   const cached = fileDefaultsCache.get(filePath);
-
   if (cached) return cached;
 
   const defaults = new Map<string, string>();
@@ -1021,7 +987,6 @@ function collectFileDefaults(filePath: string, compilerOptions: ts.CompilerOptio
       if (!decl.initializer) continue;
 
       const init = unwrapExpression(decl.initializer);
-
       if (!ts.isObjectLiteralExpression(init)) continue;
 
       for (const [name, value] of resolveObjectLiteralEntries(init, sourceFile, filePath, compilerOptions, new Set())) {
@@ -1057,11 +1022,9 @@ function resolveObjectLiteralEntries(
 
     if (ts.isSpreadAssignment(prop) && ts.isIdentifier(prop.expression)) {
       const resolved = resolveConstObjectLiteral(prop.expression.text, sourceFile, filePath, compilerOptions);
-
       if (!resolved) continue;
 
       const visitKey = `${resolved.filePath}::${prop.expression.text}`;
-
       if (visited.has(visitKey)) continue;
 
       visited.add(visitKey);
@@ -1098,7 +1061,6 @@ function resolveConstObjectLiteral(
   visitedFiles = new Set<string>()
 ): { objectLiteral: ts.ObjectLiteralExpression; sourceFile: ts.SourceFile; filePath: string } | undefined {
   const local = findConstObjectLiteral(sourceFile, name);
-
   if (local) return { objectLiteral: local, sourceFile, filePath };
 
   if (visitedFiles.has(filePath)) return undefined;
@@ -1106,11 +1068,9 @@ function resolveConstObjectLiteral(
   visitedFiles.add(filePath);
 
   const importPath = findImportPath(sourceFile, name);
-
   if (!importPath) return undefined;
 
   const importedFilePath = resolveModuleToFile(filePath, importPath, compilerOptions);
-
   if (!importedFilePath || !fs.existsSync(importedFilePath)) return undefined;
 
   const content = fs.readFileSync(importedFilePath, 'utf-8');
@@ -1185,7 +1145,6 @@ function serializeDefaultValue(
 
   if (ts.isPropertyAccessExpression(value) && ts.isIdentifier(value.expression) && ts.isIdentifier(value.name)) {
     const resolved = resolveConstObjectLiteral(value.expression.text, sourceFile, filePath, compilerOptions);
-
     if (!resolved) return undefined;
 
     for (const prop of resolved.objectLiteral.properties) {
@@ -1274,7 +1233,6 @@ function extractReactReference(
 ): ReactMediaReference | undefined {
   const mediaDirectory = path.basename(path.dirname(source.mediaFilePath));
   const reactFilePath = path.join(monorepoRoot, 'packages/react/src/media', mediaDirectory, 'media.tsx');
-
   if (!fs.existsSync(reactFilePath)) return undefined;
 
   const content = fs.readFileSync(reactFilePath, 'utf-8');
@@ -1385,11 +1343,9 @@ function resolveObjectLiteralPropertyNames(
 
     if (ts.isSpreadAssignment(prop) && ts.isIdentifier(prop.expression)) {
       const resolved = resolveConstObjectLiteral(prop.expression.text, sourceFile, filePath, compilerOptions);
-
       if (!resolved) continue;
 
       const visitKey = `${resolved.filePath}::${prop.expression.text}`;
-
       if (visited.has(visitKey)) continue;
 
       visited.add(visitKey);
@@ -1459,7 +1415,6 @@ function extractPublicMethodNames(filePath: string, className: string): string[]
     }
 
     const name = member.name.text;
-
     if (name.startsWith('_') || name.startsWith('#')) continue;
 
     if (EXCLUDED_METHOD_NAMES.has(name)) continue;
@@ -1529,7 +1484,6 @@ function extractEventsFromTypes(filePath: string, interfaceName: string): string
     visited.add(name);
 
     const iface = interfaces.get(name);
-
     if (!iface) return;
 
     for (const parent of iface.extends) {
@@ -1601,7 +1555,6 @@ function walkExtendsForDispatchEvents(
 ): void {
   if (ts.isIdentifier(extendsExpr)) {
     const parentName = extendsExpr.text;
-
     if (HOST_BASE_CLASSES.has(parentName)) return;
 
     const parentImportPath = findImportPath(sourceFile, parentName);
@@ -1630,7 +1583,6 @@ function walkExtendsForDispatchEvents(
 
       if (importPath) {
         const resolved = resolveModuleToFile(filePath, importPath, compilerOptions);
-
         if (!resolved) continue;
 
         mixinFilePath = resolved;
@@ -1645,7 +1597,6 @@ function walkExtendsForDispatchEvents(
       if (declaration) mixinFilePath = declaration.filePath;
 
       const key = `${mixinFilePath}::dispatchEvents`;
-
       if (seen.has(key)) continue;
 
       seen.add(key);
@@ -1695,11 +1646,9 @@ function parseFiresTagComment(tag: ts.JSDocTag): { name: string; description: st
   }
 
   const match = comment.trim().match(/^(\S+)\s*(?:-\s*)?(.*)$/s);
-
   if (!match) return undefined;
 
   const [, name, description] = match;
-
   if (!name) return undefined;
 
   return { name, description: description?.trim() ?? '' };
@@ -1790,7 +1739,6 @@ function collectNativeMemberNames(program: ts.Program, anchorFile: ts.SourceFile
 
   for (const ifaceName of ['HTMLMediaElement', 'HTMLVideoElement', 'HTMLAudioElement']) {
     const symbol = checker.resolveName(ifaceName, anchorFile, ts.SymbolFlags.Type, false);
-
     if (!symbol) continue;
 
     const type = checker.getDeclaredTypeOfSymbol(symbol);
@@ -1809,14 +1757,12 @@ export function generateMediaElementReferences(monorepoRoot: string): MediaEleme
   const compilerOptions = loadCompilerOptions(monorepoRoot);
 
   const sources = discoverMediaElements(monorepoRoot, compilerOptions);
-
   if (sources.length === 0) return [];
 
   const customMediaPath = path.join(
     monorepoRoot,
     'packages/media/src/dom/custom-media-element/custom-media-element.ts'
   );
-
   if (!fs.existsSync(customMediaPath)) return [];
 
   // Read shared data

@@ -85,14 +85,12 @@ function resolveModulePath(fromFile: string, specifier: string): string {
 
   for (const ext of extensions) {
     const full = resolved + ext;
-
     if (fs.existsSync(full) && fs.statSync(full).isFile()) return full;
   }
 
   // Try index files
   for (const ext of ['.ts', '.tsx']) {
     const indexFile = path.join(resolved, `index${ext}`);
-
     if (fs.existsSync(indexFile)) return indexFile;
   }
 
@@ -109,7 +107,6 @@ const localModulesCache = new Map<string, string[]>();
 
 function resolveLocalModules(indexPath: string): string[] {
   const cached = localModulesCache.get(indexPath);
-
   if (cached) return cached;
 
   const visited = new Set<string>([indexPath]);
@@ -124,11 +121,9 @@ function resolveLocalModules(indexPath: string): string[] {
     ts.forEachChild(sourceFile, (node) => {
       if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
         const specifier = node.moduleSpecifier.text;
-
         if (!specifier.startsWith('.')) return;
 
         const resolved = resolveModulePath(filePath, specifier);
-
         if (visited.has(resolved)) return;
 
         visited.add(resolved);
@@ -176,7 +171,6 @@ function collectVisibleExportNames(indexPath: string, visited = new Set<string>(
         names.add(node.exportClause.name.text);
       } else if (node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
         const specifier = node.moduleSpecifier.text;
-
         if (!specifier.startsWith('.')) return;
 
         for (const name of collectVisibleExportNames(resolveModulePath(indexPath, specifier), visited)) {
@@ -189,7 +183,6 @@ function collectVisibleExportNames(indexPath: string, visited = new Set<string>(
 
     const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
     const isExported = modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
-
     if (!isExported) return;
 
     if (ts.isVariableStatement(node)) {
@@ -223,7 +216,6 @@ function collectDeclaredExportNames(modulePath: string): Set<string> {
   ts.forEachChild(sourceFile, (node) => {
     const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
     const isExported = modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
-
     if (!isExported) return;
 
     if (ts.isVariableStatement(node)) {
@@ -250,7 +242,6 @@ function collectDeclaredExportNames(modulePath: string): Set<string> {
 function isUtilExport(exportNode: tae.ExportNode): boolean {
   const name = exportNode.name;
   const type = exportNode.type;
-
   // Skip type-only exports (interfaces, type aliases without runtime value)
   if (type instanceof tae.ObjectNode && !type.typeName) return false;
 
@@ -318,11 +309,9 @@ function extractFunctionOverloads(
   allExports?: tae.ExportNode[]
 ): UtilOverload[] {
   const funcType = exportNode.type;
-
   if (!(funcType instanceof tae.FunctionNode)) return [];
 
   const signatures = funcType.callSignatures;
-
   if (signatures.length === 0) return [];
 
   // Get per-overload JSDoc from raw TS AST
@@ -428,7 +417,6 @@ function isDegradedType(type: string): boolean {
 
 function fixDegradedTypes(overloads: UtilOverload[], filePath: string, program: ts.Program, funcName: string): void {
   const sourceFile = program.getSourceFile(filePath);
-
   if (!sourceFile) return;
 
   // Collect overload declarations (no body) and implementation fallback
@@ -449,23 +437,19 @@ function fixDegradedTypes(overloads: UtilOverload[], filePath: string, program: 
   visit(sourceFile);
 
   const decls = overloadDecls.length > 0 ? overloadDecls : implDecl ? [implDecl] : [];
-
   if (decls.length === 0) return;
 
   for (let i = 0; i < overloads.length; i++) {
     const overload = overloads[i]!;
     const decl = decls[i];
-
     if (!decl) continue;
 
     // Fix degraded param types
     for (const [paramName, paramDef] of Object.entries(overload.parameters)) {
       const effectiveType = paramDef.detailedType ?? paramDef.type;
-
       if (!isDegradedType(effectiveType)) continue;
 
       const astParam = decl.parameters.find((p) => ts.isIdentifier(p.name) && p.name.text === paramName);
-
       if (!astParam?.type) continue;
 
       const rawType = astParam.type.getText(sourceFile);
@@ -502,7 +486,6 @@ function fixDegradedTypes(overloads: UtilOverload[], filePath: string, program: 
 
 function extractControllerOverloads(filePath: string, program: ts.Program, className: string): UtilOverload[] {
   const sourceFile = program.getSourceFile(filePath);
-
   if (!sourceFile) return [];
 
   let classDecl: ts.ClassDeclaration | undefined;
@@ -534,7 +517,6 @@ function extractControllerOverloads(filePath: string, program: ts.Program, class
   }
 
   const constructorDecls = overloadDecls.length > 0 ? overloadDecls : implDecl ? [implDecl] : [];
-
   if (constructorDecls.length === 0) return [];
 
   // Get public instance members for returnValue.fields
@@ -600,7 +582,6 @@ function extractPublicMembers(
 
     // Skip lifecycle methods
     const name = member.name && ts.isIdentifier(member.name) ? member.name.text : undefined;
-
     if (!name) continue;
 
     if (['hostConnected', 'hostDisconnected', 'hostUpdate', 'hostUpdated'].includes(name)) continue;
@@ -672,7 +653,6 @@ interface OverloadDoc {
 
 function getOverloadDocs(filePath: string, program: ts.Program, funcName: string): OverloadDoc[] {
   const sourceFile = program.getSourceFile(filePath);
-
   if (!sourceFile) return [];
 
   const docs: OverloadDoc[] = [];
@@ -763,7 +743,6 @@ interface RawExportInfo {
 
 function discoverExportsFromRawAST(modulePath: string, program: ts.Program): RawExportInfo[] {
   const sourceFile = program.getSourceFile(modulePath);
-
   if (!sourceFile) return [];
 
   const results: RawExportInfo[] = [];
@@ -862,7 +841,6 @@ function discoverExportsFromRawAST(modulePath: string, program: ts.Program): Raw
 
 function isRawUtilExport(info: RawExportInfo): boolean {
   const { name, isFunction, isClass, hasPublicTag } = info;
-
   if (name.startsWith('select') && name.charAt(6) >= 'A' && name.charAt(6) <= 'Z') return true;
 
   if (name.startsWith('use') && name.charAt(3) >= 'A' && name.charAt(3) <= 'Z' && isFunction) return true;
@@ -880,7 +858,6 @@ function isRawUtilExport(info: RawExportInfo): boolean {
 
 function extractFunctionOverloadsFromAST(filePath: string, program: ts.Program, funcName: string): UtilOverload[] {
   const sourceFile = program.getSourceFile(filePath);
-
   if (!sourceFile) return [];
 
   // Collect overload declarations (no body) and implementation (has body)
@@ -901,7 +878,6 @@ function extractFunctionOverloadsFromAST(filePath: string, program: ts.Program, 
   visit(sourceFile);
 
   const decls = overloadDecls.length > 0 ? overloadDecls : implDecl ? [implDecl] : [];
-
   if (decls.length === 0) return [];
 
   return decls.map((d) => buildOverloadFromAST(d, sourceFile));
@@ -950,7 +926,6 @@ function extractReturnTypeFields(
 ): Record<string, { type: string; detailedType?: string; description?: string }> | undefined {
   // Extract the base type name (strip generic parameters)
   const match = returnType.match(/^(\w+)/);
-
   if (!match) return undefined;
 
   const typeName = match[1]!;
@@ -1023,7 +998,6 @@ function processExport(
   allExports?: tae.ExportNode[]
 ): void {
   const key = `${entryPoint.framework}:${exportNode.name}`;
-
   if (seenKeys.has(key)) return;
 
   if (!isUtilExport(exportNode)) return;
@@ -1073,7 +1047,6 @@ function processRawExport(
   entries: UtilEntry[]
 ): void {
   const key = `${entryPoint.framework}:${info.name}`;
-
   if (seenKeys.has(key)) return;
 
   if (!isRawUtilExport(info)) return;
@@ -1140,7 +1113,6 @@ function discoverUtilExports(monorepoRoot: string, program: ts.Program): UtilEnt
       if (!fs.existsSync(modulePath)) continue;
 
       const declaredNames = collectDeclaredExportNames(modulePath);
-
       if (declaredNames.size === 0) continue;
 
       let ast: tae.ModuleNode;
@@ -1222,7 +1194,6 @@ function discoverUtilExports(monorepoRoot: string, program: ts.Program): UtilEnt
 function findClassSourceModule(className: string, localModules: string[], program: ts.Program): string | undefined {
   for (const modulePath of localModules) {
     const sourceFile = program.getSourceFile(modulePath);
-
     if (!sourceFile) continue;
 
     let found = false;
@@ -1249,7 +1220,6 @@ function createUtilProgram(monorepoRoot: string): ts.Program {
 
   for (const entryPoint of UTIL_ENTRY_POINTS) {
     const indexPath = path.join(monorepoRoot, entryPoint.index);
-
     if (!fs.existsSync(indexPath)) continue;
 
     files.push(indexPath);

@@ -24,7 +24,6 @@ export interface PartExport {
  */
 export function extractParts(filePath: string, program: ts.Program): PartExport[] {
   const sourceFile = program.getSourceFile(filePath);
-
   if (!sourceFile) return [];
 
   const parts: PartExport[] = [];
@@ -86,7 +85,6 @@ export function extractPartDescription(filePath: string, program: ts.Program, pa
  */
 export function extractSubPartProps(filePath: string, program: ts.Program, localName: string): Record<string, PropDef> {
   const sourceFile = program.getSourceFile(filePath);
-
   if (!sourceFile) return {};
 
   const checker = program.getTypeChecker();
@@ -106,7 +104,6 @@ export function extractSubPartProps(filePath: string, program: ts.Program, local
           ?.getDocumentationComment(checker)
           .map((part) => part.text)
           .join('') ?? '';
-
       if (name === 'children' && !docs) continue;
 
       let typeStr = ts.isFunctionTypeNode(member.type)
@@ -135,12 +132,10 @@ export function extractSubPartProps(filePath: string, program: ts.Program, local
             const type = checker.getTypeAtLocation(expr);
             const symbol = type.getSymbol();
             const decl = symbol?.declarations?.[0];
-
             if (!decl) continue;
 
             // Only include if declared in project sources (not node_modules).
             const declFile = decl.getSourceFile().fileName;
-
             if (declFile.includes('node_modules')) continue;
 
             if (ts.isInterfaceDeclaration(decl)) {
