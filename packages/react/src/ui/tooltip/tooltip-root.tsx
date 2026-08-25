@@ -48,6 +48,7 @@ export function TooltipRoot({
   const popupGroup = useOptionalPopupGroup();
   const controls = useOptionalControlsContext();
   const [core] = useState(() => new TooltipCore(coreProps));
+
   core.setProps(coreProps);
 
   const isControlled = !isUndefined(controlledOpen);
@@ -102,6 +103,7 @@ export function TooltipRoot({
     if (isUndefined(controlledOpen)) return;
 
     const { active: inputOpen } = tooltip.input.current;
+
     if (controlledOpen === inputOpen) return;
 
     if (controlledOpen) {
@@ -113,6 +115,7 @@ export function TooltipRoot({
 
   useEffect(() => {
     if (isUndefined(controls?.state.visible)) return;
+
     if (controls.state.visible) return;
 
     tooltip.close('imperative-action');
@@ -121,6 +124,7 @@ export function TooltipRoot({
   useDestroy(tooltip);
 
   const input = useSnapshot(tooltip.input);
+
   core.setInput(input);
   const { state, preferredSide, setPositionedSide } = usePositionedState(core.getState());
 

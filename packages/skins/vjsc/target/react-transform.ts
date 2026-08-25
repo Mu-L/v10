@@ -32,10 +32,12 @@ export const reactComponentTransform: ComponentTargetTransform = {
 
     for (const fn of collectFunctionDeclarations(ast)) {
       const name = fn.id?.name;
+
       if (!name || !fn.body) continue;
 
       if (name === 'VolumePopover') {
         const usePlayer = imports.reference({ from: '@videojs/react', name: 'usePlayer' });
+
         prependBlockBody(
           magicString,
           fn.body,
@@ -47,8 +49,10 @@ export const reactComponentTransform: ComponentTargetTransform = {
       }
 
       const menu = optionMenus.find((candidate) => candidate.component === name);
+
       if (menu) {
         const hook = imports.reference({ from: '@videojs/react', name: menu.hook });
+
         prependBlockBody(
           magicString,
           fn.body,
@@ -70,6 +74,7 @@ export const reactComponentTransform: ComponentTargetTransform = {
         const bindings = optionMenus
           .map(({ binding, hook }) => {
             const reference = imports.reference({ from: '@videojs/react', name: hook });
+
             return `const ${binding} = ${reference}();`;
           })
           .join('\n');
@@ -86,6 +91,7 @@ export const reactComponentTransform: ComponentTargetTransform = {
     }
 
     if (changed) imports.commit();
+
     return changed;
   },
 };
@@ -100,8 +106,10 @@ function wrapElement(
 ): void {
   const { code, magicString } = context;
   const element = findJsxElement(root, expected);
+
   if (!element) {
     if (nestedEdit) magicString.overwrite(nestedEdit.start, nestedEdit.end, nestedEdit.content);
+
     return;
   }
 
@@ -119,13 +127,17 @@ function wrapElement(
 function selectedLabelEdit(code: string, root: Node, binding: string): SourceEdit | undefined {
   const submenu = findJsxElement(root, 'Submenu');
   const selectedLabel = submenu && findJsxAttribute(submenu, 'selectedLabel');
+
   if (selectedLabel?.value?.type !== 'JSXExpressionContainer') {
     return undefined;
   }
+
   const value = selectedLabel.value.expression;
+
   if (value.type !== 'JSXElement') return undefined;
 
   const attributes = value.openingElement.attributes.map((attribute) => code.slice(attribute.start, attribute.end));
   const opening = `<span${attributes.length ? ` ${attributes.join(' ')}` : ''}>`;
+
   return { start: value.start, end: value.end, content: `${opening}{${binding}?.selectedLabel}</span>` };
 }

@@ -50,12 +50,17 @@ function liveWindowForType(
   type: TrackType
 ): LiveWindow | null {
   if (!presentation || selectedId === undefined) return null;
+
   const selected = liveWindowFor(presentation, selectedId);
+
   if (selected) return selected;
+
   for (const track of getTracksByType(presentation, type)) {
     const window = liveWindowFor(presentation, track.id);
+
     if (window) return window;
   }
+
   return null;
 }
 
@@ -63,14 +68,17 @@ export function liveWindowFromState(state: LiveWindowState): LiveWindow | null {
   const presentation = state.presentation.get();
   const video = liveWindowForType(presentation, state.selectedVideoTrackId?.get(), 'video');
   const audio = liveWindowForType(presentation, state.selectedAudioTrackId?.get(), 'audio');
+
   if (video && audio) {
     const start = Math.max(video.start, audio.start);
     const end = Math.min(video.end, audio.end);
+
     // A degenerate intersection (disjoint windows — one playlist stalled a full
     // window behind the other) means there is no position both types can serve:
     // no live edge, rather than an invented one.
     return start < end ? { start, end } : null;
   }
+
   return video ?? audio;
 }
 
@@ -109,7 +117,10 @@ export function getLiveEdge({
   config?: { resolveLiveLatency?: ResolveLiveLatency };
 }): LiveEdge | null {
   const window = liveWindowFromState(state);
+
   if (!window) return null;
+
   const latency = config?.resolveLiveLatency?.(state.presentation.get(), liveTrackId(state)) ?? 0;
+
   return { ...window, liveEdgeStart: Math.max(window.start, window.end - latency) };
 }

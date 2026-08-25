@@ -412,6 +412,7 @@ describe('MenuContent', () => {
 
     await waitFor(() => {
       const submenuContent = screen.getByTestId('submenu-content');
+
       expect(submenuTrigger.getAttribute('aria-controls')).toBe(submenuContent.id);
     });
   });
@@ -425,12 +426,14 @@ describe('MenuContent', () => {
     );
 
     const trigger = screen.getByTestId('trigger');
+
     expect(trigger.hasAttribute('aria-controls')).toBe(false);
 
     fireEvent.click(trigger);
 
     await waitFor(() => {
       const content = screen.getByTestId('content');
+
       expect(trigger.getAttribute('aria-controls')).toBe(content.id);
     });
   });
@@ -444,6 +447,7 @@ describe('MenuContent', () => {
     );
 
     const trigger = screen.getByTestId('trigger');
+
     fireEvent.keyDown(trigger, { key });
 
     await waitFor(() => {
@@ -453,6 +457,7 @@ describe('MenuContent', () => {
 
   it('honors preventDefault from root trigger key handlers', () => {
     const onKeyDown = vi.fn((event: ReactKeyboardEvent<HTMLElement>) => event.preventDefault());
+
     render(
       <MenuRoot>
         <MenuTrigger data-testid="trigger" onKeyDown={onKeyDown}>
@@ -493,7 +498,9 @@ describe('MenuContent', () => {
   it('exposes the positioned side on root content', async () => {
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
       if (this.dataset.testid === 'trigger') return makeDOMRect(100, 10, 40, 20);
+
       if (this.dataset.testid === 'content') return makeDOMRect(0, 0, 100, 60);
+
       return makeDOMRect(0, 0, 300, 200);
     });
     vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) {
@@ -619,6 +626,7 @@ describe('MenuContent', () => {
     fireEvent.click(screen.getByTestId('submenu-back'));
 
     const submenu = screen.getByTestId('submenu-content');
+
     expect(submenu.hasAttribute('data-ending-style')).toBe(true);
     expect(submenu.hasAttribute('data-open')).toBe(true);
     expect(screen.getByTestId('submenu-trigger').getAttribute('aria-expanded')).toBe('false');
@@ -668,6 +676,7 @@ describe('MenuContent', () => {
         'first-submenu-items': 150,
         'second-submenu-item': 240,
       };
+
       return createRect(widths[this.dataset.testid ?? ''] ?? 0, heights[this.dataset.testid ?? ''] ?? 0);
     });
 
@@ -769,6 +778,7 @@ describe('MenuContent', () => {
       </MenuRoot>
     );
     const { rerender } = render(renderMenu(true));
+
     fireEvent.click(screen.getByTestId('submenu-trigger'));
     await waitFor(() => expect(screen.getByTestId('submenu-content')).not.toBeNull());
     onSubmenuOpenChange.mockClear();
@@ -801,6 +811,7 @@ describe('MenuContent', () => {
     render(<SubmenuFixture />);
 
     const trigger = screen.getByTestId('submenu-trigger');
+
     fireEvent.keyDown(trigger, { key: 'ArrowRight' });
 
     await waitFor(() => {
@@ -811,6 +822,7 @@ describe('MenuContent', () => {
 
   it('honors preventDefault from submenu trigger key handlers', () => {
     const onKeyDown = vi.fn((event: ReactKeyboardEvent<HTMLElement>) => event.preventDefault());
+
     render(<SubmenuFixture onTriggerKeyDown={onKeyDown} />);
 
     fireEvent.keyDown(screen.getByTestId('submenu-trigger'), { key: 'ArrowRight' });
@@ -821,6 +833,7 @@ describe('MenuContent', () => {
 
   it('preserves trigger preventDefault while the event bubbles through nested menus', () => {
     const onKeyDown = vi.fn((event: ReactKeyboardEvent<HTMLElement>) => event.preventDefault());
+
     render(<NestedTriggerPreventDefaultFixture onTriggerKeyDown={onKeyDown} />);
 
     fireEvent.keyDown(screen.getByTestId('nested-trigger'), { key: 'ArrowLeft' });
@@ -944,6 +957,7 @@ describe('MenuContent', () => {
 
   it('only stops propagation for submenu-owned keyboard events', async () => {
     const onRootKeyDown = vi.fn();
+
     render(<SubmenuPropagationFixture onRootKeyDown={onRootKeyDown} />);
 
     fireEvent.click(screen.getByTestId('submenu-trigger'));
@@ -1149,6 +1163,7 @@ describe('MenuContent', () => {
 
   it('routes focus leaving a submenu through the submenu popover', async () => {
     const onSubmenuOpenChange = vi.fn();
+
     render(
       <>
         <MenuRoot defaultOpen>
@@ -1189,6 +1204,7 @@ describe('MenuContent', () => {
     );
 
     const trigger = screen.getByTestId('trigger');
+
     expect(trigger).toHaveProperty('disabled', true);
 
     fireEvent.click(trigger);
@@ -1196,6 +1212,7 @@ describe('MenuContent', () => {
     expect(screen.queryByTestId('content')).toBeNull();
 
     const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true });
+
     trigger.dispatchEvent(event);
 
     expect(event.defaultPrevented).toBe(true);

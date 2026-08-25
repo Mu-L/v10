@@ -20,6 +20,7 @@ export const timeFeature = definePlayerFeature({
 
       if (!hasMetadata(media)) {
         const loaded = await onEvent(media, 'loadedmetadata', { signal }).catch(() => false);
+
         if (!loaded) return media.currentTime;
       }
 
@@ -44,10 +45,13 @@ export const timeFeature = definePlayerFeature({
     // the sliding DVR window as new segments become available.
     const resolveDuration = () => {
       const { duration } = media;
+
       if (duration === Number.POSITIVE_INFINITY && isMediaBufferCapable(media)) {
         const { seekable } = media;
+
         return seekable.length > 0 ? seekable.end(seekable.length - 1) : 0;
       }
+
       return Number.isFinite(duration) ? duration : 0;
     };
 
@@ -66,6 +70,7 @@ export const timeFeature = definePlayerFeature({
     // active seek.
     const syncUnlessSeeking = () => {
       if (get().seeking) return;
+
       sync();
     };
 

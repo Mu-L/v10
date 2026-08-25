@@ -9,6 +9,7 @@ test.describe('Error Dialog', () => {
   async function triggerError(page: Page) {
     await page.evaluate(() => {
       const video = document.querySelector('video') as HTMLVideoElement;
+
       if (!video) return;
 
       Object.defineProperty(video, 'error', {
@@ -43,6 +44,7 @@ test.describe('Error Dialog', () => {
 
     // Click the close/OK button
     const closeButton = page.locator('media-alert-dialog-close, .media-button--primary').first();
+
     await closeButton.click();
 
     // Dialog should close

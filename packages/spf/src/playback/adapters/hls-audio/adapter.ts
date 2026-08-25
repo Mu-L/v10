@@ -105,6 +105,7 @@ export function HlsAudioMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
       super(...args);
 
       const { config } = args?.[0] ?? {};
+
       this.#config = config;
       this.#engine = this.#createEngine();
 
@@ -114,6 +115,7 @@ export function HlsAudioMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
       // this needing its own source-change hook.
       this.#stopErrorSync = effect(() => {
         const errors = this.#signals.state.errors.get();
+
         this.#setError(firstFatal(errors, FATAL_SVTA_CODES), errors);
       });
     }
@@ -135,15 +137,18 @@ export function HlsAudioMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
         this.#reportedCode = null;
         return;
       }
+
       // Keyed on the code, not the object: a later append re-runs this effect
       // with an equal-but-new array, and re-firing `'error'` for a condition
       // already surfaced would look like a second failure.
       if (this.#reportedCode === reported.code) return;
+
       this.#reportedCode = reported.code;
 
       // See the video adapter: a cause this engine can't implement is what the
       // consumer needs, so it replaces the verdict's code on the surface.
       const unsupported = hasUnsupportedFeatureCause(errors);
+
       if (unsupported) {
         console.error(this.#withSuggestion(UNSUPPORTED_PLAYBACK_FEATURE_MESSAGE), { conditions: errors });
       }
@@ -198,6 +203,7 @@ export function HlsAudioMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
 
     set preload(value: '' | 'none' | 'metadata' | 'auto') {
       this.#preload = value;
+
       if (value) {
         this.#signals.state.preload.set(value);
       }
@@ -250,6 +256,7 @@ export function HlsAudioMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
 
     play(): Promise<void> {
       const mediaElement = this.#signals.context.mediaElement.get();
+
       if (!mediaElement) {
         return Promise.reject(new Error('HlsAudioMediaElement: no media element attached'));
       }
@@ -263,10 +270,12 @@ export function HlsAudioMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
               this.#loadstartListener = null;
               mediaElement.play().then(resolve, reject);
             };
+
             this.#loadstartListener = listener;
             mediaElement.addEventListener('loadstart', listener, { once: true });
           });
         }
+
         throw err;
       });
     }
@@ -291,7 +300,9 @@ export function HlsAudioMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
 
     #cancelPendingPlay(): void {
       if (!this.#loadstartListener) return;
+
       const mediaElement = this.#signals.context.mediaElement.get();
+
       mediaElement?.removeEventListener('loadstart', this.#loadstartListener);
       this.#loadstartListener = null;
     }

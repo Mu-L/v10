@@ -10,6 +10,7 @@ import { isRemotePlaybackConnected, isRemotePlaybackConnecting } from '../../pre
 const IDLE_DELAY = 2000;
 const TAP_THRESHOLD = 250;
 const TOUCH_SETTLE_DELAY = 500;
+
 type RequestControlsLock = MediaControlsState['requestControlsLock'];
 type ToggleControls = MediaControlsState['toggleControls'];
 
@@ -33,6 +34,7 @@ export const controlsFeature = definePlayerFeature({
     const fallbackToggleControls = () => {
       // Fallback before attach — no idle timer, just flip state.
       const next = !get().userActive;
+
       set({ userActive: next, controlsVisible: next });
       return next as boolean;
     };
@@ -55,6 +57,7 @@ export const controlsFeature = definePlayerFeature({
       if (__DEV__ && isNull(container)) {
         console.warn('[vjs] controlsFeature requires a container element for activity tracking.');
       }
+
       return;
     }
 
@@ -79,7 +82,9 @@ export const controlsFeature = definePlayerFeature({
 
     function scheduleIdle() {
       clearIdle();
+
       if (controlsLockCount > 0) return;
+
       idleTimer = setTimeout(setInactive, IDLE_DELAY);
     }
 
@@ -87,6 +92,7 @@ export const controlsFeature = definePlayerFeature({
       if (!get().userActive) {
         set({ userActive: true, controlsVisible: true });
       }
+
       scheduleIdle();
     }
 
@@ -107,6 +113,7 @@ export const controlsFeature = definePlayerFeature({
 
       return () => {
         if (released || signal.aborted) return;
+
         released = true;
         controlsLockCount--;
 
@@ -123,10 +130,12 @@ export const controlsFeature = definePlayerFeature({
       } else {
         setActive();
       }
+
       return get().controlsVisible;
     }
 
     const actions = controlsActionsByRequest.get(get().requestControlsLock)!;
+
     actions.setDelegates(requestControlsLock, toggleControls);
 
     // Touch tap-to-toggle.
@@ -149,6 +158,7 @@ export const controlsFeature = definePlayerFeature({
 
     function onPointerDown(event: PointerEvent) {
       pointerDownTime = Date.now();
+
       if (event.pointerType === 'touch') {
         lastTouchAt = pointerDownTime;
       }
@@ -172,6 +182,7 @@ export const controlsFeature = definePlayerFeature({
 
         // Inline touch tap-to-toggle for standalone use (no gestures).
         const isMediaOrContainer = [media, container].includes(event.target as HTMLElement);
+
         if (get().controlsVisible && isMediaOrContainer) {
           setInactive();
         } else {
@@ -185,6 +196,7 @@ export const controlsFeature = definePlayerFeature({
     // Recompute visibility when playback state changes.
     const onPlaybackChange = () => {
       const { userActive } = get();
+
       set({ controlsVisible: computeVisible(userActive) });
 
       // When playback starts, schedule idle if user is active.
@@ -197,8 +209,10 @@ export const controlsFeature = definePlayerFeature({
       // On touch, don't flip visibility mid-gesture — just keep the idle timer alive.
       if (event.pointerType === 'touch') {
         if (get().userActive) scheduleIdle();
+
         return;
       }
+
       setActive();
     }
 
@@ -213,6 +227,7 @@ export const controlsFeature = definePlayerFeature({
       () => {
         // Ignore focusin from the container's own pointerup focus grab.
         if (isRecentTouch()) return;
+
         setActive();
       },
       { signal }
@@ -225,6 +240,7 @@ export const controlsFeature = definePlayerFeature({
       () => {
         // Ignore synthetic mouseleave that Android Chrome dispatches after touchend.
         if (isRecentTouch()) return;
+
         setInactive();
       },
       { signal }
@@ -239,6 +255,7 @@ export const controlsFeature = definePlayerFeature({
     if (isMediaRemotePlaybackCapable(media)) {
       const onCastChange = () => {
         const { userActive } = get();
+
         set({ controlsVisible: computeVisible(userActive) });
       };
 
@@ -281,6 +298,7 @@ function createControlsActions(
 
     return () => {
       if (released) return;
+
       released = true;
       locks.delete(lock);
       lock.release();

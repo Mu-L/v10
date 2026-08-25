@@ -47,6 +47,7 @@ export function initiateAuthPopup(options: AuthPopupOptions): () => void {
   const handleMessage = (event: MessageEvent) => {
     // Validate origin for security
     if (event.origin !== window.location.origin) return;
+
     if (event.data?.type !== 'auth-complete') return;
 
     window.removeEventListener('message', handleMessage);
@@ -121,6 +122,7 @@ export function createEndpointCoordinator(options: EndpointCoordinatorOptions): 
 
         // Wait for auth to complete
         const uploadUrl = await waitForAuthAndRetry();
+
         return uploadUrl;
       }
 
@@ -137,6 +139,7 @@ export function createEndpointCoordinator(options: EndpointCoordinatorOptions): 
   async function waitForAuthAndRetry(): Promise<string> {
     // Get authorization URL
     const loginResult = await initiateLogin();
+
     if (loginResult.error) {
       throw new Error(loginResult.error.message);
     }

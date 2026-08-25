@@ -63,6 +63,7 @@ function setupTextTrackActorsSetup({
 }): () => void {
   return effect(() => {
     const mediaElement = context.mediaElement.get();
+
     if (!mediaElement) return;
 
     const textTracksActor = createTextTracksActor(mediaElement);
@@ -73,6 +74,7 @@ function setupTextTrackActorsSetup({
       // Composition deps forwarded into each step (relocation reads the primary A/V origin).
       { state, context, config }
     );
+
     context.textTracksActor.set(textTracksActor);
     context.textTrackSegmentLoaderActor.set(textTrackSegmentLoaderActor);
 

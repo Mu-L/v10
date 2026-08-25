@@ -141,10 +141,12 @@ function waitForIdle(snapshot: AppendSink['snapshot'], signal: AbortSignal): Pro
       resolve();
       return;
     }
+
     if (snapshot.get().value === 'destroyed') {
       reject(new DOMException('Aborted', 'AbortError'));
       return;
     }
+
     if (signal.aborted) {
       reject(signal.reason);
       return;
@@ -162,6 +164,7 @@ function waitForIdle(snapshot: AppendSink['snapshot'], signal: AbortSignal): Pro
 
     stop = effect(() => {
       const value = snapshot.get().value;
+
       if (value === 'idle') cleanup(resolve);
       else if (value === 'destroyed') cleanup(() => reject(new DOMException('Aborted', 'AbortError')));
     });
@@ -190,14 +193,18 @@ function toMessage({ op, data, meta }: Frame): IndividualSourceBufferMessage {
  */
 export const fetchStep: LoadStep = async (frame, signal, deps) => {
   const { op } = frame;
+
   if (op.type === 'remove') return; // fetchStep only appears in append pipelines
+
   const { fetch } = stepWiring(deps);
+
   frame.data = await fetch(op, op.type === 'append-init' ? { signal, minChunkSize: Infinity } : { signal });
 };
 
 /** Dispatch the frame's message to the SourceBufferActor and await its return to idle. */
 export const dispatchStep: LoadStep = async (frame, signal, deps) => {
   const { sourceBufferActor } = stepWiring(deps);
+
   sourceBufferActor.send(toMessage(frame));
   await waitForIdle(sourceBufferActor.snapshot, signal);
 };

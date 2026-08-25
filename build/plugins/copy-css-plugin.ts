@@ -24,6 +24,7 @@ export function copyCssPlugin(options: CopyCssPluginOptions): BuildPlugin {
     return new Map(
       [...getCssFiles()].map((file) => {
         const { mtimeMs, size } = statSync(file);
+
         return [file, `${mtimeMs}:${size}`];
       })
     );
@@ -34,7 +35,9 @@ export function copyCssPlugin(options: CopyCssPluginOptions): BuildPlugin {
       const content = readFileSync(file, 'utf-8');
       const output = inline ? resolveImports(content, dirname(file), skinsDir) : content;
       const outFile = join(outDir, file.replace(/^src\//, ''));
+
       if (existsSync(outFile) && readFileSync(outFile, 'utf-8') === output) continue;
+
       mkdirSync(dirname(outFile), { recursive: true });
       writeFileSync(outFile, output);
     }
@@ -43,7 +46,9 @@ export function copyCssPlugin(options: CopyCssPluginOptions): BuildPlugin {
   function checkCss() {
     try {
       const next = getState();
+
       if (next.size === state.size && [...next].every(([file, value]) => state.get(file) === value)) return;
+
       writeCss();
       state = next;
     } catch (error) {
@@ -59,6 +64,7 @@ export function copyCssPlugin(options: CopyCssPluginOptions): BuildPlugin {
           state = getState();
           poll = setInterval(checkCss, 100);
         }
+
         return;
       }
 

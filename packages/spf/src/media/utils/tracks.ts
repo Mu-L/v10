@@ -60,8 +60,10 @@ export function findTrackById(
 ): PartiallyResolvedTrack | ResolvedTrack | undefined {
   for (const selectionSet of presentation.selectionSets ?? []) {
     const track = selectionSet.switchingSets[0]?.tracks.find(({ id }) => id === trackId);
+
     if (track) return track;
   }
+
   return undefined;
 }
 
@@ -79,10 +81,13 @@ export function findResolvedTextTrack(
   trackId: string | undefined
 ): TextTrack | undefined {
   if (!presentation || !trackId) return undefined;
+
   const track = findTrack(presentation, 'text', trackId);
+
   // `findTrack` returns the wide union; narrow via discriminant before
   // applying `isResolvedTrack`'s text-specific overload.
   if (track?.type !== 'text' || !isResolvedTrack(track)) return undefined;
+
   return track;
 }
 
@@ -91,8 +96,11 @@ export function findResolvedVideoTrack(
   trackId: string | undefined
 ): VideoTrack | undefined {
   if (!presentation || !trackId) return undefined;
+
   const track = findTrack(presentation, 'video', trackId);
+
   if (track?.type !== 'video' || !isResolvedTrack(track)) return undefined;
+
   return track;
 }
 
@@ -101,8 +109,11 @@ export function findResolvedAudioTrack(
   trackId: string | undefined
 ): AudioTrack | undefined {
   if (!presentation || !trackId) return undefined;
+
   const track = findTrack(presentation, 'audio', trackId);
+
   if (track?.type !== 'audio' || !isResolvedTrack(track)) return undefined;
+
   return track;
 }
 
@@ -140,6 +151,7 @@ export function getCodecFamily(codec: string): string {
  */
 export function getCodecFamilies(track: { codecs?: string[] }): readonly string[] | undefined {
   if (!track.codecs?.length) return undefined;
+
   return [...new Set(track.codecs.map(getCodecFamily))];
 }
 
@@ -197,6 +209,7 @@ export function updateTrackInPresentation<T extends ResolvedTrack>(
   resolvedTrack: T
 ): Presentation {
   const trackId = resolvedTrack.id;
+
   return {
     ...presentation,
     selectionSets: presentation.selectionSets.map((selectionSet) => ({

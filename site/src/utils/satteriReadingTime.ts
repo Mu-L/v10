@@ -20,8 +20,11 @@ export function satteriReadingTime(): MdastPluginInput {
     const accumulate = (value: string, ctx: MdastVisitorContext) => {
       text += `${value} `;
       const frontmatter = getAstroFrontmatter(ctx);
+
       if (!frontmatter) return;
+
       const readingTime = getReadingTime(text);
+
       frontmatter.minutesRead = readingTime.text;
       frontmatter.readingTimeMinutes = readingTime.minutes;
     };

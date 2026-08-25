@@ -17,9 +17,11 @@ async function build(): Promise<void> {
   if ((!isWatch || hasBuilt) && existsSync(DIST_DIR)) rmSync(DIST_DIR, { recursive: true, force: true });
 
   const families = loadIconFamilies();
+
   console.log(`Building ${families.length} icon families: ${families.map(({ name }) => name).join(', ')}`);
 
   emitElementBase(families);
+
   for (const family of families) {
     console.log(`Building ${family.name} (${family.icons.length} icons)`);
     emitVjscFamily(family);
@@ -28,6 +30,7 @@ async function build(): Promise<void> {
     emitRenderFamily(family);
     emitElementFamily(family);
   }
+
   hasBuilt = true;
 }
 
@@ -43,8 +46,10 @@ function watchAssets(): void {
     }
 
     building = true;
+
     do {
       pending = false;
+
       try {
         await build();
         console.log('Rebuild complete.');
@@ -52,6 +57,7 @@ function watchAssets(): void {
         console.error(error);
       }
     } while (pending);
+
     building = false;
   };
 

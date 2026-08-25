@@ -94,14 +94,17 @@ export const setupFailoverMonitor = defineBehavior({
           effects: [
             () => {
               const failed = state.failedCdns.get() ?? [];
+
               failed.forEach((cdn) => {
                 // Idempotent: a CDN already counting down keeps its original
                 // deadline (re-failing it mid-cooldown doesn't extend it).
                 if (timers.has(cdn)) return;
+
                 const timer = setTimeout(() => {
                   timers.delete(cdn);
                   update(state.failedCdns, (current) => current?.filter((c) => c !== cdn));
                 }, cooldownMs);
+
                 timers.set(cdn, timer);
               });
             },

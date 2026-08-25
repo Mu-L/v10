@@ -98,14 +98,17 @@ function makeSourceBuffer(
 
   const clipRanges = (start: number, end: number) => {
     const next: Array<[number, number]> = [];
+
     for (const [s, e] of ranges) {
       if (e <= start || s >= end) {
         next.push([s, e]);
       } else {
         if (s < start) next.push([s, start]);
+
         if (e > end) next.push([end, e]);
       }
     }
+
     ranges = next;
   };
 
@@ -122,7 +125,9 @@ function makeSourceBuffer(
     updating: false,
     appendBuffer: vi.fn(() => {
       const range = appendRanges[appendIndex++];
+
       if (range) ranges.push(range);
+
       setTimeout(() => {
         for (const listener of listeners.updateend ?? []) {
           listener(new Event('updateend'));
@@ -165,6 +170,7 @@ function makeSourceBufferWithActor(
     sourceBuffer,
     initialSegments.length > 0 || initTrackId !== undefined ? { initTrackId, segments: initialSegments } : undefined
   );
+
   return { sourceBuffer, actor };
 }
 
@@ -194,6 +200,7 @@ function setupLoadSegments(
     reactor.destroy();
     loaderActor.destroy();
   };
+
   return { state, context, bufferActor, loaderActor, cleanup };
 }
 
@@ -211,8 +218,10 @@ describe('loadSegments orchestration (F5)', () => {
     ];
 
     const fetchedUrls: string[] = [];
+
     globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+
       fetchedUrls.push(url);
       return Promise.resolve(new Response(new ArrayBuffer(100)));
     });
@@ -251,8 +260,10 @@ describe('loadSegments orchestration (F5)', () => {
     const segments = [makeSegment('s1', 0, 10)];
 
     const fetchedUrls: string[] = [];
+
     globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+
       fetchedUrls.push(url);
       return Promise.resolve(new Response(new ArrayBuffer(100)));
     });
@@ -289,8 +300,10 @@ describe('loadSegments orchestration (F5)', () => {
     const segments = [makeSegment('s1', 0, 10), makeSegment('s2', 10, 10), makeSegment('s3', 20, 10)];
 
     const fetchedUrls: string[] = [];
+
     globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+
       fetchedUrls.push(url);
       return Promise.resolve(new Response(new ArrayBuffer(100)));
     });
@@ -355,8 +368,10 @@ describe('loadSegments orchestration (metadata mode)', () => {
     const segments = [makeSegment('s1', 0, 10), makeSegment('s2', 10, 10)];
 
     const fetchedUrls: string[] = [];
+
     globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+
       fetchedUrls.push(url);
       return Promise.resolve(new Response(new ArrayBuffer(100)));
     });
@@ -411,8 +426,10 @@ describe('loadSegments orchestration (metadata mode)', () => {
     const segments = [makeSegment('s1', 0, 10)];
 
     const fetchedUrls: string[] = [];
+
     globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+
       fetchedUrls.push(url);
       return Promise.resolve(new Response(new ArrayBuffer(100)));
     });
@@ -457,6 +474,7 @@ describe('loadSegments seek handling', () => {
 
     const fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+
       fetchedUrls.push(url);
       return new Promise<Response>((resolve) => {
         resolvers.set(url, () => resolve(new Response(new ArrayBuffer(100))));
@@ -496,6 +514,7 @@ describe('loadSegments seek handling', () => {
     ];
 
     const { fetch, fetchedUrls, resolve } = makeControllableFetch();
+
     globalThis.fetch = fetch;
 
     const { actor } = makeSourceBufferWithActor();
@@ -531,6 +550,7 @@ describe('loadSegments seek handling', () => {
     ];
 
     const { fetch, fetchedUrls, resolveAll } = makeControllableFetch();
+
     globalThis.fetch = fetch;
 
     const { actor } = makeSourceBufferWithActor();
@@ -569,8 +589,10 @@ describe('loadSegments seek handling', () => {
     ];
 
     const fetchedUrls: string[] = [];
+
     globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+
       fetchedUrls.push(url);
       return Promise.resolve(new Response(new ArrayBuffer(100)));
     });
@@ -615,6 +637,7 @@ describe('loadSegments back buffer flushing', () => {
 
     const fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+
       fetchedUrls.push(url);
       return new Promise<Response>((resolve) => {
         resolvers.set(url, () => resolve(new Response(new ArrayBuffer(100))));
@@ -622,6 +645,7 @@ describe('loadSegments back buffer flushing', () => {
     });
 
     const resolveAll = () => resolvers.forEach((fn) => fn());
+
     return { fetch, fetchedUrls, resolveAll };
   }
 
@@ -652,6 +676,7 @@ describe('loadSegments back buffer flushing', () => {
     ];
 
     const { fetch, resolveAll } = makeControllableFetch();
+
     globalThis.fetch = fetch;
 
     // s1–s4 already loaded, currentTime jumped to 40s
@@ -757,6 +782,7 @@ describe('loadSegments back buffer flushing', () => {
     await vi.waitFor(
       () => {
         const ids = bufferActor.snapshot.get().context.segments.map((s: { id: string }) => s.id) ?? [];
+
         expect(ids).not.toContain('s1');
         expect(ids).not.toContain('s2');
       },
@@ -777,12 +803,14 @@ describe('loadSegments forward buffer flushing', () => {
     const fetchedUrls: string[] = [];
     const fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+
       fetchedUrls.push(url);
       return new Promise<Response>((resolve) => {
         resolvers.set(url, () => resolve(new Response(new ArrayBuffer(100))));
       });
     });
     const resolveAll = () => resolvers.forEach((fn) => fn());
+
     return { fetch, fetchedUrls, resolveAll };
   }
 
@@ -812,6 +840,7 @@ describe('loadSegments forward buffer flushing', () => {
     ];
 
     const { fetch, resolveAll } = makeControllableFetchFwd();
+
     globalThis.fetch = fetch;
 
     // All 5 segments pre-loaded; seeded with initial buffered range [0, 50]
@@ -849,6 +878,7 @@ describe('loadSegments forward buffer flushing', () => {
     ];
 
     const { fetch, resolveAll } = makeControllableFetchFwd();
+
     globalThis.fetch = fetch;
 
     // Seed buffered ranges to match the pre-seeded actor context
@@ -868,6 +898,7 @@ describe('loadSegments forward buffer flushing', () => {
     await vi.waitFor(
       () => {
         const ids = bufferActor.snapshot.get().context.segments.map((s: { id: string }) => s.id) ?? [];
+
         expect(ids).not.toContain('s4');
         expect(ids).not.toContain('s5');
         expect(ids).toContain('s1');
@@ -882,6 +913,7 @@ describe('loadSegments forward buffer flushing', () => {
     const segments = [makeSegment('s1', 0, 10), makeSegment('s2', 10, 10), makeSegment('s3', 20, 10)];
 
     const { fetch, resolveAll } = makeControllableFetchFwd();
+
     globalThis.fetch = fetch;
 
     const { sourceBuffer, actor } = makeSourceBufferWithActor(
@@ -929,9 +961,12 @@ describe('loadSegments byte-range segment fetching', () => {
     ];
 
     const rangeHeaders: string[] = [];
+
     globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const range = (input as Request).headers?.get('Range');
+
       if (range) rangeHeaders.push(range);
+
       return Promise.resolve(new Response(new ArrayBuffer(100)));
     });
 
@@ -984,9 +1019,12 @@ describe('loadSegments byte-range segment fetching', () => {
     const segments = [makeSegment('s0', 0, 10)];
 
     const rangeHeaders: string[] = [];
+
     globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const range = (input as Request).headers?.get('Range');
+
       if (range) rangeHeaders.push(range);
+
       return Promise.resolve(new Response(new ArrayBuffer(100)));
     });
 
@@ -1042,9 +1080,11 @@ describe('loadSegments bandwidth tracking', () => {
       const body = new ReadableStream<Uint8Array>({
         start(controller) {
           for (const chunk of chunks) controller.enqueue(chunk);
+
           controller.close();
         },
       });
+
       return Promise.resolve(new Response(body));
     });
   }
@@ -1111,6 +1151,7 @@ describe('loadSegments bandwidth tracking', () => {
 
     // All bytes (init + segment) should be counted in bytesSampled
     const totalExpected = chunkSize * numChunks * 2; // init fetch + segment fetch, each 3×50KB
+
     expect(latestBandwidth.bytesSampled).toBeGreaterThan(0);
     expect(latestBandwidth.bytesSampled).toBeLessThanOrEqual(totalExpected);
 
@@ -1129,6 +1170,7 @@ describe('loadSegments bandwidth tracking', () => {
           controller.close();
         },
       });
+
       return Promise.resolve(new Response(body));
     });
 
@@ -1173,6 +1215,7 @@ describe('loadSegments bandwidth tracking', () => {
 
     // Each response body yields [1,2,3,4,5,6,7,8] — both init and segment appends should match
     const calls = (sourceBuffer.appendBuffer as ReturnType<typeof vi.fn>).mock.calls;
+
     for (const [data] of calls) {
       expect(Array.from(new Uint8Array(data as ArrayBuffer))).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
     }
@@ -1206,8 +1249,10 @@ describe('loadSegments load-mode FSM', () => {
     const segments = [makeSegment('s1', 0, 10)];
 
     const fetchedUrls: string[] = [];
+
     globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+
       fetchedUrls.push(url);
       return Promise.resolve(new Response(new ArrayBuffer(100)));
     });
@@ -1231,8 +1276,10 @@ describe('loadSegments load-mode FSM', () => {
     const segments = [makeSegment('s1', 0, 10)];
 
     const fetchedUrls: string[] = [];
+
     globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+
       fetchedUrls.push(url);
       return Promise.resolve(new Response(new ArrayBuffer(100)));
     });
@@ -1261,8 +1308,10 @@ describe('loadSegments load-mode FSM', () => {
     const segments = [makeSegment('s1', 0, 10)];
 
     const fetchedUrls: string[] = [];
+
     globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+
       fetchedUrls.push(url);
       return Promise.resolve(new Response(new ArrayBuffer(100)));
     });
@@ -1306,8 +1355,10 @@ describe('loadSegments load-mode FSM', () => {
     };
 
     const fetchedUrls: string[] = [];
+
     globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+
       fetchedUrls.push(url);
       return Promise.resolve(new Response(new ArrayBuffer(100)));
     });
@@ -1360,8 +1411,10 @@ describe('loadSegments load-mode FSM', () => {
     ];
 
     const fetchedUrls: string[] = [];
+
     globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+
       fetchedUrls.push(url);
       return Promise.resolve(new Response(new ArrayBuffer(100)));
     });

@@ -91,17 +91,22 @@ function discoverFeatureSources(featuresDir: string): FeatureSource[] {
 
     ts.forEachChild(sourceFile, (node) => {
       if (!ts.isVariableStatement(node)) return;
+
       if (!node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) return;
 
       const exportDescription = getJSDocDescription(node);
 
       for (const decl of node.declarationList.declarations) {
         if (!ts.isIdentifier(decl.name)) continue;
+
         const varName = decl.name.text;
+
         if (!varName.endsWith('Feature') || varName.endsWith('Features')) continue;
 
         if (!decl.initializer || !ts.isCallExpression(decl.initializer)) continue;
+
         const arg = decl.initializer.arguments[0];
+
         if (!arg || !ts.isObjectLiteralExpression(arg)) continue;
 
         let name: string | undefined;
@@ -128,7 +133,9 @@ function discoverFeatureSources(featuresDir: string): FeatureSource[] {
 
           if (prop.name.text === 'state') {
             const fn = prop.initializer;
+
             stateFunction = fn;
+
             if ((ts.isArrowFunction(fn) || ts.isFunctionExpression(fn)) && fn.type && ts.isTypeReferenceNode(fn.type)) {
               stateTypeName = fn.type.typeName.getText(sourceFile);
             } else if (isEmptyState(fn)) {
@@ -139,6 +146,7 @@ function discoverFeatureSources(featuresDir: string): FeatureSource[] {
 
         if (config.length > 0 && stateFunction) {
           const initialValues = parseStateInitialValues(stateFunction, sourceFile);
+
           for (const entry of config) {
             entry.defaultValue = initialValues.get(entry.stateKey);
           }
@@ -157,16 +165,19 @@ function discoverFeatureSources(featuresDir: string): FeatureSource[] {
 /** Read the `derived` map, whose keys are published alongside the source state. */
 function parseDerivedKeys(node: ts.Expression): DerivedKeySource[] {
   const literal = unwrapObjectLiteral(node);
+
   if (!literal) return [];
 
   const keys: DerivedKeySource[] = [];
 
   for (const prop of literal.properties) {
     if (!ts.isPropertyAssignment(prop) && !ts.isMethodDeclaration(prop)) continue;
+
     if (!ts.isIdentifier(prop.name)) continue;
 
     const key: DerivedKeySource = { name: prop.name.text };
     const description = getJSDocDescription(prop);
+
     if (description) key.description = description;
 
     keys.push(key);
@@ -186,6 +197,7 @@ function parseDerivedKeys(node: ts.Expression): DerivedKeySource[] {
  */
 function parseConfigEntries(node: ts.Expression, featureName: string): FeatureConfigSource[] {
   const literal = unwrapObjectLiteral(node);
+
   if (!literal) return [];
 
   const entries: FeatureConfigSource[] = [];
@@ -194,6 +206,7 @@ function parseConfigEntries(node: ts.Expression, featureName: string): FeatureCo
     if (!ts.isPropertyAssignment(prop) || !ts.isIdentifier(prop.name)) continue;
 
     const entryLiteral = unwrapObjectLiteral(prop.initializer);
+
     if (!entryLiteral) continue;
 
     let actionKey: string | undefined;
@@ -209,9 +222,11 @@ function parseConfigEntries(node: ts.Expression, featureName: string): FeatureCo
       }
 
       const key = configKeyReference(member.initializer);
+
       if (!key) continue;
 
       if (member.name.text === 'action') actionKey = key;
+
       if (member.name.text === 'state') stateKey = key;
     }
 
@@ -224,7 +239,9 @@ function parseConfigEntries(node: ts.Expression, featureName: string): FeatureCo
 
     const entry: FeatureConfigSource = { name: prop.name.text, actionKey, stateKey };
     const description = getJSDocDescription(prop);
+
     if (description) entry.description = description;
+
     if (attribute) entry.attribute = attribute;
 
     entries.push(entry);
@@ -242,11 +259,14 @@ function parseConfigEntries(node: ts.Expression, featureName: string): FeatureCo
  */
 function htmlAttributeName(node: ts.Expression): string | undefined {
   const literal = unwrapObjectLiteral(node);
+
   if (!literal) return undefined;
 
   for (const member of literal.properties) {
     if (!ts.isPropertyAssignment(member) || !ts.isIdentifier(member.name)) continue;
+
     if (member.name.text !== 'attribute') continue;
+
     if (ts.isStringLiteralLike(member.initializer)) return member.initializer.text;
   }
 
@@ -262,7 +282,9 @@ function htmlAttributeName(node: ts.Expression): string | undefined {
  */
 function configKeyReference(node: ts.Expression): string | undefined {
   if (ts.isIdentifier(node)) return node.text;
+
   if (ts.isStringLiteralLike(node)) return node.text;
+
   return undefined;
 }
 
@@ -279,9 +301,11 @@ function configKeyReference(node: ts.Expression): string | undefined {
  */
 function parseStateInitialValues(node: ts.Expression, sourceFile: ts.SourceFile): Map<string, string> {
   const values = new Map<string, string>();
+
   if (!ts.isArrowFunction(node) && !ts.isFunctionExpression(node)) return values;
 
   const body = ts.isBlock(node.body) ? findReturnedObjectLiteral(node.body) : unwrapObjectLiteral(node.body);
+
   if (!body) return values;
 
   const constants = collectLiteralConstants(sourceFile);
@@ -292,9 +316,11 @@ function parseStateInitialValues(node: ts.Expression, sourceFile: ts.SourceFile)
     const key = ts.isComputedPropertyName(prop.name)
       ? ts.isIdentifier(prop.name.expression) && prop.name.expression.text
       : ts.isIdentifier(prop.name) && prop.name.text;
+
     if (!key) continue;
 
     const initializer = prop.initializer;
+
     if (ts.isIdentifier(initializer) && initializer.text === 'undefined') continue;
 
     const resolved = ts.isIdentifier(initializer) ? constants.get(initializer.text) : undefined;
@@ -311,10 +337,12 @@ function collectLiteralConstants(sourceFile: ts.SourceFile): Map<string, string>
 
   ts.forEachChild(sourceFile, (node) => {
     if (!ts.isVariableStatement(node)) return;
+
     if (!(node.declarationList.flags & ts.NodeFlags.Const)) return;
 
     for (const decl of node.declarationList.declarations) {
       if (!ts.isIdentifier(decl.name) || !decl.initializer) continue;
+
       if (!isLiteralInitializer(decl.initializer)) continue;
 
       constants.set(decl.name.text, decl.initializer.getText(sourceFile));
@@ -341,14 +369,17 @@ function findReturnedObjectLiteral(block: ts.Block): ts.ObjectLiteralExpression 
       return unwrapObjectLiteral(statement.expression);
     }
   }
+
   return undefined;
 }
 
 function isEmptyState(node: ts.Expression): boolean {
   if (!ts.isArrowFunction(node) && !ts.isFunctionExpression(node)) return false;
+
   if (ts.isBlock(node.body)) return false;
 
   const body = unwrapParentheses(node.body);
+
   return ts.isObjectLiteralExpression(body) && body.properties.length === 0;
 }
 
@@ -369,13 +400,16 @@ function formatCheckerType(type: ts.Type, checker: ts.TypeChecker): string {
     // TypeScript internally represents `boolean` as `false | true`
     const isBooleanUnion =
       type.types.length === 2 && type.types.every((t) => !!(t.flags & ts.TypeFlags.BooleanLiteral));
+
     if (isBooleanUnion) return 'boolean';
 
     return type.types.map((t) => formatCheckerType(t, checker)).join(' | ');
   }
+
   if (type.isStringLiteral()) {
     return `'${type.value}'`;
   }
+
   return checker.typeToString(type);
 }
 
@@ -391,6 +425,7 @@ function extractInterfaceMembers(
 
   for (const member of interfaceDecl.members) {
     const name = member.name?.getText(sourceFile);
+
     if (!name) continue;
 
     const description = getJSDocDescription(member);
@@ -400,23 +435,29 @@ function extractInterfaceMembers(
         .map((p) => {
           const pName = p.name.getText(sourceFile);
           const pType = p.type ? formatCheckerType(checker.getTypeFromTypeNode(p.type), checker) : 'unknown';
+
           return `${pName}: ${pType}`;
         })
         .join(', ');
 
       let returnType = 'void';
+
       if (member.type) {
         returnType = formatCheckerType(checker.getTypeFromTypeNode(member.type), checker);
       }
 
       const def: FeatureActionDef = { type: `(${params}) => ${returnType}` };
+
       if (description) def.description = description;
+
       actions[name] = def;
     } else if (ts.isPropertySignature(member) && member.type) {
       const memberType = checker.getTypeFromTypeNode(member.type);
       const typeStr = formatCheckerType(memberType, checker);
       const def: FeatureStateDef = { type: typeStr };
+
       if (description) def.description = description;
+
       state[name] = def;
     }
   }
@@ -449,6 +490,7 @@ function extractPublishedShape(
 
   for (const property of checker.getPropertiesOfType(declaredType)) {
     const name = property.escapedName as string;
+
     if (name.startsWith(SYMBOL_MEMBER_PREFIX)) continue;
 
     const type = checker.getTypeOfSymbolAtLocation(property, sourceStateDecl);
@@ -463,18 +505,24 @@ function extractPublishedShape(
       const returnType = formatCheckerType(callSignature.getReturnType(), checker);
 
       const def: FeatureActionDef = { type: `(${params}) => ${returnType}` };
+
       if (description) def.description = description;
+
       actions[name] = def;
     } else {
       const def: FeatureStateDef = { type: formatCheckerType(type, checker) };
+
       if (description) def.description = description;
+
       state[name] = def;
     }
   }
 
   for (const key of derivedKeys) {
     const def: FeatureStateDef = { type: derivedValueType(key.name, derivedLiteral, checker) };
+
     if (key.description) def.description = key.description;
+
     state[key.name] = def;
   }
 
@@ -487,10 +535,12 @@ function derivedValueType(
   checker: ts.TypeChecker
 ): string {
   const property = derivedLiteral?.properties.find((p) => p.name && ts.isIdentifier(p.name) && p.name.text === name);
+
   if (!property) return 'unknown';
 
   const value = ts.isPropertyAssignment(property) ? property.initializer : property;
   const signature = checker.getSignaturesOfType(checker.getTypeAtLocation(value), ts.SignatureKind.Call)[0];
+
   if (!signature) return 'unknown';
 
   return formatCheckerType(signature.getReturnType(), checker);
@@ -523,8 +573,11 @@ function extractFeatureConfig(
     }
 
     const def: FeatureConfigDef = { type };
+
     if (entry.defaultValue) def.default = entry.defaultValue;
+
     if (entry.description) def.description = entry.description;
+
     if (entry.attribute) def.attribute = entry.attribute;
 
     config[entry.name] = def;
@@ -546,6 +599,7 @@ function configInputType(
   // so it is matched by the identifier inside the brackets.
   const member = findComputedMember(sourceStateDecl, actionKey);
   const parameter = member && actionParameter(member);
+
   if (parameter?.type) return formatCheckerType(checker.getTypeFromTypeNode(parameter.type), checker);
 
   return namedActionInputType(actionKey, sourceStateDecl, checker);
@@ -563,10 +617,12 @@ function namedActionInputType(
 ): string {
   const declaredType = checker.getTypeAtLocation(sourceStateDecl);
   const property = checker.getPropertiesOfType(declaredType).find((p) => p.escapedName === actionKey);
+
   if (!property) return UNRESOLVED_TYPE;
 
   const type = checker.getTypeOfSymbolAtLocation(property, sourceStateDecl);
   const parameter = checker.getSignaturesOfType(type, ts.SignatureKind.Call)[0]?.getParameters()[0];
+
   if (!parameter) return UNRESOLVED_TYPE;
 
   return formatCheckerType(checker.getTypeOfSymbolAtLocation(parameter, sourceStateDecl), checker);
@@ -575,6 +631,7 @@ function namedActionInputType(
 function findComputedMember(decl: ts.InterfaceDeclaration, identifier: string): ts.TypeElement | undefined {
   return decl.members.find((member) => {
     const name = member.name;
+
     return name && ts.isComputedPropertyName(name) && ts.isIdentifier(name.expression)
       ? name.expression.text === identifier
       : false;
@@ -584,9 +641,11 @@ function findComputedMember(decl: ts.InterfaceDeclaration, identifier: string): 
 /** Config actions are written as method signatures or as function-typed properties. */
 function actionParameter(member: ts.TypeElement): ts.ParameterDeclaration | undefined {
   if (ts.isMethodSignature(member)) return member.parameters[0];
+
   if (ts.isPropertySignature(member) && member.type && ts.isFunctionTypeNode(member.type)) {
     return member.type.parameters[0];
   }
+
   return undefined;
 }
 
@@ -599,6 +658,7 @@ export function generateFeatureReferences(monorepoRoot: string): FeatureResult[]
   if (!fs.existsSync(featuresDir) || !fs.existsSync(stateFilePath)) return [];
 
   const sources = discoverFeatureSources(featuresDir);
+
   if (sources.length === 0) return [];
 
   // The state file supplies published interfaces. A feature's own file is only
@@ -607,10 +667,12 @@ export function generateFeatureReferences(monorepoRoot: string): FeatureResult[]
   const program = createTypeScriptProgram(monorepoRoot, [stateFilePath, ...new Set(localFiles)]);
   const checker = program.getTypeChecker();
   const stateSourceFile = program.getSourceFile(stateFilePath);
+
   if (!stateSourceFile) return [];
 
   // Build a map of interface name → declaration
   const interfaces = new Map<string, ts.InterfaceDeclaration>();
+
   ts.forEachChild(stateSourceFile, (node) => {
     if (ts.isInterfaceDeclaration(node)) {
       interfaces.set(node.name.text, node);
@@ -618,11 +680,13 @@ export function generateFeatureReferences(monorepoRoot: string): FeatureResult[]
   });
 
   const results: FeatureResult[] = [];
+
   for (const source of sources) {
     const sourceStateDecl = findSourceStateDecl(program, source);
     const config = extractFeatureConfig(source.config, sourceStateDecl, checker, source.name);
 
     const published = resolvePublishedShape(source, interfaces, sourceStateDecl, program, checker, stateSourceFile);
+
     if (!published) continue;
 
     const ref: FeatureReference = {
@@ -672,6 +736,7 @@ function resolvePublishedShape(
   if (!source.stateTypeName) return { state: {}, actions: {} };
 
   const interfaceDecl = interfaces.get(source.stateTypeName);
+
   if (interfaceDecl) {
     return {
       ...extractInterfaceMembers(interfaceDecl, checker, stateSourceFile),
@@ -687,6 +752,7 @@ function resolvePublishedShape(
   }
 
   const featureSourceFile = program.getSourceFile(source.filePath);
+
   return {
     ...extractPublishedShape(
       sourceStateDecl,
@@ -704,9 +770,11 @@ function findSourceStateDecl(program: ts.Program, source: FeatureSource): ts.Int
   if (!source.stateTypeName) return undefined;
 
   const featureSourceFile = program.getSourceFile(source.filePath);
+
   if (!featureSourceFile) return undefined;
 
   let found: ts.InterfaceDeclaration | undefined;
+
   ts.forEachChild(featureSourceFile, (node) => {
     if (ts.isInterfaceDeclaration(node) && node.name.text === source.stateTypeName) {
       found = node;
@@ -725,12 +793,16 @@ function findDerivedLiteral(sourceFile: ts.SourceFile): ts.ObjectLiteralExpressi
 
     for (const decl of node.declarationList.declarations) {
       if (!decl.initializer || !ts.isCallExpression(decl.initializer)) continue;
+
       const arg = decl.initializer.arguments[0];
+
       if (!arg || !ts.isObjectLiteralExpression(arg)) continue;
 
       for (const prop of arg.properties) {
         if (!ts.isPropertyAssignment(prop) || !ts.isIdentifier(prop.name)) continue;
+
         if (prop.name.text !== 'derived') continue;
+
         found = unwrapObjectLiteral(prop.initializer);
       }
     }

@@ -55,6 +55,7 @@ export const CaptionsRadioGroup = forwardRef<HTMLDivElement, CaptionsRadioGroupP
       ...elementProps
     } = componentProps;
     const captions = useCaptionsOptions({ label, formatTrack, disabled });
+
     if (!captions) return null;
 
     const { state, value, options, setValue } = captions;

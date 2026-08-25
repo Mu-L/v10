@@ -67,6 +67,7 @@ export class MuxData implements MuxDataProps {
 
   setMedia(media: MuxDataMedia) {
     if (this.#media === media) return;
+
     this.#media?.removeEventListener('loadstart', this.#reinitialize);
     this.#media = media;
     this.#media.addEventListener('loadstart', this.#reinitialize);
@@ -82,6 +83,7 @@ export class MuxData implements MuxDataProps {
       this.#target.mux.destroy();
       delete this.#target.mux;
     }
+
     this.#target = null;
   }
 
@@ -97,6 +99,7 @@ export class MuxData implements MuxDataProps {
 
   set MuxDataSdk(value) {
     if (this.#MuxDataSdk === value) return;
+
     this.#MuxDataSdk = value;
     this.#reinitialize();
   }
@@ -107,6 +110,7 @@ export class MuxData implements MuxDataProps {
 
   set beaconCollectionDomain(value) {
     if (this.#beaconCollectionDomain === value) return;
+
     this.#beaconCollectionDomain = value;
     this.#reinitialize();
   }
@@ -117,6 +121,7 @@ export class MuxData implements MuxDataProps {
 
   set debug(value) {
     if (this.#debug === value) return;
+
     this.#debug = value;
     this.#reinitialize();
   }
@@ -127,6 +132,7 @@ export class MuxData implements MuxDataProps {
 
   set disableCookies(value) {
     if (this.#disableCookies === value) return;
+
     this.#disableCookies = value;
     this.#reinitialize();
   }
@@ -143,6 +149,7 @@ export class MuxData implements MuxDataProps {
 
   set envKey(value) {
     if (this.#envKey === value) return;
+
     this.#envKey = value;
     this.#target?.mux?.updateData(value ? { env_key: value } : {});
   }
@@ -153,6 +160,7 @@ export class MuxData implements MuxDataProps {
 
   set playerSoftwareName(value) {
     if (this.#playerSoftwareName === value) return;
+
     this.#playerSoftwareName = value;
     this.#target?.mux?.updateData(value ? { player_software_name: value } : {});
   }
@@ -163,6 +171,7 @@ export class MuxData implements MuxDataProps {
 
   set playerSoftwareVersion(value) {
     if (this.#playerSoftwareVersion === value) return;
+
     this.#playerSoftwareVersion = value;
     this.#target?.mux?.updateData(value ? { player_software_version: value } : {});
   }
@@ -173,6 +182,7 @@ export class MuxData implements MuxDataProps {
 
   set playerInitTime(value) {
     if (this.#playerInitTime === value) return;
+
     this.#playerInitTime = value;
     this.#target?.mux?.updateData(value ? { player_init_time: value } : {});
   }
@@ -183,6 +193,7 @@ export class MuxData implements MuxDataProps {
 
   set metadata(value) {
     if (this.#metadata === value) return;
+
     this.#metadata = value;
     this.#target?.mux?.updateData(value ? { ...value } : {});
   }
@@ -192,12 +203,14 @@ export class MuxData implements MuxDataProps {
       this.#target.mux.destroy();
       delete this.#target.mux;
     }
+
     this.#initialize();
   };
 
   async #initialize() {
     // Defer to ensure all properties are set before the Mux Data SDK is initialized.
     if (this.#pendingInitialize) return;
+
     await (this.#pendingInitialize = Promise.resolve());
     this.#pendingInitialize = null;
 
@@ -219,7 +232,9 @@ export class MuxData implements MuxDataProps {
 
     const { view_session_id = this.MuxDataSdk?.utils.generateUUID() } = metadata;
     const video_id = toVideoId({ metadata, src: media.src });
+
     metadata.view_session_id = view_session_id;
+
     if (video_id) metadata.video_id = video_id;
 
     this.MuxDataSdk?.monitor(target, {
@@ -243,6 +258,7 @@ export class MuxData implements MuxDataProps {
 
   #generatePlayerInitTime() {
     if (!this.MuxDataSdk) return undefined;
+
     return this.MuxDataSdk.utils.now();
   }
 }
@@ -254,19 +270,25 @@ export type MuxVideoIdProps = {
 
 export function toVideoId(props: MuxVideoIdProps): string | undefined {
   if (props.metadata?.video_id) return props.metadata.video_id;
+
   if (!isMuxVideoSrc(props)) return props.src;
+
   return toPlaybackIdFromSrc(props.src) ?? props.src;
 }
 
 export function toPlaybackIdFromSrc(src: string): string | undefined {
   if (!src?.startsWith('https://stream.')) return undefined;
+
   const [playbackId] = new URL(src).pathname.slice(1).split(/\.m3u8|\//);
+
   return playbackId || undefined;
 }
 
 export function isMuxVideoSrc({ src }: MuxVideoIdProps): boolean {
   if (typeof src !== 'string') return false;
+
   const base = window?.location.href;
   const hostname = new URL(src, base).hostname.toLocaleLowerCase();
+
   return hostname.includes(MUX_VIDEO_DOMAIN);
 }

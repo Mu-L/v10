@@ -51,6 +51,7 @@ export class FullscreenButtonCore {
 
   getLabel(state: FullscreenButtonState): Text | string {
     const label = resolveLabel(this.#props.label, state);
+
     if (label) return label;
 
     return state.fullscreen ? exitText : enterText;
@@ -85,7 +86,9 @@ export class FullscreenButtonCore {
 
   async toggle(media: MediaFullscreenState): Promise<void> {
     this.setMedia(media);
+
     if (this.getState().disabled) return;
+
     return media.fullscreen ? media.exitFullscreen() : media.requestFullscreen();
   }
 }

@@ -70,6 +70,7 @@ export class ContainerElement extends UIElement implements MediaContainer {
 
   #applyLabel(): void {
     const current = this.getAttribute('aria-label');
+
     if (current && current !== this.#label) return;
 
     if (this.hasAttribute('aria-labelledby')) {
@@ -77,10 +78,12 @@ export class ContainerElement extends UIElement implements MediaContainer {
         this.removeAttribute('aria-label');
         this.#label = null;
       }
+
       return;
     }
 
     const label = this.#i18n.value(labelText);
+
     this.setAttribute('aria-label', label);
     this.#label = label;
   }

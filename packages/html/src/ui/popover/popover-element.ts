@@ -61,6 +61,7 @@ export class PopoverElement extends UIElement {
 
   override connectedCallback(): void {
     super.connectedCallback();
+
     if (this.destroyed) return;
 
     this.setAttribute(POPUP_HOST_ATTR, '');
@@ -130,6 +131,7 @@ export class PopoverElement extends UIElement {
     // Sync controlled open state
     if (this.#popover && changed.has('open')) {
       const { active: interactionOpen } = this.#popover.input.current;
+
       if (this.open !== interactionOpen) {
         if (this.open) {
           this.#popover.open();
@@ -142,14 +144,17 @@ export class PopoverElement extends UIElement {
 
   protected override update(_changed: PropertyValues): void {
     super.update(_changed);
+
     if (!this.#popover) return;
 
     // Discover trigger via commandfor linkage.
     const triggerEl = this.#position.findTrigger();
+
     this.#syncTrigger(triggerEl);
 
     // Derive state from core + input.
     const input = this.#popover.input.current;
+
     this.#core.setInput(input);
     const state = this.#core.getState();
 

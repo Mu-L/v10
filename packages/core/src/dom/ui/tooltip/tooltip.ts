@@ -59,13 +59,16 @@ export function createTooltip(options: TooltipOptions): TooltipApi {
     transition: options.transition,
     onOpenChange(open: boolean, details: PopoverChangeDetails) {
       const reason = REASON_MAP[details.reason];
+
       if (!reason) return;
 
       const group = options.group?.();
+
       if (open) group?.notifyOpen();
       else group?.notifyClose();
 
       const tooltipDetails: TooltipChangeDetails = details.event ? { reason, event: details.event } : { reason };
+
       options.onOpenChange(open, tooltipDetails);
     },
     closeOnEscape: () => true,
@@ -73,11 +76,14 @@ export function createTooltip(options: TooltipOptions): TooltipApi {
     openOnHover: () => true,
     delay: () => {
       const group = options.group?.();
+
       if (group?.shouldSkipDelay()) return 0;
+
       return options.delay?.() ?? group?.delay ?? 600;
     },
     closeDelay: () => {
       const group = options.group?.();
+
       return options.closeDelay?.() ?? group?.closeDelay ?? 0;
     },
   };
@@ -105,6 +111,7 @@ export function createTooltip(options: TooltipOptions): TooltipApi {
 
   function syncPopupGroup(): void {
     const next = options.popupGroup?.();
+
     if (next === popupGroup) return;
 
     unsubscribe?.();
@@ -117,6 +124,7 @@ export function createTooltip(options: TooltipOptions): TooltipApi {
   function setTriggerElement(el: HTMLElement | null): void {
     popover.setTriggerElement(el);
     syncPopupGroup();
+
     if (isTriggerPopupOpen() && !isSticky()) popover.close('imperative-action');
   }
 
@@ -127,23 +135,32 @@ export function createTooltip(options: TooltipOptions): TooltipApi {
     onPointerDown() {
       syncPopupGroup();
       isPointerDown = true;
+
       if (!isSticky()) popover.close('imperative-action');
     },
     onPointerEnter(event) {
       syncPopupGroup();
+
       if (options.disabled?.()) return;
+
       if (isTriggerPopupOpen() && !isSticky()) return;
+
       if (event.pointerType === 'touch') return;
+
       baseTriggerProps.onPointerEnter(event);
     },
     onFocusIn(event) {
       syncPopupGroup();
+
       if (options.disabled?.()) return;
+
       if (isTriggerPopupOpen() && !isSticky()) return;
+
       if (isPointerDown) {
         isPointerDown = false;
         return;
       }
+
       baseTriggerProps.onFocusIn(event);
     },
   };
@@ -153,6 +170,7 @@ export function createTooltip(options: TooltipOptions): TooltipApi {
     ...popover.popupProps,
     onPointerEnter(event) {
       if (options.disableHoverablePopup?.()) return;
+
       popover.popupProps.onPointerEnter(event);
     },
   };
@@ -167,6 +185,7 @@ export function createTooltip(options: TooltipOptions): TooltipApi {
     setTriggerElement,
     open: () => {
       syncPopupGroup();
+
       if (!isTriggerPopupOpen() || isSticky()) popover.open('hover');
     },
     close: (reason: TooltipOpenChangeReason = 'hover') => popover.close(reason),

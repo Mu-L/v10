@@ -35,8 +35,11 @@ export const Preview = forwardRef<HTMLIFrameElement, PreviewProps>(function Prev
       preload,
       locale,
     });
+
     if (accentColor) params.set('accent', accentColor);
+
     if (bustCache) params.set('_', String(Date.now()));
+
     return `${base}?${params}`;
   };
 
@@ -52,6 +55,7 @@ export const Preview = forwardRef<HTMLIFrameElement, PreviewProps>(function Prev
   // oxlint-disable-next-line react/exhaustive-deps
   useEffect(() => {
     if (previousLocaleRef.current === locale) return;
+
     previousLocaleRef.current = locale;
     setIframeUrl(buildUrl(pagePath, reloadOnLocale));
   }, [locale, pagePath, reloadOnLocale]);

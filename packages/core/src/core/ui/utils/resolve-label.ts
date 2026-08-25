@@ -9,5 +9,6 @@ export function resolveLabel<State>(
   if (isFunction(label)) {
     return label(state) || undefined;
   }
+
   return label || undefined;
 }

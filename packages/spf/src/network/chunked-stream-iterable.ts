@@ -28,11 +28,14 @@ export class ChunkedStreamIterable implements AsyncIterable<Uint8Array> {
   async *[Symbol.asyncIterator](): AsyncGenerator<Uint8Array> {
     let pending: Uint8Array | undefined;
     const reader = this.#readableStream.getReader();
+
     try {
       while (true) {
         const { done, value } = await reader.read();
+
         if (done) {
           if (pending) yield pending;
+
           break;
         }
 
@@ -51,6 +54,7 @@ export class ChunkedStreamIterable implements AsyncIterable<Uint8Array> {
 
 function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
   const result = new Uint8Array(a.length + b.length);
+
   result.set(a);
   result.set(b, a.length);
   return result;

@@ -18,7 +18,9 @@ const target = defineComponentTarget<typeof schema>()(() => ({
       name: 'fixture:target-transform',
       transform({ code, magicString }) {
         const start = code.indexOf(`'before'`);
+
         if (start < 0) return false;
+
         magicString.overwrite(start, start + 8, `'after'`);
         return true;
       },
@@ -33,6 +35,7 @@ describe('vjscPlugin', () => {
     const filename = join(root, 'fixture.ts');
     const id = `${filename}?target=react`;
     const configurations = new Map<string, number>();
+
     writeFileSync(filename, `export const value = 'before';`);
 
     const bundle = await rolldown({

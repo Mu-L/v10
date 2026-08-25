@@ -28,11 +28,13 @@ type I18nRegistryHost = { [I18N_REGISTRY_KEY]?: I18nRegistry };
 function getRegistry(): I18nRegistry {
   const host = globalThis as I18nRegistryHost;
   const existing = host[I18N_REGISTRY_KEY];
+
   if (existing) {
     return existing;
   }
 
   const registry: I18nRegistry = { layers: new Map(), subscribers: new Set() };
+
   host[I18N_REGISTRY_KEY] = registry;
   return registry;
 }
@@ -52,9 +54,11 @@ function stripUnicodeExtensions(tag: Locale): Locale {
   const xIdx = tag.indexOf('-x-');
   const beforePrivateUse = xIdx === -1 ? tag : tag.slice(0, xIdx);
   const uIdx = beforePrivateUse.indexOf('-u-');
+
   if (uIdx === -1) {
     return tag;
   }
+
   return tag.slice(0, uIdx) + (xIdx === -1 ? '' : tag.slice(xIdx));
 }
 
@@ -64,6 +68,7 @@ function chineseFallback(segments: string[]): Locale | undefined {
   }
 
   const script = segments.find((segment) => segment === 'hant' || segment === 'hans');
+
   return script === 'hant' ? 'zh-tw' : script === 'hans' ? 'zh-cn' : undefined;
 }
 
@@ -79,6 +84,7 @@ export function getCanonicalLocaleKey(locale: Locale): Locale {
  */
 export function findLocaleKeys(locale: Locale): Locale[] {
   const base = getCanonicalLocaleKey(locale);
+
   if (!base) {
     return [DEFAULT_LOCALE];
   }
@@ -92,18 +98,21 @@ export function findLocaleKeys(locale: Locale): Locale[] {
 
   const zhFallback = chineseFallback(segments);
   const zhIndex = chain.indexOf('zh');
+
   if (zhFallback && zhIndex !== -1) {
     chain.splice(zhIndex, 0, zhFallback);
   }
 
   const out: Locale[] = [];
   const seen = new Set<string>();
+
   for (const tag of chain) {
     if (!seen.has(tag)) {
       seen.add(tag);
       out.push(tag);
     }
   }
+
   if (!seen.has(DEFAULT_LOCALE)) {
     out.push(DEFAULT_LOCALE);
   }
@@ -114,13 +123,16 @@ export function findLocaleKeys(locale: Locale): Locale[] {
 function mergeI18nTranslations(chain: Locale[]): FlatTranslations {
   const { layers } = getRegistry();
   const merged: Partial<FlatTranslations> = {};
+
   for (let i = chain.length - 1; i >= 0; i--) {
     const tag = chain[i]!;
     const layer = layers.get(tag);
+
     if (layer) {
       Object.assign(merged, layer);
     }
   }
+
   return merged as FlatTranslations;
 }
 
@@ -135,6 +147,7 @@ export function registerI18n(locale: Locale, translations: Partial<Translations>
   const { layers } = getRegistry();
   const tag = getCanonicalLocaleKey(locale);
   const existing = layers.get(tag) ?? {};
+
   layers.set(tag, { ...existing, ...flattenTranslations(translations) });
   notify();
 }
@@ -157,6 +170,7 @@ export function getI18nTranslations(locale: Locale): FlatTranslations {
  */
 export function onI18nRegistryChange(callback: () => void): () => void {
   const { subscribers } = getRegistry();
+
   subscribers.add(callback);
   return () => {
     subscribers.delete(callback);
@@ -176,6 +190,7 @@ export function hasRegisteredLocale(locale: Locale): boolean {
 /** Clears registered locale overlays (test isolation). */
 export function resetI18nRegistry(): void {
   const { layers, subscribers } = getRegistry();
+
   layers.clear();
   subscribers.clear();
 }

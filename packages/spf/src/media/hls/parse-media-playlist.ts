@@ -41,13 +41,17 @@ export const NON_FMP4_CONTAINER_MIMES = new Set(Object.values(CONTAINER_MIME_BY_
  */
 function containerMimeFromSegment(url: string | undefined): string | undefined {
   if (!url) return undefined;
+
   let path: string;
+
   try {
     path = new URL(url).pathname.toLowerCase();
   } catch {
     path = url.toLowerCase().split('?')[0] ?? '';
   }
+
   const dot = path.lastIndexOf('.');
+
   return dot === -1 ? undefined : CONTAINER_MIME_BY_EXTENSION[path.slice(dot)];
 }
 
@@ -98,14 +102,17 @@ function placeOnPreviousTimeline(
   const offset = mediaSequence - prevMediaSequence;
 
   let anchor: number;
+
   if (offset >= 0 && offset < prevSegments.length) {
     const overlap = prevSegments[offset]!;
+
     if (overlap.url !== segments[0]!.url) {
       console.warn(
         `[parseMediaPlaylist] media-sequence aligns previous[${offset}] with the new window's first segment, ` +
           `but URLs differ (${overlap.url} vs ${segments[0]!.url}); sequence numbers may be unreliable.`
       );
     }
+
     anchor = overlap.startTime;
   } else if (offset < 0) {
     console.warn(`[parseMediaPlaylist] media-sequence went backwards (offset ${offset}); resetting timeline.`);
@@ -113,6 +120,7 @@ function placeOnPreviousTimeline(
   } else {
     const last = prevSegments[prevSegments.length - 1]!;
     const newFirst = segments[0]!;
+
     if (last.startDate !== undefined && newFirst.startDate !== undefined) {
       // PDT bridges the gap exactly — the spec-consistent cross-reload reference,
       // immune to the target-duration over-estimate when actual segment durations
@@ -129,6 +137,7 @@ function placeOnPreviousTimeline(
   }
 
   const shift = anchor - localBase;
+
   return shift === 0 ? segments : segments.map((segment) => ({ ...segment, startTime: segment.startTime + shift }));
 }
 
@@ -148,11 +157,13 @@ function placeOnPreviousTimeline(
  */
 function placeOnAnchor(segments: Segment[], anchor: number): Segment[] {
   const anchorSegment = segments.find((segment) => !isUndefined(segment.startDate));
+
   if (!anchorSegment || isUndefined(anchorSegment.startDate)) {
     return segments;
   }
 
   const shift = anchorSegment.startDate - anchor - anchorSegment.startTime;
+
   if (shift === 0) {
     return segments;
   }
@@ -233,20 +244,25 @@ export function parseMediaPlaylist<T extends PartiallyResolvedTrack>(
 
     if (trimmed.startsWith('#EXT-X-PROGRAM-DATE-TIME:')) {
       const parsed = Date.parse(trimmed.slice('#EXT-X-PROGRAM-DATE-TIME:'.length).trim());
+
       currentStartDate = Number.isNaN(parsed) ? currentStartDate : parsed / 1000;
       continue;
     }
 
     if (trimmed.startsWith('#EXT-X-PLAYLIST-TYPE:')) {
       const value = trimmed.slice('#EXT-X-PLAYLIST-TYPE:'.length).trim();
+
       playlistType = value === 'VOD' || value === 'EVENT' ? value : undefined;
       continue;
     }
 
     const key = matchTag(trimmed, 'EXT-X-KEY');
+
     if (key) {
       const method = key.get('METHOD');
+
       if (method !== undefined && method !== 'NONE') encrypted = true;
+
       continue;
     }
 
@@ -254,15 +270,20 @@ export function parseMediaPlaylist<T extends PartiallyResolvedTrack>(
     // is read for its presence only, as an LL-HLS signal; see MediaPlaylistMetadata
     // on why its value stays out of `holdBack` until LL-HLS support lands.
     const serverControl = matchTag(trimmed, 'EXT-X-SERVER-CONTROL');
+
     if (serverControl) {
       const value = serverControl.get('HOLD-BACK');
+
       if (value !== undefined) {
         const parsed = Number.parseFloat(value);
+
         if (Number.isFinite(parsed) && parsed > 0) holdBack = parsed;
       }
+
       // Advertised for clients playing partial segments — its presence is an
       // LL-HLS signal even though the value stays deliberately unread.
       if (serverControl.get('PART-HOLD-BACK') !== undefined) lowLatency = true;
+
       continue;
     }
 
@@ -283,15 +304,19 @@ export function parseMediaPlaylist<T extends PartiallyResolvedTrack>(
 
     // #EXT-X-MAP - Init segment
     const mapAttrs = matchTag(trimmed, 'EXT-X-MAP');
+
     if (mapAttrs) {
       const uri = mapAttrs.get('URI');
+
       if (uri) {
         initSegmentUrl = resolveUrl(uri, baseUrl);
         const byteRangeStr = mapAttrs.get('BYTERANGE');
+
         if (byteRangeStr) {
           initSegmentByteRange = parseByteRange(byteRangeStr, 0) ?? undefined;
         }
       }
+
       continue;
     }
 

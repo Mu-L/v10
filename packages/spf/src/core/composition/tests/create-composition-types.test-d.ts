@@ -62,7 +62,9 @@ const render = {
     config: { defaultText?: string };
   }) {
     const el = context.renderElement.get();
+
     if (!el) return;
+
     el.textContent = String(state.count.get() ?? config.defaultText ?? 'N/A');
   },
 };
@@ -72,6 +74,7 @@ const persist = {
   contextKeys: [],
   setup({ state, config }: { state: StateSignals<{ count?: number }>; config: { saveEvery?: number } }) {
     const c = state.count.get();
+
     if (c && c > 0 && c % (config.saveEvery ?? 5) === 0) {
       // save logic
     }
@@ -160,6 +163,7 @@ describe('InferBehaviorState', () => {
       contextKeys: [],
       setup: ({ config: _config }: { config: { x: number } }) => {},
     };
+
     // matches the Empty fallback in create-composition
     // oxlint-disable-next-line typescript/no-empty-object-type
     expectTypeOf<InferBehaviorState<typeof noState>>().toEqualTypeOf<{}>();
@@ -210,6 +214,7 @@ describe('ResolveBehaviorState', () => {
       contextKeys: [],
       setup: (_deps: { state: StateSignals<{ label?: string }> }) => {},
     };
+
     type Behaviors = [typeof a, typeof b];
     expectTypeOf<ResolveBehaviorState<Behaviors>>().toMatchTypeOf<{
       count: number | undefined;
@@ -244,6 +249,7 @@ describe('ResolveBehaviorContext', () => {
       contextKeys: ['el'] as const,
       setup: (_d: { context: ContextSignals<{ el?: VideoS }> }) => {},
     };
+
     type Resolved = ResolveBehaviorContext<[typeof a, typeof b]>;
     // The intersection should collapse `el` because CanvasS & VideoS = never
     // (sibling types), and `never | undefined` = `undefined` for an optional field.
@@ -329,6 +335,7 @@ describe('defineBehavior', () => {
         void state;
       },
     });
+
     expectTypeOf<typeof b.stateKeys>().toEqualTypeOf<readonly ['a', 'b']>();
   });
 
@@ -340,6 +347,7 @@ describe('defineBehavior', () => {
         void context;
       },
     });
+
     expectTypeOf<typeof b.contextKeys>().toEqualTypeOf<readonly ['el']>();
   });
 
@@ -350,6 +358,7 @@ describe('defineBehavior', () => {
       contextKeys: [],
       setup: () => cleanup,
     });
+
     // R is captured narrowly — the result's setup returns `() => void`,
     // not the wider `BehaviorCleanup` union. So callers can invoke the
     // returned cleanup directly without narrowing.
@@ -364,6 +373,7 @@ describe('defineBehavior', () => {
         void state;
       },
     });
+
     expectTypeOf<InferBehaviorState<typeof b>>().toEqualTypeOf<{ count: number | undefined }>();
   });
 
@@ -375,6 +385,7 @@ describe('defineBehavior', () => {
         void context;
       },
     });
+
     expectTypeOf<InferBehaviorContext<typeof b>>().toEqualTypeOf<{ el: Surface | undefined }>();
   });
 
@@ -386,6 +397,7 @@ describe('defineBehavior', () => {
         void config;
       },
     });
+
     expectTypeOf<InferBehaviorConfig<typeof b>>().toEqualTypeOf<{ interval: number }>();
   });
 
@@ -395,6 +407,7 @@ describe('defineBehavior', () => {
       contextKeys: [],
       setup: () => {},
     });
+
     // Calling .setup({}) — no state field — typechecks.
     b.setup({});
   });
@@ -407,6 +420,7 @@ describe('defineBehavior', () => {
         void state;
       },
     });
+
     b.setup({ state: { count: signal<number | undefined>(undefined) } });
   });
 
@@ -418,6 +432,7 @@ describe('defineBehavior', () => {
         void state;
       },
     });
+
     // No config field needed at the call site — Cfg defaults to Empty.
     b.setup({ state: { count: signal<number | undefined>(undefined) } });
   });
@@ -430,6 +445,7 @@ describe('defineBehavior', () => {
         void state;
       },
     });
+
     // `{}` is not assignable to the deps param when S has keys — state is required.
     // testing that `{}` (empty arg) doesn't satisfy deps
     // oxlint-disable-next-line typescript/no-empty-object-type
@@ -442,6 +458,7 @@ describe('defineBehavior', () => {
       contextKeys: [],
       setup: () => {},
     });
+
     // matches the Empty fallback in create-composition
     // oxlint-disable-next-line typescript/no-empty-object-type
     expectTypeOf<InferBehaviorState<typeof b>>().toEqualTypeOf<{}>();
@@ -470,6 +487,7 @@ describe('createComposition type errors', () => {
 
   it('errors when set() is called on a state signal with the wrong value type', () => {
     const composition = createComposition([noopState]);
+
     // @ts-expect-error — count is Signal<number | undefined>, not a string slot
     composition.state.count.set('not a number');
   });
@@ -478,6 +496,7 @@ describe('createComposition type errors', () => {
     const composition = createComposition([noopState]);
     // @ts-expect-error — count.get() returns number | undefined, not string
     const _: string = composition.state.count.get();
+
     void _;
   });
 
@@ -490,6 +509,7 @@ describe('createComposition type errors', () => {
         state.count.set('wrong');
       },
     };
+
     void badBehavior;
   });
 
@@ -500,9 +520,11 @@ describe('createComposition type errors', () => {
       setup: ({ state }) => {
         // @ts-expect-error — count.get() returns number | undefined, not string
         const _: string = state.count.get();
+
         void _;
       },
     };
+
     void badBehavior;
   });
 
@@ -763,6 +785,7 @@ describe('defineBehavior type errors', () => {
         void config.x;
       },
     });
+
     // @ts-expect-error — config required because Cfg = { x: number } has keys
     b.setup({});
   });
@@ -773,6 +796,7 @@ describe('defineBehavior type errors', () => {
       contextKeys: [],
       setup: () => {},
     });
+
     // No error — config is optional via DepsForCfg when Cfg = Empty
     b.setup({});
   });
@@ -873,6 +897,7 @@ describe('buildSignalMap', () => {
       b?: string;
     }
     const map = buildSignalMap<S>(['a', 'b'], {});
+
     expectTypeOf<typeof map>().toEqualTypeOf<{ a: Signal<number | undefined>; b: Signal<string | undefined> }>();
   });
 
@@ -881,6 +906,7 @@ describe('buildSignalMap', () => {
       a?: number;
     }
     const map = buildSignalMap<S>(['a'], {});
+
     // The slot is required (`-?`) but the value type retains | undefined.
     expectTypeOf<typeof map>().toEqualTypeOf<{ a: Signal<number | undefined> }>();
   });
@@ -890,6 +916,7 @@ describe('buildSignalMap', () => {
       a: number;
     }
     const map = buildSignalMap<S>(['a'], { a: 5 });
+
     expectTypeOf<typeof map>().toEqualTypeOf<{ a: Signal<number> }>();
   });
 
@@ -924,6 +951,7 @@ describe('buildSignalMap', () => {
     // empty interface intentional
     // oxlint-disable-next-line typescript/no-empty-object-type
     const map = buildSignalMap<{}>([], {});
+
     // matches the Empty fallback
     // oxlint-disable-next-line typescript/no-empty-object-type
     expectTypeOf<typeof map>().toEqualTypeOf<{}>();

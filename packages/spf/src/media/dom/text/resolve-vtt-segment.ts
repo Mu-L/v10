@@ -18,12 +18,14 @@ function ensureDummyVideo(): HTMLVideoElement {
     dummyVideo.style.display = 'none';
     dummyVideo.crossOrigin = 'anonymous';
   }
+
   return dummyVideo;
 }
 
 export function resolveVttSegment(url: string): Promise<VTTCue[]> {
   const video = ensureDummyVideo();
   const track = document.createElement('track');
+
   track.kind = 'subtitles';
 
   return new Promise((resolve, reject) => {
@@ -34,6 +36,7 @@ export function resolveVttSegment(url: string): Promise<VTTCue[]> {
       if (textTrack.cues) {
         for (let i = 0; i < textTrack.cues.length; i++) {
           const cue = textTrack.cues[i];
+
           if (cue) {
             cues.push(cue as VTTCue);
           }

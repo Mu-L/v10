@@ -38,9 +38,12 @@ class ContentDataMedia extends EventTarget {
 
   #setKey(key: 'title' | 'poster', value: MediaContentValue): void {
     if (!this.contentData || Object.is(this.contentData[key], value)) return;
+
     const contentData = { ...this.contentData };
+
     if (value === undefined) delete contentData[key];
     else contentData[key] = value;
+
     this.contentData = contentData;
     this.dispatchEvent(new Event('contentdatachange'));
   }
@@ -66,6 +69,7 @@ describe('metadataFeature', () => {
     expect(store.title).toBe('');
 
     const media = new ContentDataMedia({ title: 'media' });
+
     store.attach(target(media));
     expect(store.title).toBe('media');
 
@@ -81,6 +85,7 @@ describe('metadataFeature', () => {
 
   it('treats empty and whitespace-only strings as literal values', () => {
     const store = createStore<PlayerTarget>()(metadataFeature);
+
     store.attach(target(new ContentDataMedia({ title: 'media' })));
 
     setUserTitle(store, '');
@@ -147,6 +152,7 @@ describe('metadataFeature', () => {
     expect(store.poster).toBe('');
 
     const media = new ContentDataMedia({ poster: 'media.jpg' });
+
     store.attach(target(media));
     expect(store.poster).toBe('media.jpg');
 
@@ -166,6 +172,7 @@ describe('metadataFeature', () => {
   it('resolves title and poster independently from one bag', () => {
     const store = createStore<PlayerTarget>()(metadataFeature);
     const media = new ContentDataMedia({ title: 'media title' });
+
     store.attach(target(media));
 
     expect(store.title).toBe('media title');
@@ -179,6 +186,7 @@ describe('metadataFeature', () => {
 
   it('resets both media-owned values on detach while preserving user-owned state', () => {
     const store = createStore<PlayerTarget>()(metadataFeature);
+
     setUserPoster(store, 'user.jpg');
     const detach = store.attach(target(new ContentDataMedia({ title: 'media', poster: 'media.jpg' })));
 

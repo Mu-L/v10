@@ -36,6 +36,7 @@ export class VolumeSliderCore extends SliderCore {
 
   constructor(props?: VolumeSliderProps) {
     super();
+
     if (props) this.setProps(props);
   }
 
@@ -56,6 +57,7 @@ export class VolumeSliderCore extends SliderCore {
     const media = this.#media!;
     const { volume, muted } = media;
     const effectivelyMuted = muted || volume === 0;
+
     const { dragging, dragPercent } = this.input;
     const volumePercent = volume * 100;
     const value = dragging ? this.valueFromPercent(dragPercent) : volumePercent;
@@ -77,6 +79,7 @@ export class VolumeSliderCore extends SliderCore {
   getWheelStepPercent(): number {
     const props = this.props as NonNullableObject<VolumeSliderProps>;
     const range = props.max - props.min;
+
     return range > 0 ? (props.wheelStep / range) * 100 : 0;
   }
 

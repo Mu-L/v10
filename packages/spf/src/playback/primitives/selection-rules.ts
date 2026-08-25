@@ -62,12 +62,17 @@ export function applyRules<T, State, Context, Config>(
   deps: SelectionRuleDeps<State, Context, Config>
 ): readonly T[] {
   let current = tracks;
+
   for (const rule of rules) {
     const remaining = rule(current, deps);
+
     if (remaining.length === 0) continue;
+
     current = remaining;
+
     if (current.length === 1) break;
   }
+
   return current;
 }
 
@@ -93,7 +98,9 @@ export function applyConstraints<T, State, Context, Config>(
   deps: SelectionRuleDeps<State, Context, Config>
 ): readonly T[] {
   let current = tracks;
+
   for (const constraint of constraints) current = constraint(current, deps);
+
   return current;
 }
 
@@ -149,7 +156,9 @@ export function excludeUnplayableTracks<T, State, Context, Config>(
   { config }: SelectionRuleDeps<State, Context, Config>
 ): readonly T[] {
   const canPlay = (config as CapabilityConstraintConfig | undefined)?.canPlayTrack;
+
   if (!canPlay) return tracks;
+
   return tracks.filter((track) => canPlay(track as Parameters<CanPlayTrack>[0]));
 }
 
@@ -201,10 +210,14 @@ export function preferCodecFamilies<T, State, Context, Config>(
   { config }: SelectionRuleDeps<State, Context, Config>
 ): readonly T[] {
   const preferred = (config as CodecPreferenceConfig | undefined)?.preferredCodecs ?? DEFAULT_PREFERRED_CODECS;
+
   if (!preferred.length) return tracks;
+
   const preferredFamilies = new Set(preferred.map(getCodecFamily));
+
   return tracks.filter((track) => {
     const families = getCodecFamilies(track as { codecs?: string[] });
+
     return !!families && families.every((family) => preferredFamilies.has(family));
   });
 }

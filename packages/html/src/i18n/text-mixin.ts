@@ -30,12 +30,14 @@ export function createTextMixin({ context }: TextMixinConfig): I18nTextMixin {
 
       protected override updated(changed: PropertyValues): void {
         super.updated(changed);
+
         if (!this.#text) {
           this.textContent = '';
           return;
         }
 
         const text: Text | string = this.token ? { key: this.token, text: this.#text } : this.#text;
+
         this.textContent = typeof text === 'string' ? text : translateText(text, this.#i18n.value);
       }
     }

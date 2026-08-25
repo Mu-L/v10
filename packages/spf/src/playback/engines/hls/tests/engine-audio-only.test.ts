@@ -18,6 +18,7 @@ function unmockedFetchFallback(url: string): Promise<Response> {
   // Non-empty body: `fetchStream` throws "Response has no body" on a null body
   // (empty Uint8Array), which would itself trip the monitor.
   if (/\.(m4s|mp4|ts|aac)(\?|$)/.test(url)) return Promise.resolve(new Response(new Uint8Array([0])));
+
   return Promise.reject(new Error(`Unmocked URL: ${url}`));
 }
 
@@ -39,9 +40,12 @@ describe('createHlsAudioEngine', () => {
     originalFetch = globalThis.fetch;
 
     const originalConsoleError = console.error.bind(console);
+
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
       const text = args.map((a) => (typeof a === 'string' ? a : String(a))).join(' ');
+
       if (expectedErrorPatterns.some((p) => p.test(text))) return;
+
       originalConsoleError(...args);
     });
   });
@@ -83,6 +87,7 @@ describe('createHlsAudioEngine', () => {
     // rather than selected. (If the default weren't wired, the constraint would
     // pass through and select it.)
     const engine = createHlsAudioEngine();
+
     engine.state.presentation.set({
       id: 'pres-aac',
       url: 'https://example.com/master.m3u8',
@@ -125,6 +130,7 @@ describe('createHlsAudioEngine', () => {
     const engine = createHlsAudioEngine();
 
     const state = snapshot(engine.state) as Record<string, unknown>;
+
     // bandwidthState slot may or may not exist depending on whether any
     // composed behavior declares it; if it exists, it must not be seeded.
     if ('bandwidthState' in state) {
@@ -162,10 +168,12 @@ http://example.com/audio-seg1.m4s
 
       return unmockedFetchFallback(url);
     });
+
     globalThis.fetch = mockFetch;
 
     const engine = createHlsAudioEngine();
     const mediaElement = document.createElement('video');
+
     mediaElement.preload = 'auto';
 
     engine.context.mediaElement.set(mediaElement);
@@ -226,10 +234,12 @@ http://example.com/audio-seg1.m4s
 
       return unmockedFetchFallback(url);
     });
+
     globalThis.fetch = mockFetch;
 
     const engine = createHlsAudioEngine();
     const mediaElement = document.createElement('video');
+
     mediaElement.preload = 'auto';
 
     engine.context.mediaElement.set(mediaElement);
@@ -301,10 +311,12 @@ http://example.com/audio-seg1.m4s
 
       return unmockedFetchFallback(url);
     });
+
     globalThis.fetch = mockFetch;
 
     const engine = createHlsAudioEngine();
     const mediaElement = document.createElement('video');
+
     mediaElement.preload = 'auto';
 
     engine.context.mediaElement.set(mediaElement);
@@ -333,6 +345,7 @@ http://example.com/audio-seg1.m4s
 
   it('cleans up on destroy', () => {
     const engine = createHlsAudioEngine();
+
     expect(() => engine.destroy()).not.toThrow();
   });
 
@@ -392,10 +405,12 @@ http://example.com/audio-b-seg1.m4s
 
       return unmockedFetchFallback(url);
     });
+
     globalThis.fetch = mockFetch;
 
     const engine = createHlsAudioEngine();
     const mediaElement = document.createElement('audio');
+
     mediaElement.preload = 'auto';
 
     engine.context.mediaElement.set(mediaElement);
@@ -406,6 +421,7 @@ http://example.com/audio-b-seg1.m4s
       () => {
         const state = snapshot(engine.state);
         const owners = snapshot(engine.context);
+
         expect(state.presentation?.url).toBe('http://example.com/playlist-a.m3u8');
         expect(state.presentation?.id).toBeDefined();
         expect(state.selectedAudioTrackId).toBeDefined();
@@ -455,6 +471,7 @@ http://example.com/audio-b-seg1.m4s
   function mockAudioOnlyManifest(onFetch?: (url: string) => void) {
     return vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+
       onFetch?.(url);
 
       if (url.includes('playlist.m3u8')) {
@@ -493,6 +510,7 @@ http://example.com/audio-seg1.m4s
 
     const engine = createHlsAudioEngine();
     const mediaElement = document.createElement('audio');
+
     mediaElement.preload = 'auto';
 
     engine.context.mediaElement.set(mediaElement);
@@ -507,6 +525,7 @@ http://example.com/audio-seg1.m4s
     );
 
     const sourceEl = mediaElement.querySelector('source');
+
     expect(sourceEl).not.toBeNull();
     expect(sourceEl!.src.startsWith('blob:')).toBe(true);
     expect(mediaElement.getAttribute('src')).toBeNull();
@@ -539,6 +558,7 @@ http://example.com/audio-seg1.m4s
 
     const engine = createHlsAudioEngine();
     const mediaElement = document.createElement('audio');
+
     mediaElement.preload = 'auto';
 
     engine.context.mediaElement.set(mediaElement);
@@ -574,10 +594,12 @@ http://example.com/audio-seg1.m4s
     // the assertion deterministic — the dispatcher parks in `'dormant'` from
     // the start, so *no* segment fetch should ever be issued.
     const fetchedUrls: string[] = [];
+
     globalThis.fetch = mockAudioOnlyManifest((url) => fetchedUrls.push(url));
 
     const engine = createHlsAudioEngine();
     const mediaElement = document.createElement('audio');
+
     mediaElement.preload = 'auto';
 
     engine.state.loadingSuspended.set(true);

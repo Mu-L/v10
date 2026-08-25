@@ -51,6 +51,7 @@ export class StatusAnnouncerCore {
 
   processSnapshot(snapshot: MediaSnapshot): boolean {
     const previous = this.#snapshot;
+
     this.#snapshot = snapshot;
 
     if (!previous) return false;
@@ -85,6 +86,7 @@ export class StatusAnnouncerCore {
     alreadyHandled: boolean
   ): boolean {
     const label = deriveVolumeAnnouncement(previous, snapshot, labels);
+
     if (label === null || alreadyHandled || !this.#shouldAnnounce()) return false;
 
     this.#schedule(label);
@@ -113,10 +115,12 @@ export class StatusAnnouncerCore {
 
     const targetTime = snapshot.currentTime ?? this.#seekTargetTime;
     const startTime = this.#seekStartTime;
+
     this.#seekStartTime = null;
     this.#seekTargetTime = null;
 
     if (targetTime === undefined || targetTime === null || Object.is(targetTime, startTime)) return false;
+
     if (alreadyHandled || !this.#shouldAnnounce()) return false;
 
     this.#schedule(labels.seekedTo(targetTime));
@@ -127,7 +131,9 @@ export class StatusAnnouncerCore {
     this.#clearTimer();
     this.#timer = setTimeout(() => {
       this.#timer = null;
+
       if (!this.#shouldAnnounce()) return;
+
       this.#announce(label);
     }, ANNOUNCEMENT_DEBOUNCE);
   }
@@ -138,6 +144,7 @@ export class StatusAnnouncerCore {
 
   #clearTimer(): void {
     if (this.#timer === null) return;
+
     clearTimeout(this.#timer);
     this.#timer = null;
   }

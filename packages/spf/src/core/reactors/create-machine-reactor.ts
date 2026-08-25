@@ -124,7 +124,9 @@ export function createMachineReactor<State extends string>(
 
   const wrapResult = (result: ReturnType<ReactorEffectFn>) => {
     if (!result) return undefined;
+
     if (typeof result === 'function') return result;
+
     return () => result.abort();
   };
 
@@ -149,12 +151,14 @@ export function createMachineReactor<State extends string>(
     ...toArray(def.monitor).map((fn) => ({
       fn: () => {
         const target = fn();
+
         if (target !== (getState() as State)) transition(target as FullState);
       },
       shouldSkip: isTerminal,
     })),
     ...(Object.entries(def.states) as Array<[State, ReactorStateDefinition]>).flatMap(([state, stateDef]) => {
       const isNotState = (snapshot: { value: FullState }) => snapshot.value !== state;
+
       return [
         ...toArray(stateDef.entry).map((fn) => ({ fn, shouldSkip: isNotState, toFnCall: untracked })),
         ...toArray(stateDef.effects).map((fn) => ({ fn, shouldSkip: isNotState })),
@@ -165,8 +169,11 @@ export function createMachineReactor<State extends string>(
   const toEffect = ({ fn, shouldSkip, toFnCall = (baseCall) => baseCall }: EffectDescriptor) =>
     effect(() => {
       const snapshot = snapshotSignal.get();
+
       if (shouldSkip(snapshot)) return;
+
       const baseCall = () => fn();
+
       return wrapResult(toFnCall(baseCall)());
     });
 
@@ -179,12 +186,15 @@ export function createMachineReactor<State extends string>(
 
     destroy(): void {
       const state = getState();
+
       if (state === 'destroying' || state === 'destroyed') return;
+
       // Two-step teardown: transition through 'destroying' first to leave room
       // for async teardown in a future extension, then immediately 'destroyed'
       // for the synchronous base case. Active effect cleanups fire via disposal.
       transition('destroying');
       transition('destroyed');
+
       for (const dispose of effectDisposals) dispose();
     },
   };

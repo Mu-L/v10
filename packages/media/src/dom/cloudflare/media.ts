@@ -77,7 +77,9 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
   /** Bind the embed iframe. The SDK and player follow once an embed URL resolves, which may not be until `load()`. */
   attach(target: HTMLIFrameElement | null): void {
     if (!target || this.#target === target) return;
+
     if (this.#target) this.detach();
+
     this.#target = target;
     this.#beginLoad();
     this.#createPlayer();
@@ -85,6 +87,7 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
 
   detach(): void {
     if (!this.#target) return;
+
     this.#attachId++;
     this.#unbindPlayerEvents();
     // The SDK offers no teardown, so pausing is all that keeps a detached embed from playing on out of sight.
@@ -130,36 +133,46 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
     if (!this.#player) {
       // Nothing to reload without a target, and no load to wait on either.
       if (!this.#target) return;
+
       if (this.#creatingPlayer) {
         // The iframe is being built from a stale src; replaying once the player exists is the only way to reach the
         // new one, and callers are still waiting on the barrier creation opened.
         this.#pendingLoad = true;
         return;
       }
+
       // This load is what finally builds the embed; wait a microtask so the one-shot embed URL sees every prop a
       // framework sets around `src`.
       const load = this.#beginLoad();
+
       this.#resetState();
       await Promise.resolve();
+
       // A later load took over while waiting; building the embed is its job now.
       if (load !== this.#loadComplete) return;
+
       this.#createPlayer();
       return;
     }
+
     const load = this.#beginLoad();
+
     // Reset before bailing on an empty src: a cleared source has nothing to load, but the old video's state still goes.
     this.#resetState();
     // `emptied` announces that reset and so precedes the empty-src bail; a cleared source is the one case where the
     // embed reports nothing further, stranding listeners on the last video's duration and buffer.
     this.dispatchEvent(new Event('emptied'));
+
     if (!this.#src) {
       // The embed has to stop too: left running it keeps playing, and its events write the cleared state back.
       load.resolve();
       this.#pauseEmbed();
       return;
     }
+
     this.dispatchEvent(new Event('loadstart'));
     const parsed = parseCloudflareSource(this.#src);
+
     if (!parsed) {
       this.#srcUnsupported = true;
       this.#error = new MediaError(
@@ -173,15 +186,18 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
       this.#pauseEmbed();
       return;
     }
+
     // Embed parameters are read once from the iframe URL, so a change to them only lands by rebuilding: the swap below
     // moves the video alone, and reassigning the id already held may never report metadata, stranding this load.
     const target = this.#target;
     const nextSrc = buildCloudflareIframeSrc(this.#src, this.#snapshotProps());
+
     if (target && nextSrc && embedParamsOf(nextSrc) !== embedParamsOf(target.getAttribute('src') ?? '')) {
       // The rebuilt embed reports its own metadata, which settles this load.
       target.src = nextSrc;
       return;
     }
+
     // The player mimics `HTMLVideoElement` down to a writable `src`, so swap the video instead of discarding a working
     // embed and its SDK connection.
     this.#player.src = parsed.id;
@@ -213,8 +229,10 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
 
   async play() {
     await this.#loadComplete;
+
     // The embed still holds the previous video, so playing it would resume a source that is no longer reported.
     if (!this.#hasSource) return;
+
     await this.#player?.play();
   }
 
@@ -227,6 +245,7 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
   }
   set currentTime(value) {
     if (this.#currentTime === value) return;
+
     this.#currentTime = value;
     this.#afterLoad((p) => {
       p.currentTime = value;
@@ -242,6 +261,7 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
   }
   set volume(value) {
     if (this.#volume === value) return;
+
     this.#volume = value;
     this.#afterLoad((p) => {
       p.volume = value;
@@ -253,6 +273,7 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
   }
   set muted(value) {
     if (this.#muted === value) return;
+
     this.#muted = value;
     this.#afterLoad((p) => {
       p.muted = value;
@@ -264,6 +285,7 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
   }
   set playbackRate(value) {
     if (this.#playbackRate === value) return;
+
     this.#playbackRate = value;
     this.#afterLoad((p) => {
       p.playbackRate = value;
@@ -286,6 +308,7 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
   set defaultMuted(value) {
     // The embed reads its initial muted state from the URL; afterwards `muted` is the only way to reach the player.
     this.#defaultMuted = value;
+
     // Seed `muted` the way a media element does until the embed reports its own, so muted autoplay never reads unmuted.
     if (!this.#loaded) this.#muted = value;
   }
@@ -344,6 +367,7 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
   }
   set source(value: CloudflareSource | null) {
     const source = value ?? null;
+
     // Changing anything takes a new object, so handing the same one back costs nothing.
     if (source === this.#source) return;
 
@@ -397,15 +421,18 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
   async requestFullscreen() {
     // Without an element to request it on nothing entered fullscreen, so the flag must not claim otherwise.
     if (!this.#target?.requestFullscreen) return;
+
     await this.#target.requestFullscreen();
     this.#isFullscreen = true;
   }
 
   async exitFullscreen() {
     const doc = globalThis.document;
+
     if (doc?.fullscreenElement && doc.fullscreenElement === this.#target) {
       await doc.exitFullscreen();
     }
+
     this.#isFullscreen = false;
   }
 
@@ -415,19 +442,23 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
   // Build the embed and start player creation; an unresolvable source settles the load and returns false for a retry.
   #createPlayer(): boolean {
     const target = this.#target;
+
     if (!target || this.#player || this.#creatingPlayer) return false;
 
     // Answer now whether the embed came from the document: one built here navigates on its own while the SDK loads and
     // would look server-rendered by the time it resolves.
     let serverRendered = false;
+
     // The `src` property resolves an empty attribute to the document URL; only the attribute spots a placeholder.
     if (!target.getAttribute('src')) {
       const initialSrc = buildCloudflareIframeSrc(this.#src, this.#snapshotProps());
+
       // No embed means no player is coming to settle this load.
       if (!initialSrc) {
         this.#loadComplete.resolve();
         return false;
       }
+
       target.src = initialSrc;
     } else {
       serverRendered = hasEmbedNavigated(target);
@@ -442,11 +473,13 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
   async #createPlayerApi(target: HTMLIFrameElement, serverRendered: boolean) {
     const attachId = this.#attachId;
     let api: CloudflareStreamApi;
+
     try {
       api = await loadCloudflareStreamApi();
     } catch {
       // A failed SDK load belongs to the attach that started it; a newer one must not be marked failed.
       if (this.#isStale(attachId)) return;
+
       this.#creatingPlayer = false;
       this.#error = new MediaError('Failed to load the Cloudflare Stream SDK', MediaError.MEDIA_ERR_NETWORK);
       this.dispatchEvent(new Event('error'));
@@ -454,17 +487,23 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
       this.#loadComplete.resolve();
       return;
     }
+
     if (this.#isStale(attachId) || this.#target !== target) return;
+
     if (serverRendered) {
       // A server-rendered embed posted its one `iframeReady` message before the SDK existed; reloading the frame now
       // re-sends it, which only works once the script is in hand.
       const embedSrc = target.src;
+
       target.src = embedSrc;
     }
+
     const player = api(target);
+
     this.#player = player;
     this.#creatingPlayer = false;
     this.#bindPlayerEvents(player, attachId);
+
     if (this.#pendingLoad) {
       // A source arrived while the SDK was loading, so the embed points at the previous one; only the player can move.
       this.#pendingLoad = false;
@@ -486,6 +525,7 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
     this.#loadComplete.then(
       () => {
         const player = this.#player;
+
         if (player) tryCall(() => fn(player));
       },
       () => {}
@@ -530,9 +570,12 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
 
   #onLoaded() {
     if (this.#loaded) return;
+
     this.#loaded = true;
     this.#readyState = READY_STATE_HAVE_METADATA;
+
     const player = this.#player;
+
     if (player) {
       this.#duration = toDuration(player.duration);
       this.#muted = player.muted;
@@ -541,9 +584,11 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
       this.#videoWidth = player.videoWidth;
       this.#videoHeight = player.videoHeight;
     }
+
     for (const type of ['loadedmetadata', 'durationchange', 'volumechange', 'loadcomplete']) {
       this.dispatchEvent(new Event(type));
     }
+
     this.#loadComplete.resolve();
   }
 
@@ -561,8 +606,10 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
         // A cleared or unrecognized source has nothing to report, and acting on the video the embed still holds would
         // put the state just cleared right back.
         if (this.#isStale(attachId) || !this.#hasSource) return;
+
         handle();
       };
+
       player.addEventListener(type, listener);
       this.#playerListeners.push([type, listener]);
     };
@@ -620,7 +667,9 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
       this.#videoWidth = player.videoWidth;
       this.#videoHeight = player.videoHeight;
     });
+
     for (const type of PASSTHROUGH_EVENTS) on(type);
+
     listen('error', () => this.#onError());
   }
 
@@ -628,6 +677,7 @@ export class CloudflareMedia extends CloudflareMediaBase implements Partial<Vide
     for (const [type, listener] of this.#playerListeners) {
       tryCall(() => this.#player?.removeEventListener(type, listener));
     }
+
     this.#playerListeners.length = 0;
   }
 }
@@ -655,6 +705,7 @@ function toDuration(duration: number) {
 
 function toBufferedEnd(player: CloudflareStreamPlayerApi) {
   const { buffered } = player;
+
   return buffered?.length ? buffered.end(buffered.length - 1) : 0;
 }
 
@@ -663,6 +714,7 @@ function toBufferedEnd(player: CloudflareStreamPlayerApi) {
 function embedParamsOf(src: string): string {
   try {
     const url = new URL(src);
+
     return `${url.origin}${url.search}`;
   } catch {
     // Not a URL yet, so nothing it holds can match what is being built.
@@ -674,7 +726,9 @@ function embedParamsOf(src: string): string {
 // leaving it on readable, same-origin `about:blank`.
 function hasEmbedNavigated(target: HTMLIFrameElement): boolean {
   const frame = target.contentWindow;
+
   if (!frame) return false;
+
   try {
     return frame.location.href !== 'about:blank';
   } catch {

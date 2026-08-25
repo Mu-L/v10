@@ -24,6 +24,7 @@ export const fullscreenFeature = definePlayerFeature({
 
     async exitFullscreen() {
       const { media } = target();
+
       return exitFullscreen(media);
     },
 
@@ -61,6 +62,7 @@ export const fullscreenFeature = definePlayerFeature({
 
     // iOS Safari presentation mode change (covers fullscreen)
     const video = media as WebKitVideoElement;
+
     if ('webkitPresentationMode' in video) {
       listen(media, 'webkitpresentationmodechanged', sync, { signal });
     }

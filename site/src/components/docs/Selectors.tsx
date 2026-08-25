@@ -27,6 +27,7 @@ export function Selectors({ currentFramework, currentSlug }: SelectorProps) {
 
   const handleFrameworkChange = (newFramework: SupportedFramework | null) => {
     if (newFramework === null) return;
+
     if (!isValidFramework(newFramework)) return;
 
     const { url, shouldReplace } = resolveFrameworkChange({
@@ -48,6 +49,7 @@ export function Selectors({ currentFramework, currentSlug }: SelectorProps) {
       } catch {
         // Ignore storage errors
       }
+
       window.location.replace(url);
     } else {
       window.location.href = url;
@@ -56,6 +58,7 @@ export function Selectors({ currentFramework, currentSlug }: SelectorProps) {
 
   const handleStyleChange = (newStyle: AnySupportedStyle | null) => {
     if (newStyle === null) return;
+
     if (!isValidStyleForFramework(currentFramework, newStyle)) return;
 
     // Update localStorage for this framework

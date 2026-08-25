@@ -50,11 +50,13 @@ function App({ Skin }: { Skin: React.ComponentType<React.PropsWithChildren<{ cla
 
 const root = document.getElementById('root')!;
 const links = document.createElement('nav');
+
 links.ariaLabel = 'Skin preview variants';
 links.innerHTML = Object.keys(modules)
   .map((value) => {
     const [nextFramework, nextSkin, nextStyle] = value.split('/');
     const href = `?framework=${nextFramework}&skin=${nextSkin}&style=${nextStyle}`;
+
     return `<a href="${href}"${value === key ? ' aria-current="page"' : ''}>${value}</a>`;
   })
   .join('');
@@ -67,7 +69,9 @@ if (framework === 'react') {
       : 'MinimalVideoSkin' in loaded
         ? loaded.MinimalVideoSkin
         : null;
+
   if (!Skin) throw new Error(`React Skin module \`${key}\` did not export a Skin component.`);
+
   createRoot(root).render(<App Skin={Skin as React.ComponentType<React.PropsWithChildren<{ className?: string }>>} />);
 } else {
   const Skin =
@@ -76,12 +80,15 @@ if (framework === 'react') {
       : 'MinimalVideoSkin' in loaded
         ? loaded.MinimalVideoSkin
         : null;
+
   if (!Skin) throw new Error(`HTML Skin module \`${key}\` did not export a Skin component.`);
+
   await import('../../html/src/define/video/player');
   const render = Skin as (props?: { className?: string }) => { toString(): string };
   const skin = String(render({})).replace(
     '<slot></slot>',
     '<video src="https://stream.mux.com/VcmKA6aqzIzlg3MayLJDnbF55kX00mds028Z65QxvBYaA.m3u8" playsinline crossorigin="anonymous"></video>'
   );
+
   root.innerHTML = `<video-player>${skin}</video-player>`;
 }

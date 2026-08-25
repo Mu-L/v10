@@ -38,6 +38,7 @@ function run(command: string, args: string[], cwd: string): void {
   if (result.error) {
     throw new Error(`\`${command}\` is required to build the archive but could not be run: ${result.error.message}`);
   }
+
   if (result.status !== 0) {
     throw new Error(`\`${command} ${args.join(' ')}\` exited with ${result.status}`);
   }
@@ -45,7 +46,9 @@ function run(command: string, args: string[], cwd: string): void {
 
 function sha256(path: string): string {
   const result = spawnSync('shasum', ['-a', '256', path], { encoding: 'utf8' });
+
   if (result.status !== 0) throw new Error(`Could not checksum ${path}`);
+
   return (result.stdout.split(' ')[0] as string).trim();
 }
 
@@ -74,6 +77,7 @@ async function main() {
 
   for (const file of files) {
     const target = join(stageDir, file);
+
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, readFileSync(resolve(CDN_DIR, file), 'utf8').replace(SOURCE_MAPPING_URL, '\n'));
   }
@@ -81,9 +85,12 @@ async function main() {
   // The archive is what self-hosters actually run, so verify the copy rather than trusting that
   // the reachable set stayed self-contained.
   const problems = findUnresolvableSpecifiers(stageDir, files);
+
   if (problems.length > 0) {
     log.error(`${problems.length} specifier(s) would break the archive:`);
+
     for (const problem of problems) console.error(`  ${problem}`);
+
     process.exit(1);
   }
 
@@ -95,14 +102,17 @@ async function main() {
   run('tar', ['--create', '--gzip', '--file', `${name}.tar.gz`, name], OUT_DIR);
 
   const archives = [`${name}.zip`, `${name}.tar.gz`];
+
   writeFileSync(
     resolve(OUT_DIR, 'SHA256SUMS'),
     `${archives.map((archive) => `${sha256(resolve(OUT_DIR, archive))}  ${archive}`).join('\n')}\n`
   );
 
   log.info(`✅ ${files.length} bundles from ${roots.length} entries`);
+
   for (const archive of archives) {
     const size = (statSync(resolve(OUT_DIR, archive)).size / 1024).toFixed(0);
+
     log.info(`   archive/${archive} (${size} KB)`);
   }
 }

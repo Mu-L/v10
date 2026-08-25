@@ -96,12 +96,15 @@ export function createProviderMixin<Store extends PlayerStore>(
 
       #registerMedia = (media: Media): (() => void) => {
         const registration = { value: media };
+
         this.#mediaRegistrations.push(registration);
         this.#syncMedia();
 
         return () => {
           const index = this.#mediaRegistrations.indexOf(registration);
+
           if (index < 0) return;
+
           this.#mediaRegistrations.splice(index, 1);
           this.#syncNativeMedia();
           this.#syncMedia();
@@ -110,12 +113,15 @@ export function createProviderMixin<Store extends PlayerStore>(
 
       #registerContainer = (container: MediaContainer): (() => void) => {
         const registration = { value: container };
+
         this.#containerRegistrations.push(registration);
         this.#syncContainer();
 
         return () => {
           const index = this.#containerRegistrations.indexOf(registration);
+
           if (index < 0) return;
+
           this.#containerRegistrations.splice(index, 1);
           this.#syncContainer();
         };
@@ -183,6 +189,7 @@ export function createProviderMixin<Store extends PlayerStore>(
         // write to the store. Store-side writers do not reflect back here.
         for (const { property, entry } of inputs) {
           if (!changed.has(property)) continue;
+
           setPlayerConfigValue(this.store, entry, (this as unknown as Record<string, unknown>)[property]);
         }
       }
@@ -190,7 +197,9 @@ export function createProviderMixin<Store extends PlayerStore>(
       #syncMedia(): void {
         const registered = this.#mediaRegistrations.at(-1)?.value ?? null;
         const media = registered ?? this.#nativeMedia;
+
         if (this.#media === media) return;
+
         this.#media = media;
         this.#publishMedia();
         this.#tryAttach();
@@ -198,7 +207,9 @@ export function createProviderMixin<Store extends PlayerStore>(
 
       #syncContainer(): void {
         const container = this.#containerRegistrations.at(-1)?.value ?? null;
+
         if (this.#container === container) return;
+
         this.#container = container;
         this.#publishContainer();
         this.#tryAttach();
@@ -206,7 +217,9 @@ export function createProviderMixin<Store extends PlayerStore>(
 
       #syncNativeMedia(): void {
         const media = this.querySelector<HTMLMediaElement>('video, audio');
+
         if (this.#nativeMedia === media) return;
+
         this.#nativeMedia = media;
         this.#syncMedia();
       }
@@ -224,6 +237,7 @@ export function createProviderMixin<Store extends PlayerStore>(
 
       #tryAttach(): void {
         const store = this.#store;
+
         if (!this.#connected || !store) return;
 
         if (!this.#media) {
@@ -252,11 +266,13 @@ export function createProviderMixin<Store extends PlayerStore>(
 
       #syncInitialConfig(): void {
         const store = this.store;
+
         if (this.#configuredStore === store) return;
 
         for (const { property, entry } of inputs) {
           setPlayerConfigValue(store, entry, (this as unknown as Record<string, unknown>)[property]);
         }
+
         this.#configuredStore = store;
       }
     }

@@ -61,6 +61,7 @@ export function AlertDialogRoot({
     if (controlledOpen === undefined) return;
 
     const { active: inputOpen } = dialog.input.current;
+
     if (controlledOpen === inputOpen) return;
 
     if (controlledOpen) {
@@ -73,6 +74,7 @@ export function AlertDialogRoot({
   useDestroy(dialog);
 
   const input = useSnapshot(dialog.input);
+
   core.setInput(input);
   const state = core.getState();
 

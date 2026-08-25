@@ -98,6 +98,7 @@ export class Task<TValue = void, TError = unknown> implements TaskLike<TValue, T
   constructor(runFn: (signal: AbortSignal) => Promise<TValue>, config?: TaskConfig) {
     this.#runFn = runFn;
     const rawId = config?.id;
+
     this.id = typeof rawId === 'function' ? rawId() : (rawId ?? generateId());
     this.#externalSignal = config?.signal;
     this.#signal = config?.signal
@@ -136,8 +137,10 @@ export class Task<TValue = void, TError = unknown> implements TaskLike<TValue, T
 
   async #execute(): Promise<TValue> {
     this.#status = 'running';
+
     try {
       const result = await this.#runFn(this.#signal);
+
       this.#value = result; // value before status — ordering guarantee
       this.#status = 'done';
       return result;
@@ -164,6 +167,7 @@ export class Task<TValue = void, TError = unknown> implements TaskLike<TValue, T
    */
   clone(): Task<TValue, TError> {
     const cloned = new Task<TValue, TError>(this.#runFn, { id: this.id, signal: this.#externalSignal });
+
     cloned.#previous = this.#value ?? this.#previous;
     return cloned;
   }
@@ -188,7 +192,9 @@ export class ConcurrentRunner {
 
   schedule<TValue = void, TError = unknown>(task: TaskLike<TValue, TError>): Promise<TValue> {
     if (this.#destroyed) return Promise.resolve() as Promise<TValue>;
+
     const existing = this.#pending.get(task.id);
+
     if (existing) return existing.promise as Promise<TValue>;
 
     if (this.#pending.size === 0) {
@@ -198,16 +204,19 @@ export class ConcurrentRunner {
     }
 
     const promise = task.run();
+
     // Suppress unhandled rejection for callers that ignore the return value.
     promise.catch(() => {});
     // Cleanup: update pending and resolve settled regardless of outcome.
     const cleanup = () => {
       this.#pending.delete(task.id);
+
       if (this.#pending.size === 0) {
         this.#resolveSettled?.();
         this.#resolveSettled = null;
       }
     };
+
     promise.then(cleanup, cleanup);
 
     this.#pending.set(task.id, { task: task as TaskLike<unknown, unknown>, promise: promise as Promise<unknown> });
@@ -222,10 +231,13 @@ export class ConcurrentRunner {
    */
   whenSettled(callback: () => void): void {
     if (this.#pending.size === 0) return;
+
     const captured = this.#settled;
+
     captured.then(
       () => {
         if (this.#settled !== captured) return;
+
         callback();
       },
       () => {}
@@ -234,6 +246,7 @@ export class ConcurrentRunner {
 
   abortAll(): void {
     for (const { task } of this.#pending.values()) task.abort();
+
     this.#pending.clear();
     // Resolve the current settled promise so any .then() handlers are queued,
     // then replace the reference — whenSettled callbacks that captured the old
@@ -275,7 +288,9 @@ export class SerialRunner {
 
   schedule<TValue = void, TError = unknown>(task: TaskLike<TValue, TError>): Promise<TValue> {
     if (this.#destroyed) return Promise.resolve() as Promise<TValue>;
+
     const t = task as TaskLike<unknown, unknown>;
+
     this.#pending.add(t);
 
     const result = this.#chain
@@ -316,10 +331,13 @@ export class SerialRunner {
    */
   whenSettled(callback: () => void): void {
     if (this.#pending.size === 0 && this.#current === null) return;
+
     const currentChain = this.#chain;
+
     currentChain.then(
       () => {
         if (this.#chain !== currentChain) return;
+
         callback();
       },
       () => {}
@@ -329,6 +347,7 @@ export class SerialRunner {
   /** Aborts and clears queued tasks without touching the in-flight task. */
   abortPending(): void {
     for (const task of this.#pending) task.abort();
+
     this.#pending.clear();
   }
 
@@ -438,10 +457,12 @@ export class RecurringRunner<TValue = unknown> {
    */
   schedule(task: TaskLike<TValue, unknown>): Promise<TValue> {
     if (this.#destroyed) return Promise.resolve() as Promise<TValue>;
+
     // Dedup by id: this id is already the active re-run target, so the existing
     // recurrence continues uninterrupted (don't restart it) — hand back its
     // in-flight run.
     if (this.#active?.id === task.id) return this.#active.run();
+
     // Different id supersedes: abort the prior recurrence, then take over.
     this.#cancel();
     this.#active = task;
@@ -458,16 +479,20 @@ export class RecurringRunner<TValue = unknown> {
           this.#active = null;
           return this.schedule(task.clone());
         }
+
         if (this.#active === task) this.#active = null; // natural stop / superseded
+
         return value;
       },
       (error) => {
         // The recurrence ended on a rejection; free the slot if we still own it.
         if (this.#active === task) this.#active = null;
+
         // The runner's own cancellation isn't a failure — settle quietly so
         // routine teardown (abort/supersede/destroy) needs no caller `.catch`.
         // A genuine run/reschedule failure propagates to the caller.
         if (task.signal.aborted) return undefined as TValue;
+
         throw error;
       }
     );

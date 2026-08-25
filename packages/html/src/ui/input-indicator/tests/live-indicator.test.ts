@@ -15,6 +15,7 @@ afterEach(() => {
 describe('LiveIndicator', () => {
   it('uses authored HTML as the mounted visual surface', () => {
     const host = document.createElement('media-volume-indicator');
+
     host.hidden = true;
     host.innerHTML = `
       <media-volume-indicator-fill>
@@ -31,6 +32,7 @@ describe('LiveIndicator', () => {
           .querySelector<HTMLElement>('media-volume-indicator-fill')
           ?.style.setProperty(VolumeIndicatorCSSVars.fill, state.fill ?? '');
         const value = element.querySelector('media-volume-indicator-value');
+
         if (value) value.textContent = getVolumeIndicatorDisplayValue(state);
       },
     });

@@ -18,12 +18,15 @@ function parameterAnnotation(parameter: Parameter): ESTree.TSTypeAnnotation | nu
 	if (parameter.type === "TSParameterProperty") {
 		return parameterAnnotation(parameter.parameter);
 	}
+
 	if (parameter.type === "RestElement") {
 		return parameter.typeAnnotation ?? parameterAnnotation(parameter.argument);
 	}
+
 	if (parameter.type === "AssignmentPattern") {
 		return parameter.typeAnnotation ?? parameter.left.typeAnnotation;
 	}
+
 	return parameter.typeAnnotation;
 }
 
@@ -55,13 +58,16 @@ export const noObjectParametersRule = defineRule({
 			visited = new Set<string>(),
 		): boolean => {
 			if (type.type === "TSObjectKeyword") return true;
+
 			if (type.type === "TSParenthesizedType")
 				return resolvesToObject(type.typeAnnotation, shadowedAliases, visited);
+
 			if (type.type === "TSUnionType") {
 				return type.types.some((member) =>
 					resolvesToObject(member, shadowedAliases, visited),
 				);
 			}
+
 			if (
 				type.type !== "TSTypeReference" ||
 				type.typeName.type !== "Identifier" ||
@@ -73,8 +79,11 @@ export const noObjectParametersRule = defineRule({
 			) {
 				return false;
 			}
+
 			const alias = aliases.get(type.typeName.name);
+
 			if (alias === undefined) return false;
+
 			const nextVisited = new Set(visited);
 			nextVisited.add(type.typeName.name);
 			return resolvesToObject(alias, shadowedAliases, nextVisited);
@@ -85,10 +94,14 @@ export const noObjectParametersRule = defineRule({
 				node,
 				context.sourceCode.visitorKeys,
 			);
+
 			for (const parameter of node.params) {
 				const annotation = parameterAnnotation(parameter);
+
 				if (annotation === null || annotation === undefined) continue;
+
 				if (!resolvesToObject(annotation.typeAnnotation, shadowedAliases)) continue;
+
 				context.report({
 					node: annotation.typeAnnotation,
 					messageId: "objectParameter",
@@ -100,9 +113,11 @@ export const noObjectParametersRule = defineRule({
 		return {
 			Program(node) {
 				aliases.clear();
+
 				for (const statement of node.body) {
 					const declaration =
 						statement.type === "ExportNamedDeclaration" ? statement.declaration : statement;
+
 					if (
 						declaration?.type === "TSTypeAliasDeclaration" &&
 						(declaration.typeParameters === null || declaration.typeParameters === undefined)

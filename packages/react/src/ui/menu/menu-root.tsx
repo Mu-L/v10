@@ -56,8 +56,10 @@ export function MenuRoot({
 
   const onOpenChangeRef = useLatestRef(onOpenChangeProp);
   const onOpenChangeCompleteRef = useLatestRef(onOpenChangeCompleteProp);
+
   const closeOnEscapeRef = useLatestRef(closeOnEscape);
   const closeOnOutsideClickRef = useLatestRef(closeOnOutsideClick);
+
   const popupGroupRef = useLatestRef(popupGroup);
   const isSubmenuRef = useLatestRef(isSubmenu);
 
@@ -66,6 +68,7 @@ export function MenuRoot({
       transition: createTransition(),
       onOpenChange(nextOpen, details) {
         if (!isControlled) setUncontrolledOpen(nextOpen);
+
         onOpenChangeRef.current?.(nextOpen, details);
       },
       onOpenChangeComplete(nextOpen) {

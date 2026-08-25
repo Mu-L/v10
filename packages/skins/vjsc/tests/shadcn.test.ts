@@ -11,7 +11,9 @@ describe('Skins Shadcn registry', () => {
       logLevel: 'silent',
       write: false,
     });
+
     if (!result) throw new Error('Expected one registry build output.');
+
     const output = result.chunks;
 
     expect(output.some((item) => item.type === 'chunk')).toBe(false);
@@ -29,6 +31,7 @@ describe('Skins Shadcn registry', () => {
     const volumePopover = assetJson<BuiltItem>(assets, 'volume-popover.json');
     const styles = assetJson<BuiltItem>(assets, 'styles.json');
     const utils = assetJson<BuiltItem>(assets, 'utils.json');
+
     const playSource = playButton.files.find((file) => file.target?.endsWith('/play-button.tsx'))?.content;
     const posterSource = poster.files.find((file) => file.target?.endsWith('/poster.tsx'))?.content;
     const qualityMenuSource = videoSettingsMenu.files.find((file) =>
@@ -104,6 +107,8 @@ type BuiltItem = Omit<ShadcnRegistry['items'][number], 'files'> & {
 
 function assetJson<Value>(assets: ReadonlyMap<string, string>, fileName: string): Value {
   const source = assets.get(fileName);
+
   if (!source) throw new Error(`Missing registry asset: ${fileName}`);
+
   return JSON.parse(source) as Value;
 }

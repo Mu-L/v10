@@ -116,8 +116,10 @@ export function createMenu(options: MenuOptions): MenuApi {
   let triggerElement: HTMLElement | null = null;
   let contentElement: HTMLElement | null = null;
   const submenus = new Set<MenuApi>();
+
   let typeaheadBuffer = '';
   let typeaheadTimer: ReturnType<typeof setTimeout> | null = null;
+
   let openRafId = 0;
   let lastCloseReason: MenuOpenChangeReason | null = null;
 
@@ -145,6 +147,7 @@ export function createMenu(options: MenuOptions): MenuApi {
     for (let offset = 1; offset <= items.length; offset++) {
       const index = (currentIndex + direction * offset + items.length) % items.length;
       const candidate = items[index];
+
       if (candidate && !isItemHidden(candidate)) return candidate;
     }
 
@@ -155,14 +158,17 @@ export function createMenu(options: MenuOptions): MenuApi {
   function highlight(element: HTMLElement | null, highlightOptions?: MenuHighlightOptions): void {
     if (element && isItemHidden(element)) {
       if (element === highlightedItem) highlight(getAdjacentNavigableItem(1), highlightOptions);
+
       return;
     }
+
     if (highlightedItem === element) {
       element?.setAttribute(MenuItemDataAttrs.highlighted, highlightOptions?.pointer === true ? 'pointer' : '');
       return;
     }
 
     const previousItem = highlightedItem;
+
     if (previousItem) {
       previousItem.tabIndex = -1;
     }
@@ -178,6 +184,7 @@ export function createMenu(options: MenuOptions): MenuApi {
       if (previousItem && compareItems(element, previousItem) < 0 && highlightOptions?.pointer) {
         forceLayout(element.parentElement);
       }
+
       previousItem?.removeAttribute(MenuItemDataAttrs.highlighted);
 
       if (highlightOptions?.focus !== false) {
@@ -243,6 +250,7 @@ export function createMenu(options: MenuOptions): MenuApi {
       clearTimeout(typeaheadTimer);
       typeaheadTimer = null;
     }
+
     typeaheadBuffer = '';
   }
 
@@ -250,18 +258,22 @@ export function createMenu(options: MenuOptions): MenuApi {
     cancelAnimationFrame(openRafId);
     openRafId = requestAnimationFrame(() => {
       openRafId = 0;
+
       // Guard against close() being called before the RAF fires — active
       // stays true during the closing animation, so also check status.
       if (!popover.input.current.active || popover.input.current.status === 'ending' || highlightedItem) return;
+
       highlight(getInitialHighlightItem());
     });
   }
 
   function handleTypeahead(char: string): void {
     const repeatedChar = typeaheadBuffer.length === 1 && typeaheadBuffer.toLowerCase() === char.toLowerCase();
+
     typeaheadBuffer = repeatedChar ? char : typeaheadBuffer + char;
 
     if (typeaheadTimer !== null) clearTimeout(typeaheadTimer);
+
     typeaheadTimer = setTimeout(clearTypeahead, 500);
 
     const navigableItems = getNavigableItems();
@@ -274,6 +286,7 @@ export function createMenu(options: MenuOptions): MenuApi {
     const needle = typeaheadBuffer.toLowerCase();
     const match = candidates.find((candidate) => {
       const text = candidate.textContent?.trim().toLowerCase() ?? '';
+
       return text.startsWith(needle);
     });
 
@@ -300,6 +313,7 @@ export function createMenu(options: MenuOptions): MenuApi {
     },
     onOpenChangeComplete(open) {
       options.onOpenChangeComplete?.(open);
+
       // Return focus to the trigger after the close animation completes
       // so screen readers hear the correct context.
       if (!open) restoreFocus();
@@ -347,7 +361,9 @@ export function createMenu(options: MenuOptions): MenuApi {
         case 'Enter':
         case ' ': {
           event.preventDefault();
+
           if (highlightedItem && navigableItems.includes(highlightedItem)) highlightedItem.click();
+
           break;
         }
         default: {
@@ -364,7 +380,9 @@ export function createMenu(options: MenuOptions): MenuApi {
     const input = popover.input.current;
 
     if (!input.active || input.status === 'ending') return;
+
     if (event.key === 'Escape') return;
+
     if (!isMenuNavigationKey(event)) return;
 
     contentProps.onKeyDown(event);
@@ -391,6 +409,7 @@ export function createMenu(options: MenuOptions): MenuApi {
     const position = a.compareDocumentPosition(b);
 
     if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+
     if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1;
 
     return 0;
@@ -408,7 +427,9 @@ export function createMenu(options: MenuOptions): MenuApi {
 
     return () => {
       const index = items.indexOf(element);
+
       if (index !== -1) items.splice(index, 1);
+
       if (highlightedItem === element) clearHighlight();
     };
   }

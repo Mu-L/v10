@@ -13,6 +13,7 @@ export function ShakaMediaLiveMixin<Base extends Constructor<ShakaEngineHost>>(B
       super(...args);
 
       const { engine } = this;
+
       if (!engine) return;
 
       engine.addEventListener('loading', this.#onLoading);
@@ -58,9 +59,11 @@ export function ShakaMediaLiveMixin<Base extends Constructor<ShakaEngineHost>>(B
       if (this.#liveEdgeStartOffset === undefined) return Number.NaN;
 
       const { engine } = this;
+
       if (!engine) return Number.NaN;
 
       const { end } = engine.seekRange();
+
       if (!Number.isFinite(end)) return Number.NaN;
 
       return end - this.#liveEdgeStartOffset;
@@ -68,6 +71,7 @@ export function ShakaMediaLiveMixin<Base extends Constructor<ShakaEngineHost>>(B
 
     #onLoading = () => {
       this.#reset();
+
       // A deferred load's own first `play` set the pending seek and then
       // started this load; arming again would wipe that shot mid-flight.
       if (!this.#seekToLivePending) this.#armSeekToLive();
@@ -77,10 +81,12 @@ export function ShakaMediaLiveMixin<Base extends Constructor<ShakaEngineHost>>(B
 
     #onLoaded = () => {
       this.#derive();
+
       // For deferred loading the manifest only arrives after the first play,
       // so the pending seek resolves here. Either way the shot is spent: a
       // load that came up on-demand has no edge to seek.
       if (!this.#seekToLivePending) return;
+
       this.#seekToLivePending = false;
       this.#trySeekToLive();
     };
@@ -99,6 +105,7 @@ export function ShakaMediaLiveMixin<Base extends Constructor<ShakaEngineHost>>(B
       // call that its shape is not covered by semver — so the same spec
       // default is derived from the presentation's max segment duration.
       const { maxSegmentDuration } = engine.getStats();
+
       this.#liveEdgeStartOffset =
         Number.isFinite(maxSegmentDuration) && maxSegmentDuration > 0 ? maxSegmentDuration * 3 : undefined;
 
@@ -114,6 +121,7 @@ export function ShakaMediaLiveMixin<Base extends Constructor<ShakaEngineHost>>(B
 
     #setTargetLiveWindow(value: number) {
       if (Object.is(this.#targetLiveWindow, value)) return;
+
       this.#targetLiveWindow = value;
       this.dispatchEvent(new Event('targetlivewindowchange'));
     }
@@ -127,6 +135,7 @@ export function ShakaMediaLiveMixin<Base extends Constructor<ShakaEngineHost>>(B
       this.#disarmSeekToLive();
 
       const target = this.target as HTMLVideoElement | null;
+
       if (!target || target.autoplay) return;
 
       this.#seekToLiveAbort = new AbortController();
@@ -148,14 +157,17 @@ export function ShakaMediaLiveMixin<Base extends Constructor<ShakaEngineHost>>(B
 
     #trySeekToLive() {
       const target = this.target as HTMLVideoElement | null;
+
       if (!target) return;
 
       const { liveEdgeStart } = this;
+
       if (!Number.isFinite(liveEdgeStart)) return;
 
       if (target.currentTime < liveEdgeStart) {
         target.currentTime = liveEdgeStart;
       }
+
       this.#seekToLivePending = false;
     }
   }

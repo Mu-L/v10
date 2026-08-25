@@ -47,6 +47,7 @@ export class I18nController implements ReactiveController {
     fallbackTranslator = undefined;
     this.#unsubscribeRegistry = onI18nRegistryChange(() => {
       fallbackTranslator = undefined;
+
       if (!this.#consumer.value) {
         this.#host.requestUpdate();
       }

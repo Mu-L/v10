@@ -54,6 +54,7 @@ export class ThumbnailElement extends UIElement {
     const shadow = this.attachShadow({ mode: 'open' });
 
     const style = document.createElement('style');
+
     style.textContent = SHADOW_CSS;
     shadow.appendChild(style);
 
@@ -79,6 +80,7 @@ export class ThumbnailElement extends UIElement {
 
   override connectedCallback(): void {
     super.connectedCallback();
+
     if (this.destroyed) return;
 
     this.#api = createThumbnail({
@@ -130,6 +132,7 @@ export class ThumbnailElement extends UIElement {
       this.#resetStyles();
 
       const state = this.#core.getState(false, false, undefined);
+
       applyElementProps(this, this.#core.getAttrs(state));
       applyStateDataAttrs(this, state, ThumbnailDataAttrs);
       return;
@@ -142,6 +145,7 @@ export class ThumbnailElement extends UIElement {
 
     const api = this.#api;
     const state = this.#core.getState(api?.loading ?? false, api?.error ?? false, thumbnail);
+
     applyElementProps(this, this.#core.getAttrs(state));
     applyStateDataAttrs(this, state, ThumbnailDataAttrs);
 
@@ -167,7 +171,9 @@ export class ThumbnailElement extends UIElement {
    */
   #resolveCrossOrigin(textTrack: MediaTextTrackState | undefined): string | undefined {
     if (isNull(this.crossOrigin)) return undefined;
+
     if (!isUndefined(this.crossOrigin)) return this.crossOrigin;
+
     if (this.#externalThumbnails) return undefined;
 
     return textTrack?.thumbnailTrackCrossOrigin ?? undefined;
@@ -178,6 +184,7 @@ export class ThumbnailElement extends UIElement {
     this.style.height = `${result.containerHeight}px`;
 
     const imgStyle = this.#img.style;
+
     imgStyle.width = `${result.imageWidth}px`;
     imgStyle.height = `${result.imageHeight}px`;
     imgStyle.maxWidth = 'none';
@@ -190,6 +197,7 @@ export class ThumbnailElement extends UIElement {
     this.style.height = '';
 
     const imgStyle = this.#img.style;
+
     imgStyle.width = '';
     imgStyle.height = '';
     imgStyle.maxWidth = '';

@@ -63,6 +63,7 @@ function discoverManifests(
 ): ManifestSchemaComponent[] {
   return globSync(pattern, { cwd, ...(exclude ? { exclude: toArray(exclude) } : {}) }).map((path) => {
     const fileName = absolutePath(cwd, path);
+
     return { kind: 'manifest', fileName, ...parseComponentManifest(fileName) };
   });
 }
@@ -74,13 +75,16 @@ function discoverFiles(source: ComponentFileSet, cwd: string): FileSchemaCompone
   }).map((path) => {
     const fileName = absolutePath(cwd, path);
     const name = source.name(fileStem(path));
+
     return { kind: 'file', fileName, name, definition: { name } };
   });
 }
 
 function parseComponentManifest(fileName: string): Pick<ManifestSchemaComponent, 'definition' | 'name'> {
   const parsed = parseSync(fileName, readFileSync(fileName, 'utf8'));
+
   if (parsed.errors.length > 0) throw new Error(parsed.errors.map((error) => error.message).join('\n'));
+
   const exported = parsed.program.body.find(
     (statement): statement is ExportDefaultDeclaration =>
       statement.type === 'ExportDefaultDeclaration' && isDefineComponentCall(statement.declaration)
@@ -89,6 +93,7 @@ function parseComponentManifest(fileName: string): Pick<ManifestSchemaComponent,
   if (!exported) throw new Error(`No \`export default defineComponent(...)\` found in ${fileName}`);
 
   const definition = parseComponentDefinition(exported.declaration as CallExpression, fileName);
+
   if (!definition.name) throw new Error(`defineComponent() in ${fileName} is missing a literal \`name:\` field`);
 
   return {
@@ -99,9 +104,13 @@ function parseComponentManifest(fileName: string): Pick<ManifestSchemaComponent,
 
 function isDefineComponentCall(node: unknown): node is CallExpression {
   if (!node || typeof node !== 'object') return false;
+
   const candidate = node as { readonly type?: unknown; readonly callee?: unknown };
+
   if (candidate.type !== 'CallExpression' || !candidate.callee || typeof candidate.callee !== 'object') return false;
+
   const callee = candidate.callee as { readonly type?: unknown; readonly name?: unknown };
+
   return callee.type === 'Identifier' && callee.name === 'defineComponent';
 }
 
@@ -110,6 +119,7 @@ function parseComponentDefinition(
   fileName: string
 ): ComponentDefinition<object, ComponentRecord | undefined> {
   const argument = call.arguments[0];
+
   if (!argument) return {};
 
   if (argument.type !== 'ObjectExpression') {
@@ -124,15 +134,18 @@ function parseComponentDefinition(
 
   for (const property of argument.properties) {
     if (property.type !== 'Property' || property.kind !== 'init' || property.method) continue;
+
     const name = staticPropertyName(property.key);
 
     if (name === 'name' || name === 'root') {
       if (property.value.type !== 'Literal' || typeof property.value.value !== 'string') {
         throw new Error(`defineComponent() in ${fileName} requires a literal \`${name}:\` field`);
       }
+
       definition[name] = property.value.value;
       continue;
     }
+
     if (name !== 'parts') continue;
 
     if (property.value.type !== 'ObjectExpression') {
@@ -144,6 +157,7 @@ function parseComponentDefinition(
         if (part.type !== 'Property' || part.kind !== 'init' || part.method || !isDefineComponentCall(part.value)) {
           throw new Error(`defineComponent() in ${fileName} requires literal component parts`);
         }
+
         return [staticPropertyName(part.key), parseComponentDefinition(part.value, fileName)];
       })
     );
@@ -154,8 +168,10 @@ function parseComponentDefinition(
 
 function staticPropertyName(name: PropertyKey): string {
   if (name.type === 'Identifier') return name.name;
+
   if (name.type === 'Literal' && (typeof name.value === 'string' || typeof name.value === 'number')) {
     return String(name.value);
   }
+
   throw new Error('Component definition property names must be static.');
 }

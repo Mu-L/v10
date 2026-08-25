@@ -4,6 +4,7 @@ export function hasScript(src: string): boolean {
   for (const script of document.scripts) {
     if (script.getAttribute('src') === src) return true;
   }
+
   return false;
 }
 
@@ -14,6 +15,7 @@ export function hasScript(src: string): boolean {
  */
 export function loadScript(src: string): Promise<void> {
   let promise = cache.get(src);
+
   if (promise) return promise;
 
   // Assume a tag we didn't create (e.g. added directly in HTML) has loaded or will load.
@@ -21,6 +23,7 @@ export function loadScript(src: string): Promise<void> {
 
   promise = new Promise<void>((resolve, reject) => {
     const script = document.createElement('script');
+
     script.src = src;
     script.onload = () => resolve();
     script.onerror = () => {

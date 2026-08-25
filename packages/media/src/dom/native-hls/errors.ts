@@ -26,6 +26,7 @@ export function NativeHlsMediaErrorsMixin<Base extends Constructor<NativeMediaHo
      */
     setError(error: MediaError): void {
       if (error.fatal) this.#error = error;
+
       this.dispatchEvent(new ErrorEvent('error', { error, message: error.message }));
     }
 
@@ -62,10 +63,12 @@ export function NativeHlsMediaErrorsMixin<Base extends Constructor<NativeMediaHo
           event.stopImmediatePropagation();
 
           const native = target.error;
+
           if (!native) return;
 
           const code = native.code;
           const useCanonicalMessage = code >= MediaError.MEDIA_ERR_ABORTED && code <= MediaError.MEDIA_ERR_ENCRYPTED;
+
           this.setError(new MediaError(useCanonicalMessage ? undefined : native.message, code, true));
         },
         { signal, capture: true }

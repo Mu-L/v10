@@ -44,10 +44,12 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(function
     if (!isSubmenu) return undefined;
 
     const wasActive = wasActiveRef.current;
+
     wasActiveRef.current = isActive;
 
     if (isActive && !wasActive) {
       const frame = requestAnimationFrame(() => menu.highlightFirstItem({ preventScroll: true }));
+
       return () => cancelAnimationFrame(frame);
     }
 
@@ -57,9 +59,11 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(function
   const setSubmenuContentElement = useCallback(
     (element: HTMLDivElement | null) => {
       menu.setContentElement(element);
+
       if (!element) {
         requestAnimationFrame(() => {
           syncMenuSizeChain(parent?.menu.contentElement ?? null);
+
           if (!menu.input.current.active) menu.restoreFocus({ preventScroll: true });
         });
       }
@@ -74,6 +78,7 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(function
         event
       );
       const isNavigationKey = isMenuNavigationKey(event);
+
       menu.contentProps.onKeyDown(event);
       const isBackNavigationKey = event.key === 'ArrowLeft' || event.key === 'Escape';
 
@@ -91,7 +96,9 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(function
     (event: React.KeyboardEvent<HTMLDivElement>) => {
       (onKeyDown as React.KeyboardEventHandler<HTMLDivElement> | undefined)?.(event);
       menu.contentProps.onKeyDown(event);
+
       if (event.key === 'Escape') return;
+
       if (isMenuNavigationKey(event)) event.stopPropagation();
     },
     [onKeyDown, menu]
@@ -142,9 +149,11 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(function
     if (isSubmenu || !state.open) return;
 
     const contentElement = internalRef.current;
+
     if (!contentElement) return;
 
     const sync = () => syncMenuSizeChain(contentElement);
+
     sync();
     const frame = requestAnimationFrame(sync);
     const stopObserving = observeMenuSize(contentElement, sync);
@@ -161,6 +170,7 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(function
     const isEnding = state.status === 'ending';
     const parentContentElement = parent?.menu.contentElement ?? null;
     const sync = () => syncMenuSizeChain(parentContentElement);
+
     sync();
     const frame = requestAnimationFrame(sync);
     const stopObserving =
@@ -197,6 +207,7 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(function
     );
 
     const parentContentElement = parent?.menu.contentElement ?? null;
+
     return parentContentElement ? createPortal(subMenuContent, parentContentElement) : subMenuContent;
   }
 

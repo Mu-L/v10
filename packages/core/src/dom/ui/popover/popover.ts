@@ -72,8 +72,10 @@ export function createPopover(options: PopoverOptions): PopoverApi {
 
   let triggerEl: HTMLElement | null = null;
   let popupEl: HTMLElement | null = null;
+
   let hoverTimeout: ReturnType<typeof setTimeout> | null = null;
   const capturedPointers = new Set<number>();
+
   let ignoreNextBlurClose = false;
   let blurGuardTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -114,16 +116,19 @@ export function createPopover(options: PopoverOptions): PopoverApi {
 
   function canOpenOnFocus(): boolean {
     if (!canHover()) return false;
+
     return globalThis.matchMedia?.('(pointer: fine)')?.matches ?? false;
   }
 
   function canToggleOnClick(): boolean {
     if (!options.openOnHover?.()) return true;
+
     return canHover();
   }
 
   function clearBlurGuard(): void {
     ignoreNextBlurClose = false;
+
     if (blurGuardTimeout !== null) {
       clearTimeout(blurGuardTimeout);
       blurGuardTimeout = null;
@@ -134,7 +139,9 @@ export function createPopover(options: PopoverOptions): PopoverApi {
     // Trusted pointer gestures can transiently retarget focus to the shadow host
     // or body before the click handler runs. Let inside menu actions decide.
     ignoreNextBlurClose = true;
+
     if (blurGuardTimeout !== null) clearTimeout(blurGuardTimeout);
+
     blurGuardTimeout = setTimeout(clearBlurGuard, 500);
   }
 
@@ -147,7 +154,9 @@ export function createPopover(options: PopoverOptions): PopoverApi {
 
   function isTriggerDisabled(): boolean {
     if (!triggerEl) return false;
+
     if (triggerEl.hasAttribute('disabled')) return true;
+
     return triggerEl.getAttribute('aria-disabled') === 'true';
   }
 
@@ -173,18 +182,21 @@ export function createPopover(options: PopoverOptions): PopoverApi {
     // React content can mount after this commit begins, so resolve the popup
     // element only when the transition is ready to collect animations.
     const opening = layer.open(() => popupEl);
+
     if (!opening) return;
 
     options.group?.()?.open(groupMember);
 
     opening.then(() => {
       if (layer.signal.aborted || !state.current.active || state.current.status !== 'idle') return;
+
       options.onOpenChangeComplete?.(true);
     });
   }
 
   function commitClose(): void {
     const closing = layer.close(popupEl);
+
     if (!closing) return;
 
     options.group?.()?.close(groupMember);
@@ -193,6 +205,7 @@ export function createPopover(options: PopoverOptions): PopoverApi {
       // A close can be cancelled by reopening while the exit animation is
       // running. Only complete the close if the layer actually became inactive.
       if (layer.signal.aborted || state.current.active) return;
+
       tryHidePopover(popupEl);
       options.onOpenChangeComplete?.(false);
     });
@@ -200,21 +213,29 @@ export function createPopover(options: PopoverOptions): PopoverApi {
 
   function applyOpen(reason: PopoverOpenChangeReason, event?: Event): void {
     if (layer.signal.aborted) return;
+
     const { active, status } = state.current;
+
     if (active && status !== 'ending') return;
 
     const details: PopoverChangeDetails = event ? { reason, event } : { reason };
+
     onOpenChange(true, details);
+
     if (!options.deferOpenChanges) commitOpen();
   }
 
   function applyClose(reason: PopoverOpenChangeReason, event?: Event): void {
     if (layer.signal.aborted) return;
+
     const { active, status } = state.current;
+
     if (!active || status === 'ending') return;
 
     const details: PopoverChangeDetails = event ? { reason, event } : { reason };
+
     onOpenChange(false, details);
+
     if (!options.deferOpenChanges) commitClose();
   }
 
@@ -231,6 +252,7 @@ export function createPopover(options: PopoverOptions): PopoverApi {
 
   function syncOpen(open: boolean): void {
     if (!options.deferOpenChanges) return;
+
     if (open) commitOpen();
     else commitClose();
   }
@@ -270,6 +292,7 @@ export function createPopover(options: PopoverOptions): PopoverApi {
   const triggerProps: PopoverTriggerProps = {
     onClick(event) {
       if (!canToggleOnClick()) return;
+
       if (isTriggerDisabled()) return;
 
       // During a close animation (open=true, status=ending), treat
@@ -283,6 +306,7 @@ export function createPopover(options: PopoverOptions): PopoverApi {
 
     onPointerEnter(_event) {
       if (!options.openOnHover?.()) return;
+
       if (!canHover()) return;
 
       clearHoverTimeout();
@@ -290,11 +314,13 @@ export function createPopover(options: PopoverOptions): PopoverApi {
       if (state.current.active) return;
 
       const delay = options.delay?.() ?? 300;
+
       hoverTimeout = setTimeout(() => applyOpen('hover'), delay);
     },
 
     onPointerLeave(_event) {
       if (!options.openOnHover?.()) return;
+
       if (!canHover()) return;
 
       clearHoverTimeout();
@@ -302,12 +328,14 @@ export function createPopover(options: PopoverOptions): PopoverApi {
       if (!state.current.active) return;
 
       const closeDelay = options.closeDelay?.() ?? 0;
+
       hoverTimeout = setTimeout(() => applyClose('hover'), closeDelay);
     },
 
     onFocusIn(_event) {
       if (options.openOnHover?.()) {
         if (!canOpenOnFocus()) return;
+
         applyOpen('focus');
       }
     },
@@ -331,6 +359,7 @@ export function createPopover(options: PopoverOptions): PopoverApi {
   const popupProps: PopoverPopupProps = {
     onPointerEnter(_event) {
       if (!options.openOnHover?.()) return;
+
       // Cancel any pending close when pointer enters popup
       clearHoverTimeout();
     },
@@ -347,6 +376,7 @@ export function createPopover(options: PopoverOptions): PopoverApi {
       if (!state.current.active) return;
 
       const closeDelay = options.closeDelay?.() ?? 0;
+
       hoverTimeout = setTimeout(() => applyClose('hover'), closeDelay);
     },
 
@@ -379,6 +409,7 @@ export function createPopover(options: PopoverOptions): PopoverApi {
           }
 
           const active = document.activeElement;
+
           if (active && (triggerEl?.contains(active) || popupEl?.contains(active))) {
             return;
           }

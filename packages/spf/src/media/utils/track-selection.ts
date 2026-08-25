@@ -58,6 +58,7 @@ export function getSelectedTrack<T extends TrackType>(
   // Get track ID based on type
   const trackIdKey = SelectedTrackIdKeyByType[type];
   const trackId = state[trackIdKey];
+
   return presentation.selectionSets
     .find(({ type: selectionSetType }) => selectionSetType === type)
     ?.switchingSets[0]?.tracks.find(({ id }) => id === trackId) as any;
@@ -72,11 +73,15 @@ export function getSelectedTrack<T extends TrackType>(
 export function getResolvedSelectedTrackDuration(state: TrackSelectionState): number | undefined {
   if (state.selectedVideoTrackId) {
     const video = getSelectedTrack(state, 'video');
+
     if (video && isResolvedTrack(video)) return video.duration;
   }
+
   if (state.selectedAudioTrackId) {
     const audio = getSelectedTrack(state, 'audio');
+
     if (audio && isResolvedTrack(audio)) return audio.duration;
   }
+
   return undefined;
 }

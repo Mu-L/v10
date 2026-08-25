@@ -144,9 +144,11 @@ function seekToLiveEdgeSetup({
           // The monitor guarantees a media element + live edge while in `live`.
           const mediaElement = context.mediaElement.get()!;
           const { liveEdgeStart } = getLiveEdge({ state, config })!;
+
           // Never command backwards: seeding `state.currentTime` behind a playhead
           // already at/past the edge would drag the loaders back.
           if (mediaElement.currentTime >= liveEdgeStart) return;
+
           state.startPosition.set(liveEdgeStart);
         },
 
@@ -175,10 +177,12 @@ function seekToLiveEdgeSetup({
             // `currentTime >= windowStart` and never trips it, so only a stuck
             // out-of-window seek is repositioned.
             if (mediaElement.paused) return;
+
             if (mediaElement.currentTime < windowStart - REPOSITION_TOLERANCE) {
               mediaElement.currentTime = liveEdgeStart;
             }
           };
+
           reposition();
           // `play` (not `playing`): a slid-past playhead is at an unseekable
           // position where `playing` would stall and never fire; `play` fires on

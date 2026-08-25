@@ -93,6 +93,7 @@ export class PopupPositioner {
 
     if (trackingChanged) {
       if (previous?.popup) this.#restorePopupStyles(previous.popup);
+
       this.#stopTracking();
       this.#options = { ...options, cssVars };
       this.#boundaryElement = boundaryElement;
@@ -106,7 +107,9 @@ export class PopupPositioner {
 
   cleanup(): void {
     if (!this.#options) return;
+
     if (this.#options.popup) this.#restorePopupStyles(this.#options.popup);
+
     this.#stopTracking();
     this.#options = null;
     this.#boundaryElement = null;
@@ -114,6 +117,7 @@ export class PopupPositioner {
 
   #startTracking(): void {
     const options = this.#options;
+
     if (!options?.trigger || !options.popup) return;
 
     this.#applyAnchorStyles(options.trigger, options.popup, options.anchorName);
@@ -124,7 +128,9 @@ export class PopupPositioner {
     window.addEventListener('resize', this.#schedule, { signal });
 
     const resizeTargets: Element[] = [options.trigger, options.popup];
+
     if (this.#boundaryElement) resizeTargets.push(this.#boundaryElement);
+
     this.#stopObservingResize = observeResize(resizeTargets, () => this.#schedule());
   }
 
@@ -139,6 +145,7 @@ export class PopupPositioner {
 
   #schedule = (event?: Event): void => {
     const popup = this.#options?.popup;
+
     if (!popup || (event && isEventWithinElement(event, popup))) return;
 
     this.#reposition();
@@ -146,10 +153,12 @@ export class PopupPositioner {
 
   #position(): void {
     const options = this.#options;
+
     if (!options?.position || !options.trigger || !options.popup) return;
 
     const trigger = options.trigger;
     const triggerRect = trigger.getBoundingClientRect();
+
     const boundaryRect = getPositioningBoundaryRect(this.#boundaryElement);
     const offsets = resolveOffsets(options.popup, options.cssVars);
     const preferredPosition = options.position;
@@ -179,10 +188,13 @@ export class PopupPositioner {
     // Menu callbacks can constrain the popup from the available-size variables.
     // Correct fallback coordinates synchronously so alignment is stable before paint.
     const popupRect = getPopupPositionRect(options.popup, preferredPosition.side);
+
     if (popupRect.width === position.popupRect.width && popupRect.height === position.popupRect.height) return;
 
     const nextPosition = getPosition(popupRect);
+
     applyStyles(options.popup, nextPosition.style);
+
     if (nextPosition.side !== position.side) options.onSideChange(nextPosition.side);
   }
 
@@ -202,6 +214,7 @@ export class PopupPositioner {
 
   #restorePopupStyles(popup: HTMLElement): void {
     if (!this.#popupStyles) return;
+
     restoreInlineStyles(popup, this.#popupStyles);
     this.#popupStyles = null;
   }
@@ -211,11 +224,14 @@ export class PopupPositioner {
 
     const generatedName = `--${anchorName}`;
     const triggerAnchor = this.#readStyle(trigger, 'anchor-name');
+
     this.#popupAnchor = this.#readStyle(popup, 'position-anchor');
 
     const names = getAnchorNames(trigger);
+
     this.#triggerAnchorName = generatedName;
     this.#triggerAnchorAdded = !names.includes(generatedName);
+
     if (this.#triggerAnchorAdded) names.push(generatedName);
 
     trigger.style.setProperty('anchor-name', names.join(', '), triggerAnchor.priority);
@@ -224,14 +240,18 @@ export class PopupPositioner {
 
   #restoreAnchorStyles(): void {
     const options = this.#options;
+
     if (!options?.trigger || !options.popup) return;
 
     if (this.#triggerAnchorName && this.#triggerAnchorAdded) {
       const current = this.#readStyle(options.trigger, 'anchor-name');
       const names = getAnchorNames(options.trigger).filter((name) => name !== this.#triggerAnchorName);
+
       this.#writeStyle(options.trigger, 'anchor-name', { value: names.join(', '), priority: current.priority });
     }
+
     if (this.#popupAnchor) this.#writeStyle(options.popup, 'position-anchor', this.#popupAnchor);
+
     this.#triggerAnchorName = null;
     this.#triggerAnchorAdded = false;
     this.#popupAnchor = null;
@@ -239,6 +259,7 @@ export class PopupPositioner {
 
   #readStyle(element: HTMLElement, prop: string): InlineStyleValue {
     const name = prop.startsWith('--') ? prop : kebabCase(prop);
+
     return {
       value: element.style.getPropertyValue(name),
       priority: element.style.getPropertyPriority(name),
@@ -247,6 +268,7 @@ export class PopupPositioner {
 
   #writeStyle(element: HTMLElement, prop: string, style: InlineStyleValue): void {
     const name = prop.startsWith('--') ? prop : kebabCase(prop);
+
     if (style.value) {
       element.style.setProperty(name, style.value, style.priority);
     } else {

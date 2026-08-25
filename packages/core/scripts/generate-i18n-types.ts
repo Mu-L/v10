@@ -20,9 +20,11 @@ function generate(): string {
     .map(([key, text]) => {
       const names = parameterNames(text);
       const value = names.length ? `{ ${names.map((name) => `${name}: string | number`).join('; ')} }` : 'never';
+
       return `  '${key}': ${value};`;
     })
     .join('\n');
+
   return `${GENERATED_HEADER}
 /** Generated translation parameter contract from the English catalogue. */
 export interface TranslationParams {
@@ -32,5 +34,7 @@ ${params}
 }
 
 const generated = generate();
+
 if (!existsSync(output) || readFileSync(output, 'utf8') !== generated) writeFileSync(output, generated);
+
 console.log('[generate-i18n-types] Updated generated translation types');

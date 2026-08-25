@@ -51,6 +51,7 @@ function snapshotTextTracks(media: HTMLMediaElement): TextTrackSnapshot[] {
     if (trackEl.hasAttribute(HLS_TRACK_ATTR)) continue;
 
     const { track } = trackEl;
+
     // A disabled track stays disabled through anything hls.js does, and only
     // holds cues if it was enabled long enough to load them. Skipping the rest
     // keeps the mode juggling below off the common path.
@@ -68,10 +69,12 @@ function snapshotTextTracks(media: HTMLMediaElement): TextTrackSnapshot[] {
 
 function restoreTextTrack({ track, mode, cues }: TextTrackSnapshot): void {
   if (track.mode !== mode) track.mode = mode;
+
   if (!cues.length) return;
 
   withReadableCues(track, () => {
     const present = new Set<TextTrackCue>(track.cues ?? []);
+
     for (const cue of cues) {
       if (!present.has(cue)) track.addCue(cue);
     }
@@ -81,6 +84,7 @@ function restoreTextTrack({ track, mode, cues }: TextTrackSnapshot): void {
 /** Reads or writes cues through a mode that exposes them, leaving the track's own mode intact. */
 function withReadableCues<T>(track: TextTrack, action: () => T): T {
   const { mode } = track;
+
   if (mode === 'disabled') track.mode = 'hidden';
 
   try {
@@ -124,6 +128,7 @@ export function HlsJsMediaTextTracksMixin<Base extends Constructor<HlsEngineHost
 
       const { signal } = this.#disconnect;
       const { engine } = this;
+
       if (!engine || !this.target) return;
 
       // The hls.js delegate always binds to the real `<video>` element.
@@ -149,15 +154,18 @@ export function HlsJsMediaTextTracksMixin<Base extends Constructor<HlsEngineHost
 
       const onCuesParsed = (_event: string, { track, cues }: CuesParsedData) => {
         const textTrack = media.textTracks.getTrackById(track);
+
         if (!textTrack) return;
 
         const disabled = textTrack.mode === 'disabled';
+
         if (disabled) {
           textTrack.mode = 'hidden';
         }
 
         cues.forEach((cue: VTTCue) => {
           if (textTrack.cues?.getCueById(cue.id)) return;
+
           textTrack.addCue(cue);
         });
 
@@ -193,6 +201,7 @@ export function HlsJsMediaTextTracksMixin<Base extends Constructor<HlsEngineHost
                 type.toLowerCase() === showingTrack.kind)
             );
           });
+
           // After the subtitleTrack is set here, hls.js will load the playlist and CUES_PARSED events will be fired below.
           engine.subtitleTrack = idx;
         }
@@ -224,6 +233,7 @@ export function HlsJsMediaTextTracksMixin<Base extends Constructor<HlsEngineHost
 
     #clearTracks(): void {
       const trackEls = this.target?.querySelectorAll?.(`track[${HLS_TRACK_ATTR}]`) ?? [];
+
       trackEls.forEach((trackEl) => trackEl.remove());
     }
   }
@@ -240,18 +250,23 @@ function addTextTrack(
   defaultTrack?: boolean
 ): TextTrack {
   const trackEl = document.createElement('track');
+
   trackEl.kind = kind;
   trackEl.label = label;
+
   if (lang) {
     // This attribute must be present if the element's kind attribute is in the subtitles state.
     trackEl.srclang = lang;
   }
+
   if (id) {
     trackEl.id = id;
   }
+
   if (defaultTrack) {
     trackEl.default = true;
   }
+
   trackEl.track.mode = isCaptionOrSubtitleTrack({ kind }) ? 'disabled' : 'hidden';
 
   // Add data attribute to identify tracks that should be removed when switching sources/destroying hls.js instance.

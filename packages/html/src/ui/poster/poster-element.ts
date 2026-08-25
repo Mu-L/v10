@@ -10,6 +10,7 @@ import { UIElement } from '../ui-element';
 function composedChildren(element: Element): Element[] {
   if (element instanceof HTMLSlotElement) {
     const assigned = element.assignedElements();
+
     if (assigned.length > 0) return assigned;
   }
 
@@ -26,6 +27,7 @@ function findImage(element: Element): HTMLImageElement | null {
     if (child instanceof HTMLImageElement) return child;
 
     const nested = findImage(child);
+
     if (nested) return nested;
   }
 
@@ -41,6 +43,7 @@ function hasSource(img: HTMLImageElement): boolean {
   if (img.hasAttribute('src') || img.hasAttribute('srcset')) return true;
 
   const parent = img.parentElement;
+
   return parent?.localName === 'picture' && parent.querySelector('source') !== null;
 }
 
@@ -89,6 +92,7 @@ export class PosterElement extends UIElement {
 
   override connectedCallback(): void {
     super.connectedCallback();
+
     if (this.destroyed) return;
 
     this.#disconnect = new AbortController();
@@ -115,6 +119,7 @@ export class PosterElement extends UIElement {
 
   get #loadState(): PosterImageLoadState {
     if (!this.#image || !hasSource(this.#image)) return 'none';
+
     return this.#imageLoadState === 'pending' ? 'loading' : this.#imageLoadState;
   }
 
@@ -122,6 +127,7 @@ export class PosterElement extends UIElement {
     super.update(changed);
 
     const playback = this.#playback.value;
+
     if (!playback) return;
 
     // `metadata` is optional: without it nothing resolves a URL, and this stays
@@ -150,6 +156,7 @@ export class PosterElement extends UIElement {
 
     // An image that steps aside keeps downloading whatever we pointed it at.
     if (this.#owned) this.#image?.removeAttribute('src');
+
     this.#imageEvents?.abort();
     this.#imageEvents = null;
 
@@ -187,6 +194,7 @@ export class PosterElement extends UIElement {
             `Add one as a child: <${this.localName}><img alt=""></${this.localName}>`
         );
       }
+
       return;
     }
 

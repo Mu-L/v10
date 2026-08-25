@@ -101,6 +101,7 @@ function PlaybackRateRadioGroup(): ReactNode {
 
 function PlaybackRateTrigger(): ReactNode {
   const state = usePlaybackRateOptions();
+
   if (!state) return null;
 
   return (

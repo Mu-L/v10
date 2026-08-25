@@ -46,6 +46,7 @@ export class PlaybackRateButtonCore {
 
   getLabel(state: PlaybackRateButtonState): Text | string {
     const custom = resolveLabel(this.#props.label, state);
+
     if (custom !== undefined) return custom;
 
     return rateText;
@@ -53,6 +54,7 @@ export class PlaybackRateButtonCore {
 
   getLabelParams(state: PlaybackRateButtonState): { rate: number } | undefined {
     if (resolveLabel(this.#props.label, state) !== undefined) return undefined;
+
     return { rate: state.rate };
   }
 
@@ -69,6 +71,7 @@ export class PlaybackRateButtonCore {
 
   getState(): PlaybackRateButtonState {
     const media = this.#media!;
+
     this.state.patch({ rate: media.playbackRate });
     this.state.patch({ label: resolveText(this.getLabel(this.state.current)) });
 
@@ -77,9 +80,11 @@ export class PlaybackRateButtonCore {
 
   cycle(media: MediaPlaybackRateState): void {
     if (this.#props.disabled) return;
+
     if (this.#props.menuTrigger) return;
 
     const { playbackRates, playbackRate } = media;
+
     if (playbackRates.length === 0) return;
 
     const idx = playbackRates.indexOf(playbackRate);

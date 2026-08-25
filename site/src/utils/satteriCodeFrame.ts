@@ -24,8 +24,10 @@ export function satteriCodeFrame() {
     code: (node, ctx) => {
       // Skip blocks framed by an authored tab group.
       let ancestor: ReturnType<MdastVisitorContext['parent']> = ctx.parent(node);
+
       while (ancestor) {
         if (ancestor.type === 'mdxJsxFlowElement' && ancestor.name === 'TabsPanel') return;
+
         ancestor = ctx.parent(ancestor);
       }
 
@@ -33,6 +35,7 @@ export function satteriCodeFrame() {
       const title = titleMatch ? (titleMatch[1] ?? titleMatch[2] ?? titleMatch[3]) : undefined;
 
       const attributes = [{ type: 'mdxJsxAttribute', name: 'lang', value: node.lang ?? '' }];
+
       if (title) attributes.push({ type: 'mdxJsxAttribute', name: 'title', value: title });
 
       ctx.wrapNode(node, {

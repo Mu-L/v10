@@ -31,6 +31,7 @@ export class ControlsElement extends UIElement {
     super.update(_changed);
 
     const media = this.#mediaState.value;
+
     if (!media) return;
 
     this.#core.setMedia(media);
@@ -44,6 +45,7 @@ export class ControlsElement extends UIElement {
     });
 
     const wasVisible = this.#visible;
+
     this.#visible = state.visible;
 
     if (wasVisible && !state.visible) {
@@ -54,6 +56,7 @@ export class ControlsElement extends UIElement {
   #closeOwnedOverlays(): void {
     for (const element of this.querySelectorAll(POPUP_HOST_SELECTOR)) {
       const host = element as Element & { close?: unknown };
+
       if (!isFunction(host.close)) continue;
 
       host.close('imperative-action');

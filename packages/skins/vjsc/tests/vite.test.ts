@@ -31,6 +31,7 @@ describe('Skins Vite workflow', () => {
 
     await server.environments.client.depsOptimizer?.scanProcessing;
     const resolved = await server.pluginContainer.resolveId(defaultSkinUrl);
+
     expect(resolved?.id).toContain('/vjsc/skins/default-video/skin.tsx?skin=default-video&style=css&target=react');
   }, 30_000);
 
@@ -43,6 +44,7 @@ describe('Skins Vite workflow', () => {
     });
 
     const skin = await server.transformRequest(defaultSkinUrl);
+
     expect(skin?.code).toContain('$RefreshReg$');
     expect(skin?.code).toContain('virtual:vjsc/css');
     expect(skin?.code).not.toContain('vjsc/dist/components/jsx-dev-runtime');
@@ -50,6 +52,7 @@ describe('Skins Vite workflow', () => {
 
     await server.transformRequest(playButtonUrl);
     const owner = await server.moduleGraph.getModuleByUrl(playButtonUrl);
+
     expect(owner?.transformResult).not.toBeNull();
 
     server.watcher.emit('change', buttonStyles);
@@ -77,20 +80,25 @@ describe('Skins Vite workflow', () => {
     expect(htmlContainer?.code).toContain('/src/define/ui/container.ts');
     expect(htmlSkin?.code).not.toContain('@videojs/core/vjsc');
     const resolved = await server.pluginContainer.resolveId(defaultSkinUrl);
+
     expect(resolved?.id).toContain('/vjsc/skins/default-video/skin.tsx');
     const skinModule = resolved && server.moduleGraph.getModuleById(resolved.id);
+
     expect(skinModule?.transformResult).not.toBeNull();
     await server.transformRequest(playButtonUrl);
     const targetedPlayButtonId = await server.pluginContainer.resolveId(`${vjscPlayButton}${reactTarget}`);
     const targetedPlayButton = targetedPlayButtonId && server.moduleGraph.getModuleById(targetedPlayButtonId.id);
+
     expect(targetedPlayButton).toBeDefined();
     expect(targetedPlayButton?.transformResult).not.toBeNull();
+
     if (!skinModule || !targetedPlayButton) throw new Error('Expected targeted VJSC modules.');
 
     const styleInvalidation = {
       skin: skinModule.lastInvalidationTimestamp,
       component: targetedPlayButton.lastInvalidationTimestamp,
     };
+
     server.watcher.emit('change', buttonStyles);
     await vi.waitFor(() => {
       expect(skinModule.lastInvalidationTimestamp).toBeGreaterThan(styleInvalidation.skin);
@@ -101,6 +109,7 @@ describe('Skins Vite workflow', () => {
     expect(targetedPlayButton.transformResult).not.toBeNull();
 
     const designInvalidation = targetedPlayButton.lastInvalidationTimestamp;
+
     server.watcher.emit('change', designStyles);
     await vi.waitFor(() => expect(targetedPlayButton.lastInvalidationTimestamp).toBeGreaterThan(designInvalidation));
 
@@ -108,6 +117,7 @@ describe('Skins Vite workflow', () => {
     expect(targetedPlayButton.transformResult).not.toBeNull();
 
     const sourceInvalidation = targetedPlayButton.lastInvalidationTimestamp;
+
     server.watcher.emit('change', vjscPlayButton);
     await vi.waitFor(() => expect(targetedPlayButton.lastInvalidationTimestamp).toBeGreaterThan(sourceInvalidation));
   }, 30_000);
@@ -121,6 +131,7 @@ describe('Skins Vite workflow', () => {
     });
 
     const resolved = await server.pluginContainer.resolveId('@videojs/icons/element/minimal');
+
     if (!resolved) throw new Error('Expected the source icon plugin to resolve the minimal family.');
 
     const loaded = await server.pluginContainer.load(resolved.id);

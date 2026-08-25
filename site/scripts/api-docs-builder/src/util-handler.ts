@@ -86,14 +86,17 @@ function resolveModulePath(fromFile: string, specifier: string): string {
   // Try exact match, then with extensions. Require a file — a bare
   // directory specifier must fall through to index resolution below.
   const extensions = ['', '.ts', '.tsx'];
+
   for (const ext of extensions) {
     const full = resolved + ext;
+
     if (fs.existsSync(full) && fs.statSync(full).isFile()) return full;
   }
 
   // Try index files
   for (const ext of ['.ts', '.tsx']) {
     const indexFile = path.join(resolved, `index${ext}`);
+
     if (fs.existsSync(indexFile)) return indexFile;
   }
 
@@ -110,6 +113,7 @@ const localModulesCache = new Map<string, string[]>();
 
 function resolveLocalModules(indexPath: string): string[] {
   const cached = localModulesCache.get(indexPath);
+
   if (cached) return cached;
 
   const visited = new Set<string>([indexPath]);
@@ -124,10 +128,13 @@ function resolveLocalModules(indexPath: string): string[] {
     ts.forEachChild(sourceFile, (node) => {
       if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
         const specifier = node.moduleSpecifier.text;
+
         if (!specifier.startsWith('.')) return;
 
         const resolved = resolveModulePath(filePath, specifier);
+
         if (visited.has(resolved)) return;
+
         visited.add(resolved);
 
         // resolveModulePath falls back to the raw path when nothing matches;
@@ -154,7 +161,9 @@ function resolveLocalModules(indexPath: string): string[] {
 // re-exported up to the entry) would be documented as public API.
 function collectVisibleExportNames(indexPath: string, visited = new Set<string>()): Set<string> {
   const names = new Set<string>();
+
   if (visited.has(indexPath) || !isFile(indexPath)) return names;
+
   visited.add(indexPath);
 
   const sourceFile = ts.createSourceFile(indexPath, fs.readFileSync(indexPath, 'utf-8'), ts.ScriptTarget.Latest, true);
@@ -164,22 +173,27 @@ function collectVisibleExportNames(indexPath: string, visited = new Set<string>(
       if (node.exportClause && ts.isNamedExports(node.exportClause)) {
         for (const spec of node.exportClause.elements) {
           names.add(spec.name.text);
+
           if (spec.propertyName) names.add(spec.propertyName.text);
         }
       } else if (node.exportClause && ts.isNamespaceExport(node.exportClause)) {
         names.add(node.exportClause.name.text);
       } else if (node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
         const specifier = node.moduleSpecifier.text;
+
         if (!specifier.startsWith('.')) return;
+
         for (const name of collectVisibleExportNames(resolveModulePath(indexPath, specifier), visited)) {
           names.add(name);
         }
       }
+
       return;
     }
 
     const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
     const isExported = modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
+
     if (!isExported) return;
 
     if (ts.isVariableStatement(node)) {
@@ -213,6 +227,7 @@ function collectDeclaredExportNames(modulePath: string): Set<string> {
   ts.forEachChild(sourceFile, (node) => {
     const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
     const isExported = modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
+
     if (!isExported) return;
 
     if (ts.isVariableStatement(node)) {
@@ -247,10 +262,13 @@ function isUtilExport(exportNode: tae.ExportNode): boolean {
   if (name.startsWith('select') && name.charAt(6) >= 'A' && name.charAt(6) <= 'Z' && type instanceof tae.FunctionNode) {
     return true;
   }
+
   if (name.startsWith('use') && name.charAt(3) >= 'A' && name.charAt(3) <= 'Z' && type instanceof tae.FunctionNode) {
     return true;
   }
+
   if (name.endsWith('Controller') && !(type instanceof tae.FunctionNode)) return true;
+
   if (name.startsWith('create') && type instanceof tae.FunctionNode) return true;
 
   // @public tag (for anything else — utilities, contexts, etc.)
@@ -266,25 +284,32 @@ function getDisplayName(name: string): string {
     // createMediaAttachMixin → MediaAttachMixin
     return name.replace(/^create/, '');
   }
+
   return name;
 }
 
 function normalizeDescription(description: unknown): string | undefined {
   if (!description) return undefined;
+
   if (typeof description === 'string') return description;
+
   if (Array.isArray(description)) {
     const text = description
       .map((part) => {
         if (typeof part === 'string') return part;
+
         if (part && typeof part === 'object' && 'text' in part && typeof part.text === 'string') {
           return part.text;
         }
+
         return '';
       })
       .join('')
       .trim();
+
     return text || undefined;
   }
+
   return undefined;
 }
 
@@ -297,9 +322,11 @@ function extractFunctionOverloads(
   allExports?: tae.ExportNode[]
 ): UtilOverload[] {
   const funcType = exportNode.type;
+
   if (!(funcType instanceof tae.FunctionNode)) return [];
 
   const signatures = funcType.callSignatures;
+
   if (signatures.length === 0) return [];
 
   // Get per-overload JSDoc from raw TS AST
@@ -329,13 +356,18 @@ function buildOverload(
     const abbreviated = abbreviateType(param.name, typeStr);
 
     const entry: ParamDef = { type: abbreviated ?? typeStr };
+
     if (abbreviated && typeStr !== abbreviated) entry.detailedType = typeStr;
+
     if (param.documentation?.description) entry.description = param.documentation.description;
+
     if (!param.optional) entry.required = true;
 
     // Clean undefined fields
     if (entry.detailedType === undefined) delete entry.detailedType;
+
     if (entry.description === undefined) delete entry.description;
+
     if (!entry.required) delete entry.required;
 
     parameters[param.name] = entry;
@@ -345,6 +377,7 @@ function buildOverload(
   const overload: UtilOverload = { parameters, returnValue };
 
   if (label) overload.label = label;
+
   if (doc) overload.description = doc;
 
   return overload;
@@ -355,28 +388,36 @@ function buildReturnValue(type: tae.AnyType, allExports?: tae.ExportNode[]): Ret
   const abbreviated = abbreviateType('return', typeStr);
 
   const result: ReturnValue = { type: abbreviated ?? typeStr };
+
   if (abbreviated && typeStr !== abbreviated) result.detailedType = typeStr;
 
   // Resolve ExternalTypeNode via allExports before checking for ObjectNode fields
   let resolvedType = type;
+
   if (allExports && type instanceof tae.ExternalTypeNode) {
     const resolved = allExports.find((e) => e.name === type.typeName.name && e.reexportedFrom === undefined);
+
     if (resolved) resolvedType = resolved.type;
   }
 
   // Expand object properties as fields
   if (resolvedType instanceof tae.ObjectNode && resolvedType.properties.length > 0) {
     const fields: Record<string, { type: string; detailedType?: string; description?: string }> = {};
+
     for (const prop of resolvedType.properties) {
       const propType = allExports
         ? formatDetailedType(prop.type, allExports, prop.optional)
         : formatType(prop.type, prop.optional);
       const propAbbrev = abbreviateType(prop.name, propType);
       const field: { type: string; detailedType?: string; description?: string } = { type: propAbbrev ?? propType };
+
       if (propAbbrev && propType !== propAbbrev) field.detailedType = propType;
+
       if (prop.documentation?.description) field.description = prop.documentation.description;
+
       fields[prop.name] = field;
     }
+
     result.fields = fields;
   }
 
@@ -391,6 +432,7 @@ function isDegradedType(type: string): boolean {
 
 function fixDegradedTypes(overloads: UtilOverload[], filePath: string, program: ts.Program, funcName: string): void {
   const sourceFile = program.getSourceFile(filePath);
+
   if (!sourceFile) return;
 
   // Collect overload declarations (no body) and implementation fallback
@@ -405,29 +447,36 @@ function fixDegradedTypes(overloads: UtilOverload[], filePath: string, program: 
         implDecl = node;
       }
     }
+
     ts.forEachChild(node, visit);
   }
   visit(sourceFile);
 
   const decls = overloadDecls.length > 0 ? overloadDecls : implDecl ? [implDecl] : [];
+
   if (decls.length === 0) return;
 
   for (let i = 0; i < overloads.length; i++) {
     const overload = overloads[i]!;
     const decl = decls[i];
+
     if (!decl) continue;
 
     // Fix degraded param types
     for (const [paramName, paramDef] of Object.entries(overload.parameters)) {
       const effectiveType = paramDef.detailedType ?? paramDef.type;
+
       if (!isDegradedType(effectiveType)) continue;
 
       const astParam = decl.parameters.find((p) => ts.isIdentifier(p.name) && p.name.text === paramName);
+
       if (!astParam?.type) continue;
 
       const rawType = astParam.type.getText(sourceFile);
       const abbreviated = abbreviateType(paramName, rawType);
+
       paramDef.type = abbreviated ?? rawType;
+
       if (abbreviated && rawType !== abbreviated) {
         paramDef.detailedType = rawType;
       } else {
@@ -437,10 +486,13 @@ function fixDegradedTypes(overloads: UtilOverload[], filePath: string, program: 
 
     // Fix degraded return type
     const effectiveReturn = overload.returnValue.detailedType ?? overload.returnValue.type;
+
     if (isDegradedType(effectiveReturn) && decl.type) {
       const rawReturn = decl.type.getText(sourceFile);
       const abbreviated = abbreviateType('return', rawReturn);
+
       overload.returnValue.type = abbreviated ?? rawReturn;
+
       if (abbreviated && rawReturn !== abbreviated) {
         overload.returnValue.detailedType = rawReturn;
       } else {
@@ -454,6 +506,7 @@ function fixDegradedTypes(overloads: UtilOverload[], filePath: string, program: 
 
 function extractControllerOverloads(filePath: string, program: ts.Program, className: string): UtilOverload[] {
   const sourceFile = program.getSourceFile(filePath);
+
   if (!sourceFile) return [];
 
   let classDecl: ts.ClassDeclaration | undefined;
@@ -462,9 +515,11 @@ function extractControllerOverloads(filePath: string, program: ts.Program, class
     if (ts.isClassDeclaration(node) && node.name?.text === className) {
       classDecl = node;
     }
+
     ts.forEachChild(node, findClass);
   }
   findClass(sourceFile);
+
   if (!classDecl) return [];
 
   // Get constructor overloads (declarations without body), falling back to
@@ -483,6 +538,7 @@ function extractControllerOverloads(filePath: string, program: ts.Program, class
   }
 
   const constructorDecls = overloadDecls.length > 0 ? overloadDecls : implDecl ? [implDecl] : [];
+
   if (constructorDecls.length === 0) return [];
 
   // Get public instance members for returnValue.fields
@@ -493,6 +549,7 @@ function extractControllerOverloads(filePath: string, program: ts.Program, class
 
     for (const param of decl.parameters) {
       const result = buildParamEntry(param, decl, sourceFile);
+
       if (result) parameters[result.name] = result.entry;
     }
 
@@ -510,8 +567,11 @@ function extractControllerOverloads(filePath: string, program: ts.Program, class
 
     // Get overload-specific JSDoc
     const label = getJSDocTagValue(decl, 'label');
+
     if (label) overload.label = label;
+
     const jsDoc = getJSDocDescription(decl);
+
     if (jsDoc) overload.description = jsDoc;
 
     return overload;
@@ -544,7 +604,9 @@ function extractPublicMembers(
 
     // Skip lifecycle methods
     const name = member.name && ts.isIdentifier(member.name) ? member.name.text : undefined;
+
     if (!name) continue;
+
     if (['hostConnected', 'hostDisconnected', 'hostUpdate', 'hostUpdated'].includes(name)) continue;
 
     if (ts.isGetAccessorDeclaration(member)) {
@@ -553,7 +615,9 @@ function extractPublicMembers(
       const description = getJSDocDescription(member);
 
       const field: { type: string; detailedType?: string; description?: string } = { type: abbreviated ?? typeStr };
+
       if (abbreviated && typeStr !== abbreviated) field.detailedType = typeStr;
+
       if (description) field.description = description;
 
       fields[name] = field;
@@ -564,6 +628,7 @@ function extractPublicMembers(
         .map((p) => {
           const pName = ts.isIdentifier(p.name) ? p.name.text : '...';
           const pType = p.type ? p.type.getText(sourceFile) : 'unknown';
+
           return `${pName}: ${pType}`;
         })
         .join(', ');
@@ -573,7 +638,9 @@ function extractPublicMembers(
       const description = getJSDocDescription(member);
 
       const field: { type: string; detailedType?: string; description?: string } = { type: abbreviated ?? typeStr };
+
       if (abbreviated && typeStr !== abbreviated) field.detailedType = typeStr;
+
       if (description) field.description = description;
 
       fields[name] = field;
@@ -585,6 +652,7 @@ function extractPublicMembers(
 
 function getClassTypeParams(classDecl: ts.ClassDeclaration): string {
   if (!classDecl.typeParameters || classDecl.typeParameters.length === 0) return '';
+
   return classDecl.typeParameters.map((tp) => tp.name.text).join(', ');
 }
 
@@ -608,6 +676,7 @@ interface OverloadDoc {
 
 function getOverloadDocs(filePath: string, program: ts.Program, funcName: string): OverloadDoc[] {
   const sourceFile = program.getSourceFile(filePath);
+
   if (!sourceFile) return [];
 
   const docs: OverloadDoc[] = [];
@@ -620,6 +689,7 @@ function getOverloadDocs(filePath: string, program: ts.Program, funcName: string
         label: getJSDocTagValue(node, 'label'),
       });
     }
+
     ts.forEachChild(node, visit);
   }
   visit(sourceFile);
@@ -632,13 +702,16 @@ function getJSDocParamDescription(node: ts.Node, paramName: string): string | un
 
   for (const doc of jsDocNodes) {
     if (!doc.tags) continue;
+
     for (const tag of doc.tags) {
       if (ts.isJSDocParameterTag(tag) && ts.isIdentifier(tag.name) && tag.name.text === paramName) {
         if (!tag.comment) return undefined;
+
         const raw =
           typeof tag.comment === 'string'
             ? tag.comment
             : tag.comment.map((c: ts.JSDocComment) => ('text' in c ? c.text : '')).join('');
+
         return raw.replace(/^\s*-\s+/, '');
       }
     }
@@ -655,10 +728,12 @@ function buildParamEntry(
   sourceFile: ts.SourceFile
 ): { name: string; entry: ParamDef } | undefined {
   if (!ts.isIdentifier(param.name)) return undefined;
+
   const name = param.name.text;
   const isOptional = !!param.questionToken || !!param.initializer;
 
   let typeStr = 'unknown';
+
   if (param.type) {
     typeStr = param.type.getText(sourceFile);
   }
@@ -667,9 +742,13 @@ function buildParamEntry(
   const description = getJSDocParamDescription(decl, name);
 
   const entry: ParamDef = { type: abbreviated ?? typeStr };
+
   if (abbreviated && typeStr !== abbreviated) entry.detailedType = typeStr;
+
   if (description) entry.description = description;
+
   if (!isOptional) entry.required = true;
+
   if (!entry.required) delete entry.required;
 
   return { name, entry };
@@ -688,6 +767,7 @@ interface RawExportInfo {
 
 function discoverExportsFromRawAST(modulePath: string, program: ts.Program): RawExportInfo[] {
   const sourceFile = program.getSourceFile(modulePath);
+
   if (!sourceFile) return [];
 
   const results: RawExportInfo[] = [];
@@ -788,9 +868,13 @@ function isRawUtilExport(info: RawExportInfo): boolean {
   const { name, isFunction, isClass, hasPublicTag } = info;
 
   if (name.startsWith('select') && name.charAt(6) >= 'A' && name.charAt(6) <= 'Z') return true;
+
   if (name.startsWith('use') && name.charAt(3) >= 'A' && name.charAt(3) <= 'Z' && isFunction) return true;
+
   if (name.endsWith('Controller') && isClass) return true;
+
   if (name.startsWith('create') && isFunction) return true;
+
   if (hasPublicTag) return true;
 
   return false;
@@ -800,6 +884,7 @@ function isRawUtilExport(info: RawExportInfo): boolean {
 
 function extractFunctionOverloadsFromAST(filePath: string, program: ts.Program, funcName: string): UtilOverload[] {
   const sourceFile = program.getSourceFile(filePath);
+
   if (!sourceFile) return [];
 
   // Collect overload declarations (no body) and implementation (has body)
@@ -814,11 +899,13 @@ function extractFunctionOverloadsFromAST(filePath: string, program: ts.Program, 
         implDecl = node;
       }
     }
+
     ts.forEachChild(node, visit);
   }
   visit(sourceFile);
 
   const decls = overloadDecls.length > 0 ? overloadDecls : implDecl ? [implDecl] : [];
+
   if (decls.length === 0) return [];
 
   return decls.map((d) => buildOverloadFromAST(d, sourceFile));
@@ -829,10 +916,12 @@ function buildOverloadFromAST(decl: ts.FunctionDeclaration, sourceFile: ts.Sourc
 
   for (const param of decl.parameters) {
     const result = buildParamEntry(param, decl, sourceFile);
+
     if (result) parameters[result.name] = result.entry;
   }
 
   let returnType = 'unknown';
+
   if (decl.type) {
     returnType = decl.type.getText(sourceFile);
   }
@@ -841,6 +930,7 @@ function buildOverloadFromAST(decl: ts.FunctionDeclaration, sourceFile: ts.Sourc
 
   // Try to expand return type fields from source if it's an interface/type in the same file
   const fields = extractReturnTypeFields(returnType, sourceFile);
+
   if (fields && Object.keys(fields).length > 0) {
     returnValue.fields = fields;
   }
@@ -848,8 +938,11 @@ function buildOverloadFromAST(decl: ts.FunctionDeclaration, sourceFile: ts.Sourc
   const overload: UtilOverload = { parameters, returnValue };
 
   const label = getJSDocTagValue(decl, 'label');
+
   if (label) overload.label = label;
+
   const doc = getJSDocDescription(decl);
+
   if (doc) overload.description = doc;
 
   return overload;
@@ -861,7 +954,9 @@ function extractReturnTypeFields(
 ): Record<string, { type: string; detailedType?: string; description?: string }> | undefined {
   // Extract the base type name (strip generic parameters)
   const match = returnType.match(/^(\w+)/);
+
   if (!match) return undefined;
+
   const typeName = match[1]!;
 
   // Find the interface/type in the same file
@@ -871,12 +966,15 @@ function extractReturnTypeFields(
     if (ts.isInterfaceDeclaration(node) && node.name.text === typeName) {
       interfaceDecl = node;
     }
+
     ts.forEachChild(node, visit);
   }
   visit(sourceFile);
+
   if (!interfaceDecl) return undefined;
 
   const fields: Record<string, { type: string; detailedType?: string; description?: string }> = {};
+
   for (const member of interfaceDecl.members) {
     if (!ts.isPropertySignature(member) || !ts.isIdentifier(member.name)) continue;
 
@@ -886,7 +984,9 @@ function extractReturnTypeFields(
     const description = getJSDocDescription(member);
 
     const field: { type: string; detailedType?: string; description?: string } = { type: abbreviated ?? typeStr };
+
     if (abbreviated && typeStr !== abbreviated) field.detailedType = typeStr;
+
     if (description) field.description = description;
 
     fields[name] = field;
@@ -902,11 +1002,14 @@ function resolveSlugCollision(slug: string, framework: EntryPoint['framework'], 
     if (!framework) {
       log.error(`Framework-agnostic slug collision: ${slug}`);
     }
+
     if (framework === 'react') {
       log.error(`Unexpected: React slug "${slug}" collided — check UTIL_ENTRY_POINTS order`);
     }
+
     slug = `${framework}-${slug}`;
   }
+
   seenSlugs.add(slug);
   return slug;
 }
@@ -924,7 +1027,9 @@ function processExport(
   allExports?: tae.ExportNode[]
 ): void {
   const key = `${entryPoint.framework}:${exportNode.name}`;
+
   if (seenKeys.has(key)) return;
+
   if (!isUtilExport(exportNode)) return;
 
   const displayName = getDisplayName(exportNode.name);
@@ -972,6 +1077,7 @@ function processRawExport(
   entries: UtilEntry[]
 ): void {
   const key = `${entryPoint.framework}:${info.name}`;
+
   if (seenKeys.has(key)) return;
 
   if (!isRawUtilExport(info)) return;
@@ -1017,6 +1123,7 @@ function discoverUtilExports(monorepoRoot: string, program: ts.Program): UtilEnt
 
   for (const entryPoint of UTIL_ENTRY_POINTS) {
     const indexPath = path.join(monorepoRoot, entryPoint.index);
+
     if (!fs.existsSync(indexPath)) {
       log.warn(`Entry point not found: ${indexPath}`);
       continue;
@@ -1035,10 +1142,13 @@ function discoverUtilExports(monorepoRoot: string, program: ts.Program): UtilEnt
     // utilities, contexts, and selectors (e.g., usePlayer, createPlayer, selectPlayback)
     for (const modulePath of modulesToScan) {
       if (!fs.existsSync(modulePath)) continue;
+
       const declaredNames = collectDeclaredExportNames(modulePath);
+
       if (declaredNames.size === 0) continue;
 
       let ast: tae.ModuleNode;
+
       try {
         ast = tae.parseFromProgram(modulePath, program);
       } catch {
@@ -1053,9 +1163,11 @@ function discoverUtilExports(monorepoRoot: string, program: ts.Program): UtilEnt
         // declarations are scanned post-order, while external package
         // re-exports are documented by that package's canonical entry point.
         if (!declaredNames.has(exportNode.name)) continue;
+
         // Whole modules are scanned, but only exports that are actually
         // visible from the entry point are public API.
         if (!visibleNames.has(exportNode.name)) continue;
+
         processExport(exportNode, modulePath, entryPoint, program, seenKeys, seenSlugs, entries, allExports);
       }
     }
@@ -1064,12 +1176,14 @@ function discoverUtilExports(monorepoRoot: string, program: ts.Program): UtilEnt
     // (e.g., PlayerController re-exported from packages/html/src/index.ts)
     try {
       const indexAst = tae.parseFromProgram(indexPath, program);
+
       allExports.push(...indexAst.exports);
 
       for (const exportNode of indexAst.exports) {
         // For controllers from the index, find the source module file for extraction
         if (exportNode.name.endsWith('Controller') && !(exportNode.type instanceof tae.FunctionNode)) {
           const sourceModule = findClassSourceModule(exportNode.name, localModules, program);
+
           if (sourceModule) {
             processExport(exportNode, sourceModule, entryPoint, program, seenKeys, seenSlugs, entries, allExports);
           }
@@ -1083,8 +1197,10 @@ function discoverUtilExports(monorepoRoot: string, program: ts.Program): UtilEnt
     // in HTML bundle), walks the raw TypeScript AST for exports
     for (const modulePath of failedModules) {
       const rawExports = discoverExportsFromRawAST(modulePath, program);
+
       for (const info of rawExports) {
         if (!visibleNames.has(info.name)) continue;
+
         processRawExport(info, entryPoint, program, seenKeys, seenSlugs, entries);
       }
     }
@@ -1095,8 +1211,10 @@ function discoverUtilExports(monorepoRoot: string, program: ts.Program): UtilEnt
       if (!fs.existsSync(modulePath)) continue;
 
       const rawExports = discoverExportsFromRawAST(modulePath, program);
+
       for (const info of rawExports) {
         if (!info.isClass || !visibleNames.has(info.name)) continue;
+
         processRawExport(info, entryPoint, program, seenKeys, seenSlugs, entries);
       }
     }
@@ -1108,19 +1226,23 @@ function discoverUtilExports(monorepoRoot: string, program: ts.Program): UtilEnt
 function findClassSourceModule(className: string, localModules: string[], program: ts.Program): string | undefined {
   for (const modulePath of localModules) {
     const sourceFile = program.getSourceFile(modulePath);
+
     if (!sourceFile) continue;
 
     let found = false;
+
     function visit(node: ts.Node) {
       if (ts.isClassDeclaration(node) && node.name?.text === className) {
         found = true;
       }
+
       if (!found) ts.forEachChild(node, visit);
     }
     visit(sourceFile);
 
     if (found) return modulePath;
   }
+
   return undefined;
 }
 
@@ -1131,11 +1253,13 @@ function createUtilProgram(monorepoRoot: string): ts.Program {
 
   for (const entryPoint of UTIL_ENTRY_POINTS) {
     const indexPath = path.join(monorepoRoot, entryPoint.index);
+
     if (!fs.existsSync(indexPath)) continue;
 
     files.push(indexPath);
 
     const localModules = resolveLocalModules(indexPath);
+
     for (const mod of localModules) {
       if (fs.existsSync(mod) && !files.includes(mod)) {
         files.push(mod);
@@ -1150,5 +1274,6 @@ function createUtilProgram(monorepoRoot: string): ts.Program {
 
 export function getUtilEntries(monorepoRoot: string): UtilEntry[] {
   const program = createUtilProgram(monorepoRoot);
+
   return discoverUtilExports(monorepoRoot, program);
 }

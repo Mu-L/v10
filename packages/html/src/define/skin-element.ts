@@ -30,6 +30,7 @@ export class SkinElement extends ReactiveElement {
 
     if (!this.shadowRoot) {
       const ctor = this.constructor as typeof SkinElement;
+
       this.attachShadow(ctor.shadowRootOptions);
 
       if (ctor.template) {
@@ -37,9 +38,11 @@ export class SkinElement extends ReactiveElement {
       }
 
       const sheets: ShadowStyle[] = [sharedSheet];
+
       if (ctor.styles) {
         sheets.push(ctor.styles);
       }
+
       applyShadowStyles(this.shadowRoot!, sheets);
     }
   }

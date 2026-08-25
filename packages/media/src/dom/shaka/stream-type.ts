@@ -12,6 +12,7 @@ export function ShakaMediaStreamTypeMixin<Base extends Constructor<ShakaEngineHo
       super(...args);
 
       const { engine } = this;
+
       if (!engine) return;
 
       engine.addEventListener('loading', this.#forget);
@@ -54,6 +55,7 @@ export function ShakaMediaStreamTypeMixin<Base extends Constructor<ShakaEngineHo
 
     #detect = () => {
       const { engine } = this;
+
       if (!engine) return;
 
       // An in-progress presentation — a live recording with a known end, like
@@ -67,11 +69,13 @@ export function ShakaMediaStreamTypeMixin<Base extends Constructor<ShakaEngineHo
 
     #setDetected(value: MediaStreamType): void {
       if (this.#isUserStreamType) return;
+
       this.#update(value);
     }
 
     #update(value: MediaStreamType): void {
       if (this.#streamType === value) return;
+
       this.#streamType = value;
       this.dispatchEvent(new Event('streamtypechange'));
     }

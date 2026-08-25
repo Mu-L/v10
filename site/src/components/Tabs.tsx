@@ -36,6 +36,7 @@ interface TabsRootProps {
 export function TabsRoot({ children, maxWidth = true, className, id: propId, variant = 'compact' }: TabsRootProps) {
   const ref = useRef<HTMLDivElement>(null);
   const isHydrated = useIsHydrated();
+
   /**
    * When this component initializes,
    * it generates an ID for itself, and then
@@ -54,16 +55,20 @@ export function TabsRoot({ children, maxWidth = true, className, id: propId, var
     // but it actually delays this effect until later,
     // giving tab and tabpanel elements time to mount.
     if (!isHydrated) return;
+
     const id = propId || Date.now().toString();
     const tabs = ref.current?.querySelectorAll('[role="tab"]') || [];
     const panels = ref.current?.querySelectorAll('[role="tabpanel"]') || [];
+
     tabs.forEach((tab) => {
       const value = tab.getAttribute('data-value');
+
       tab.id = `tab-${id}-${value}`;
       tab.setAttribute('aria-controls', `panel-${id}-${value}`);
     });
     panels.forEach((panel) => {
       const value = panel.getAttribute('data-value');
+
       panel.id = `panel-${id}-${value}`;
       panel.setAttribute('aria-labelledby', `tab-${id}-${value}`);
     });
@@ -139,6 +144,7 @@ export function Tab({ value, children, initial, variant = 'compact' }: TabProps)
       ref.current.setAttribute('data-tab-active', 'true');
       // set data-tab-active on all sibling buttons to false
       const siblings = ref.current.closest('[data-tabs-root]')?.querySelectorAll('[role="tab"]') || [];
+
       siblings.forEach((sibling) => {
         if (sibling !== ref.current) {
           sibling.setAttribute('data-tab-active', 'false');
@@ -162,12 +168,16 @@ export function Tab({ value, children, initial, variant = 'compact' }: TabProps)
       case 'ArrowLeft':
         // Move to previous tab, wrap to last if at start
         targetIndex = currentIndex - 1;
+
         if (targetIndex < 0) targetIndex = allTabs.length - 1;
+
         break;
       case 'ArrowRight':
         // Move to next tab, wrap to first if at end
         targetIndex = currentIndex + 1;
+
         if (targetIndex >= allTabs.length) targetIndex = 0;
+
         break;
       case 'Home':
         // Jump to first tab
@@ -208,13 +218,16 @@ export function Tab({ value, children, initial, variant = 'compact' }: TabProps)
           // Fix: mutation.target is Node, cast to Element to use getAttribute
           const target = mutation.target as Element;
           const newValue = target.getAttribute('data-tab-active') === 'true';
+
           setIsActive(newValue);
         }
       });
     });
+
     if (ref.current) {
       observer.observe(ref.current, { attributes: true });
     }
+
     return () => {
       observer.disconnect();
     };
@@ -288,6 +301,7 @@ export function TabsPanel({ value, children, initial, className, variant = 'comp
         if (mutation.type === 'attributes' && mutation.attributeName === 'data-tab-active') {
           const target = mutation.target as Element;
           const newValue = target.getAttribute('data-tab-active') === 'true';
+
           setIsActive(newValue);
         }
       });

@@ -92,7 +92,9 @@ function deriveState(
   authorDisabledRemotePlayback: boolean | undefined
 ): AirPlayFsmState {
   if (!mediaElement || !isWebKitAirPlayCapable(mediaElement)) return 'preconditions-unmet';
+
   if (authorDisabledRemotePlayback) return 'preconditions-unmet';
+
   return 'airplay-capable';
 }
 
@@ -159,8 +161,10 @@ function setupAirPlaySetup({
             if (isSessionActive()) {
               clearTimeout(settleTimer);
               settleTimer = undefined;
+
               // Rising edge — the presentation the receiver is taking over.
               if (!peek(state.loadingSuspended)) sessionPresentationUrl = peek(state.presentation)?.url;
+
               state.loadingSuspended.set(true);
             } else if (peek(state.loadingSuspended)) {
               // Falling edge: don't trust an instantaneous inactive reading —
@@ -168,9 +172,12 @@ function setupAirPlaySetup({
               settleTimer ??= setTimeout(() => {
                 settleTimer = undefined;
                 const stillActive = isSessionActive();
+
                 if (!stillActive) {
                   const ownerUrl = sessionPresentationUrl;
+
                   sessionPresentationUrl = undefined;
+
                   // Snapshot only while the session's own presentation is still
                   // current. `currentTime` here belongs to that presentation —
                   // during a session `setupMediaSource` has already torn down,
@@ -185,6 +192,7 @@ function setupAirPlaySetup({
                     };
                   }
                 }
+
                 state.loadingSuspended.set(stillActive);
               }, REMOTE_INACTIVE_SETTLE_MS);
             } else {
@@ -192,6 +200,7 @@ function setupAirPlaySetup({
             }
           };
           const listenerCleanup = new AbortController();
+
           listen(mediaElement, 'webkitcurrentplaybacktargetiswirelesschanged', sync, {
             signal: listenerCleanup.signal,
           });
@@ -200,9 +209,13 @@ function setupAirPlaySetup({
             'emptied',
             () => {
               if (!pendingRestore) return;
+
               const { position, wasPlaying, presentationUrl } = pendingRestore;
+
               pendingRestore = undefined;
+
               if (peek(state.presentation)?.url !== presentationUrl) return;
+
               state.startPosition.set(position);
               restoreOwnerUrl = presentationUrl;
               resumeWhenRestored = wasPlaying;
@@ -250,9 +263,11 @@ function setupAirPlaySetup({
           // to "receiver drops" if WebKit ever implements the disconnect.
           const disposeSourceChangeEnd = effect(() => {
             const url = state.presentation.get()?.url;
+
             // `loadingSuspended` is this behavior's own session fact; peeked so
             // clearing it below doesn't re-trigger.
             if (!peek(state.loadingSuspended) || url === sessionPresentationUrl) return;
+
             sessionPresentationUrl = undefined;
             clearTimeout(settleTimer);
             settleTimer = undefined;
@@ -277,18 +292,24 @@ function setupAirPlaySetup({
           const disposeRestoreWatch = effect(() => {
             const url = state.presentation.get()?.url;
             const position = state.startPosition.get();
+
             if (!restoreOwnerUrl) return;
 
             if (url !== restoreOwnerUrl) {
               restoreOwnerUrl = undefined;
               resumeWhenRestored = false;
+
               if (position !== undefined) state.startPosition.set(undefined);
+
               return;
             }
 
             if (position !== undefined) return;
+
             restoreOwnerUrl = undefined;
+
             if (!resumeWhenRestored) return;
+
             resumeWhenRestored = false;
             mediaElement.play().catch((err) => {
               console.warn('[setupAirPlay] session-end resume play() rejected — staying paused:', err);
@@ -324,6 +345,7 @@ function setupAirPlaySetup({
               mediaElement.append(sourceEl);
               mediaElement.disableRemotePlayback = false;
             }
+
             if (sourceEl) sourceEl.src = url;
           });
 
@@ -344,10 +366,12 @@ function setupAirPlaySetup({
             // Don't strand the engine held/suspended if we tear down
             // mid-session (author opt-out, detach, destroy).
             state.loadingSuspended.set(false);
+
             // Nor leave a restore command behind for the next source to apply.
             if (restoreOwnerUrl) {
               restoreOwnerUrl = undefined;
               resumeWhenRestored = false;
+
               if (peek(state.startPosition) !== undefined) state.startPosition.set(undefined);
             }
           };

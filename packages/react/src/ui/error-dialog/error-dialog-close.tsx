@@ -20,6 +20,7 @@ export const ErrorDialogClose = forwardRef<HTMLButtonElement, ErrorDialogClosePr
 
   const handleClick = useCallback(() => {
     if (disabled) return;
+
     dialog.close();
   }, [dialog, disabled]);
 

@@ -19,6 +19,7 @@ describe('viteOxcPlugin', () => {
 
         usedFallback = meta.magicString instanceof MagicString;
         const start = code.indexOf(`'before'`);
+
         meta.magicString.overwrite(start, start + 8, `'after'`);
         return { code: meta.magicString };
       },
@@ -70,6 +71,7 @@ function metadataProbe(record: (hasMetadata: boolean) => void): Plugin {
       if (id === ENTRY_ID) {
         record('ast' in (options ?? {}) || 'magicString' in (options ?? {}));
       }
+
       return null;
     },
   };

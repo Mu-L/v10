@@ -57,9 +57,11 @@ describe('composeRefs', () => {
     const returnedCleanup = composed('test-value') as (() => void) | void;
 
     expect(returnedCleanup).toBeTypeOf('function');
+
     if (typeof returnedCleanup === 'function') {
       returnedCleanup();
     }
+
     expect(cleanup).toHaveBeenCalled();
   });
 
@@ -73,6 +75,7 @@ describe('composeRefs', () => {
     expect(refObject.current).toBe('test-value');
 
     const returnedCleanup = composed('test-value') as (() => void) | void;
+
     if (typeof returnedCleanup === 'function') {
       returnedCleanup();
     }
@@ -101,6 +104,7 @@ describe('useComposedRefs', () => {
     }
 
     const { rerender } = render(<TestComponent />);
+
     rerender(<TestComponent />);
 
     // Same refs should produce same composed ref

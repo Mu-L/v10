@@ -45,6 +45,7 @@ export function PopoverRoot({
   const popupGroup = useOptionalPopupGroup();
   const controls = useOptionalControlsContext();
   const [core] = useState(() => new PopoverCore(coreProps));
+
   core.setProps(coreProps);
 
   const isControlled = !isUndefined(controlledOpen);
@@ -53,11 +54,13 @@ export function PopoverRoot({
   // createPopover closure never reads stale props.
   const onOpenChangeRef = useLatestRef(onOpenChangeProp);
   const onOpenChangeCompleteRef = useLatestRef(onOpenChangeCompleteProp);
+
   const closeOnEscapeRef = useLatestRef(coreProps.closeOnEscape);
   const closeOnOutsideClickRef = useLatestRef(coreProps.closeOnOutsideClick);
   const openOnHoverRef = useLatestRef(openOnHover);
   const delayRef = useLatestRef(delay);
   const closeDelayRef = useLatestRef(closeDelay);
+
   const popupGroupRef = useLatestRef(popupGroup);
 
   const [popover] = useState(() => {
@@ -93,6 +96,7 @@ export function PopoverRoot({
     if (isUndefined(controlledOpen)) return;
 
     const { active: inputOpen } = popover.input.current;
+
     if (controlledOpen === inputOpen) return;
 
     if (controlledOpen) {
@@ -104,6 +108,7 @@ export function PopoverRoot({
 
   useEffect(() => {
     if (isUndefined(controls?.state.visible)) return;
+
     if (controls.state.visible) return;
 
     popover.close('imperative-action');
@@ -112,6 +117,7 @@ export function PopoverRoot({
   useDestroy(popover);
 
   const input = useSnapshot(popover.input);
+
   core.setInput(input);
   const { state, preferredSide, setPositionedSide } = usePositionedState(core.getState());
 

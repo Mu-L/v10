@@ -42,6 +42,7 @@ export function normalizeImports(source: string): string {
     }
 
     const namedBindings = importClause.namedBindings;
+
     if (importClause.name || (namedBindings && !ts.isNamedImports(namedBindings))) {
       rawImports.push(getImportStatementText(source, statement));
       continue;
@@ -73,8 +74,10 @@ export function normalizeImports(source: string): string {
     ...[...namedImports.entries()].map(([specifier, names]) => {
       const specifiers = [...names.entries()].map(([name, { isType, alias }]) => {
         const prefix = isType ? 'type ' : '';
+
         return alias ? `${prefix}${name} as ${alias}` : `${prefix}${name}`;
       });
+
       return `import { ${specifiers.join(', ')} } from '${specifier}';`;
     }),
   ];

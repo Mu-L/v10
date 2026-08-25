@@ -73,8 +73,11 @@ function deriveState(
   defaultPreload: StandardPreload
 ): ResolvePresentationState {
   if (!presentation?.url) return 'preconditions-unmet';
+
   if (isResolvedPresentation(presentation)) return 'resolved';
+
   const gateOpen = !!loadActivated || !isBlockingPreload(preload, defaultPreload);
+
   return gateOpen ? 'resolving' : 'idle';
 }
 
@@ -111,10 +114,12 @@ function resolvePresentationSetup({
             .then((response) => getResponseText(response))
             .then((text) => {
               const parsed = parsePresentation(text, presentation);
+
               state.presentation.set(parsed);
             })
             .catch((error) => {
               if (error instanceof Error && error.name === 'AbortError') return;
+
               // TODO(error-management): route to a state-error slot once one exists.
               console.error('[resolvePresentation] manifest fetch/parse failed:', error);
             });

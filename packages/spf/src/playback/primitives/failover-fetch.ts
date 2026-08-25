@@ -47,6 +47,7 @@ export function failoverFetch<K extends SelectedTrackKey, Fetch extends Failover
   config: { selectedKey: K; getCdnId?: GetCdnId }
 ): Fetch {
   const getCdnId = config.getCdnId ?? defaultGetCdnId;
+
   return (async (addressable: Resource, options?: FetchOptions) => {
     try {
       return await baseFetch(addressable, options);
@@ -55,8 +56,10 @@ export function failoverFetch<K extends SelectedTrackKey, Fetch extends Failover
         const presentation = state.presentation.get();
         const trackId = state[config.selectedKey].get();
         const track = presentation && trackId ? findTrackById(presentation, trackId) : undefined;
+
         if (track) update(state.failedCdns, (cdns) => addFailedCdn(cdns, getCdnId(track.url)));
       }
+
       throw error;
     }
   }) as Fetch;

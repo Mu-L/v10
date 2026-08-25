@@ -9,21 +9,25 @@ export function concat(...parts: Uint8Array[]): Uint8Array {
   const total = parts.reduce((n, p) => n + p.length, 0);
   const out = new Uint8Array(total);
   let offset = 0;
+
   for (const part of parts) {
     out.set(part, offset);
     offset += part.length;
   }
+
   return out;
 }
 
 export function u32(value: number): Uint8Array {
   const out = new Uint8Array(4);
+
   new DataView(out.buffer).setUint32(0, value);
   return out;
 }
 
 export function u64(value: number | bigint): Uint8Array {
   const out = new Uint8Array(8);
+
   new DataView(out.buffer).setBigUint64(0, BigInt(value));
   return out;
 }
@@ -36,6 +40,7 @@ function fourcc(type: string): Uint8Array {
 export function box(type: string, ...children: Uint8Array[]): Uint8Array {
   const payload = concat(...children);
   const out = new Uint8Array(8 + payload.length);
+
   new DataView(out.buffer).setUint32(0, out.length);
   out.set(fourcc(type), 4);
   out.set(payload, 8);
@@ -47,6 +52,7 @@ export function largeBox(type: string, ...children: Uint8Array[]): Uint8Array {
   const payload = concat(...children);
   const out = new Uint8Array(16 + payload.length);
   const view = new DataView(out.buffer);
+
   view.setUint32(0, 1);
   out.set(fourcc(type), 4);
   view.setBigUint64(8, BigInt(out.length));
@@ -61,12 +67,14 @@ const versionFlags = (version: 0 | 1) => new Uint8Array([version, 0, 0, 0]);
 export function mdhd(timescale: number, version: 0 | 1 = 0): Uint8Array {
   const dates = version === 1 ? concat(u64(0), u64(0)) : concat(u32(0), u32(0));
   const duration = version === 1 ? u64(0) : u32(0);
+
   return box('mdhd', new Uint8Array([version]), flags, dates, u32(timescale), duration);
 }
 
 /** `tkhd` FullBox carrying `track_id`. */
 export function tkhd(trackId: number, version: 0 | 1 = 0): Uint8Array {
   const dates = version === 1 ? concat(u64(0), u64(0)) : concat(u32(0), u32(0));
+
   return box('tkhd', versionFlags(version), dates, u32(trackId), u32(0) /* reserved */);
 }
 
@@ -85,6 +93,7 @@ export function hdlr(handlerType: string): Uint8Array {
 /** `tfdt` FullBox carrying `baseMediaDecodeTime`. v0 = 32-bit, v1 = 64-bit. */
 export function tfdt(baseMediaDecodeTime: number | bigint, version: 0 | 1 = 0): Uint8Array {
   const value = version === 1 ? u64(baseMediaDecodeTime) : u32(Number(baseMediaDecodeTime));
+
   return box('tfdt', versionFlags(version), value);
 }
 
@@ -120,5 +129,6 @@ export interface TrafSpec {
 /** A media segment: `styp` + `moof > (mfhd, ...traf)`, each `traf` = `tfhd` + `tfdt`. */
 export function mediaSegment(...trafs: TrafSpec[]): Uint8Array {
   const trafBoxes = trafs.map((t) => box('traf', tfhd(t.trackId), tfdt(t.baseMediaDecodeTime, t.version ?? 0)));
+
   return concat(box('styp', u32(0)), box('moof', box('mfhd', u32(0)), ...trafBoxes));
 }

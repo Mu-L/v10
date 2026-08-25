@@ -105,12 +105,18 @@ function updateMediaSourceDurationSetup({
           // whatever finite live-edge value an append may have pinned.
           if (presentation.duration === Number.POSITIVE_INFINITY) {
             if (mediaSource.duration === Number.POSITIVE_INFINITY) return;
+
             const controller = new AbortController();
+
             void (async () => {
               await waitForMediaSourceOpen(mediaSource, controller.signal);
+
               if (controller.signal.aborted || mediaSource.readyState !== 'open') return;
+
               await waitForSourceBuffersReady(mediaSource.sourceBuffers, controller.signal);
+
               if (controller.signal.aborted || mediaSource.readyState !== 'open') return;
+
               if (mediaSource.duration !== Number.POSITIVE_INFINITY) {
                 mediaSource.duration = Number.POSITIVE_INFINITY;
               }
@@ -129,13 +135,16 @@ function updateMediaSourceDurationSetup({
 
           const writeWhenReady = async () => {
             await waitForMediaSourceOpen(mediaSource, controller.signal);
+
             if (controller.signal.aborted) return;
+
             // `waitForMediaSourceOpen` resolves on any readyState transition
             // out of 'closed'; if we landed in 'ended' / 'closed' instead of
             // 'open', the write window is gone.
             if (mediaSource.readyState !== 'open') return;
 
             await waitForSourceBuffersReady(mediaSource.sourceBuffers, controller.signal);
+
             if (controller.signal.aborted) return;
 
             // Narrow race: `endOfStream()` synchronously transitions
@@ -149,6 +158,7 @@ function updateMediaSourceDurationSetup({
             // during the wait is included in the clamp.
             const maxBufferedEnd = getMaxBufferedEnd(mediaSource.sourceBuffers);
             const duration = maxBufferedEnd > presentation.duration! ? maxBufferedEnd : presentation.duration!;
+
             mediaSource.duration = duration;
           };
 

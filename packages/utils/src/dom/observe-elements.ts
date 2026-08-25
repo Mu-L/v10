@@ -59,6 +59,7 @@ export function observeElements({ getElements, onChange, root, mutations }: Obse
 
 function toElementSize(entry: ResizeObserverEntry): ElementSize {
   const box = entry.contentBoxSize[0];
+
   return { width: box?.inlineSize ?? 0, height: box?.blockSize ?? 0 };
 }
 
@@ -69,6 +70,7 @@ function toElementSize(entry: ResizeObserverEntry): ElementSize {
 export function observeElementSize(element: Element, onResize: (size: ElementSize) => void): () => void {
   return observeResize(element, (entries) => {
     const entry = entries[entries.length - 1];
+
     if (entry) onResize(toElementSize(entry));
   });
 }

@@ -84,11 +84,17 @@ function deriveTargetLiveWindow(
   trackId: string | undefined
 ): number {
   if (!isResolvedPresentation(presentation) || !trackId) return Number.NaN;
+
   const track = findTrackById(presentation, trackId);
+
   if (!track || !isResolvedTrack(track)) return Number.NaN;
+
   const metadata = getMediaPlaylistMetadata(track);
+
   if (!metadata) return Number.NaN;
+
   if (metadata.playlistType === 'EVENT') return Number.POSITIVE_INFINITY;
+
   return deriveStreamType(metadata) === 'live' ? 0 : Number.NaN;
 }
 
@@ -179,6 +185,7 @@ export function HlsVideoMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
       super(...args);
 
       const { config } = args?.[0] ?? {};
+
       this.#config = config;
       this.#engine = this.#createEngine();
 
@@ -189,6 +196,7 @@ export function HlsVideoMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
       // `timeupdate`/`progress`), so a sliding window needs no event churn.
       this.#stopLiveSync = effect(() => {
         const presentation = this.#signals.state.presentation.get();
+
         this.#setDetectedStreamType(presentation?.streamType ?? MediaStreamTypes.UNKNOWN);
         this.#setTargetLiveWindow(deriveTargetLiveWindow(presentation, liveTrackId(this.#signals.state)));
         this.#reportDeliveryNotices(presentation);
@@ -200,6 +208,7 @@ export function HlsVideoMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
       // this needing its own source-change hook.
       this.#stopErrorSync = effect(() => {
         const errors = this.#signals.state.errors.get();
+
         this.#setError(firstFatal(errors, FATAL_SVTA_CODES), errors);
       });
     }
@@ -246,6 +255,7 @@ export function HlsVideoMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
         this.#updateStreamType(this.#signals.state.presentation.get()?.streamType ?? MediaStreamTypes.UNKNOWN);
         return;
       }
+
       this.#isUserStreamType = true;
       this.#updateStreamType(value);
     }
@@ -263,6 +273,7 @@ export function HlsVideoMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
         state: this.#signals.state as LiveWindowState,
         config: { resolveLiveLatency },
       });
+
       return edge?.liveEdgeStart ?? Number.NaN;
     }
 
@@ -277,11 +288,13 @@ export function HlsVideoMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
 
     #setDetectedStreamType(value: HlsVideoMediaStreamType): void {
       if (this.#isUserStreamType) return;
+
       this.#updateStreamType(value);
     }
 
     #updateStreamType(value: HlsVideoMediaStreamType): void {
       if (this.#streamType === value) return;
+
       this.#streamType = value;
       // Optional-chained: with an EventTarget-less base (`HlsVideoMediaElement`
       // standalone) there's nowhere to dispatch; hosts forward it to listeners.
@@ -290,6 +303,7 @@ export function HlsVideoMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
 
     #setTargetLiveWindow(value: number): void {
       if (Object.is(this.#targetLiveWindow, value)) return;
+
       this.#targetLiveWindow = value;
       this.dispatchEvent?.(new Event('targetlivewindowchange'));
     }
@@ -302,10 +316,12 @@ export function HlsVideoMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
         this.#reportedCode = null;
         return;
       }
+
       // Keyed on the code, not the object: a later append re-runs this effect
       // with an equal-but-new array, and re-firing `'error'` for a condition
       // already surfaced would look like a second failure.
       if (this.#reportedCode === reported.code) return;
+
       this.#reportedCode = reported.code;
 
       // A verdict says a type emptied; the causes say whether anything could
@@ -313,6 +329,7 @@ export function HlsVideoMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
       // implement, that's the more useful thing to tell a consumer, so it
       // replaces the verdict's code on the surface.
       const unsupported = hasUnsupportedFeatureCause(errors);
+
       if (unsupported) {
         // The only place this engine explains itself in prose, and it's a
         // console: the viewer-facing sentence is the consumer's to localize from
@@ -362,6 +379,7 @@ export function HlsVideoMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
 
     set preload(value: '' | 'none' | 'metadata' | 'auto') {
       this.#preload = value;
+
       if (value) {
         this.#signals.state.preload.set(value);
       }
@@ -423,6 +441,7 @@ export function HlsVideoMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
 
     play(): Promise<void> {
       const mediaElement = this.#signals.context.mediaElement.get();
+
       if (!mediaElement) {
         return Promise.reject(new Error('HlsVideoMediaElement: no media element attached'));
       }
@@ -440,10 +459,12 @@ export function HlsVideoMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
               this.#loadstartListener = null;
               mediaElement.play().then(resolve, reject);
             };
+
             this.#loadstartListener = listener;
             mediaElement.addEventListener('loadstart', listener, { once: true });
           });
         }
+
         throw err;
       });
     }
@@ -475,14 +496,18 @@ export function HlsVideoMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
 
       const trackId = liveTrackId(this.#signals.state);
       const track = trackId ? findTrackById(presentation, trackId) : undefined;
+
       if (!track || !isResolvedTrack(track)) return;
+
       const metadata = getMediaPlaylistMetadata(track);
+
       if (!metadata) return;
 
       if (metadata.lowLatency && !this.#noticed.has('lowLatency')) {
         this.#noticed.add('lowLatency');
         console.warn(this.#withSuggestion(LOW_LATENCY_UNSUPPORTED_MESSAGE));
       }
+
       if (metadata.playlistType === 'EVENT' && !this.#noticed.has('dvr')) {
         this.#noticed.add('dvr');
         console.warn(this.#withSuggestion(DVR_EXPERIMENTAL_MESSAGE));
@@ -500,7 +525,9 @@ export function HlsVideoMediaMixin<Base extends Constructor<any>>(BaseClass: Bas
 
     #cancelPendingPlay(): void {
       if (!this.#loadstartListener) return;
+
       const mediaElement = this.#signals.context.mediaElement.get();
+
       mediaElement?.removeEventListener('loadstart', this.#loadstartListener);
       this.#loadstartListener = null;
     }

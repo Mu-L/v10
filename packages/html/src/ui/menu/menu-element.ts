@@ -81,6 +81,7 @@ export class MenuElement extends UIElement {
 
   override connectedCallback(): void {
     super.connectedCallback();
+
     if (this.destroyed) return;
 
     this.setAttribute(POPUP_HOST_ATTR, '');
@@ -98,6 +99,7 @@ export class MenuElement extends UIElement {
             detail: { open: nextOpen, ...details },
           })
         );
+
         if (accepted) this.open = nextOpen;
       },
       closeOnEscape: () => this.closeOnEscape,
@@ -152,6 +154,7 @@ export class MenuElement extends UIElement {
     if (!this.hasUpdated && this.defaultOpen && !this.open) this.open = true;
 
     const parentCtx = this.#parentCtx.value ?? null;
+
     this.#syncParentRegistration(parentCtx);
 
     this.#core.setProps({
@@ -170,12 +173,14 @@ export class MenuElement extends UIElement {
 
   protected override update(_changed: PropertyValues): void {
     super.update(_changed);
+
     if (!this.#menu) return;
 
     const parentCtx = this.#parentCtx.value ?? null;
     const isSubmenu = parentCtx !== null;
 
     const input = this.#menu.input.current;
+
     this.#core.setInput({ ...input, isSubmenu });
     const state = this.#core.getState();
 
@@ -207,6 +212,7 @@ export class MenuElement extends UIElement {
 
   #syncParentRegistration(parentCtx: MenuContextValue | null): void {
     const parentMenu = parentCtx?.menu ?? null;
+
     if (parentMenu === this.#registeredParentMenu || !this.#menu) return;
 
     this.#cleanupParentRegistration?.();
@@ -218,6 +224,7 @@ export class MenuElement extends UIElement {
     if (!this.#menu) return;
 
     const triggerElement = this.#position.findTrigger();
+
     this.#syncTrigger(triggerElement);
 
     applyElementProps(this, {
@@ -244,10 +251,12 @@ export class MenuElement extends UIElement {
 
     this.#cleanupSizeObserver?.();
     const syncSize = () => syncMenuSizeChain(this);
+
     syncSize();
     this.#cleanupSizeObserver = observeMenuSize(this, syncSize);
 
     const positionOptions = getRootPositionOptions(state.side, state.align);
+
     if (!positionOptions || !this.#currentTrigger) return;
 
     this.#position.sync({
@@ -268,7 +277,9 @@ export class MenuElement extends UIElement {
     );
 
     this.#menu?.setTriggerElement(triggerElement ?? null);
+
     if (triggerElement) applyElementProps(triggerElement, this.#core.getTriggerAttrs(state, this.id));
+
     this.#syncTriggerState(triggerElement ?? null);
 
     this.removeAttribute(MenuDataAttrs.side);
@@ -284,6 +295,7 @@ export class MenuElement extends UIElement {
     this.#cleanupSizeObserver?.();
     const parentContentElement = parentCtx.menu.contentElement;
     const syncSize = () => syncMenuSizeChain(parentContentElement);
+
     syncSize();
     this.#cleanupSizeObserver =
       isActive && parentContentElement ? observeMenuSize(parentContentElement, syncSize) : null;
@@ -307,9 +319,11 @@ export class MenuElement extends UIElement {
 
     if (!parentCtx) {
       if (event.key === 'Escape') return;
+
       if (isNavigationKey) {
         event.stopPropagation();
       }
+
       return;
     }
 
@@ -337,7 +351,9 @@ export class MenuElement extends UIElement {
     }
 
     this.#triggerState = triggerState;
+
     if (triggerState.disabled && this.open && this.#parentCtx.value) this.close('imperative-action');
+
     this.requestUpdate();
   };
 
@@ -350,17 +366,20 @@ export class MenuElement extends UIElement {
     if (!trigger) return;
 
     const disabled = this.#triggerState.disabled || isTriggerExplicitlyDisabled(trigger);
+
     applyElementProps(trigger, {
       'aria-disabled': disabled ? 'true' : undefined,
       'data-availability': this.#triggerState.availability,
     });
 
     const hint = trigger.querySelector<HTMLElement>('[data-part~="hint"]');
+
     if (hint && hint.textContent !== this.#triggerState.hint) hint.textContent = this.#triggerState.hint;
   }
 
   #clearTriggerState(): void {
     const trigger = this.#stateTrigger;
+
     if (!trigger) return;
 
     applyElementProps(trigger, {
@@ -369,7 +388,9 @@ export class MenuElement extends UIElement {
     });
 
     const hint = trigger.querySelector<HTMLElement>('[data-part~="hint"]');
+
     if (hint?.textContent) hint.textContent = '';
+
     this.#stateTrigger = null;
   }
 

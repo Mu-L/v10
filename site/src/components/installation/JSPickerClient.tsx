@@ -19,6 +19,7 @@ interface Props {
 export default function JSPickerClient({ currentFramework, currentSlug }: Props) {
   const handleFrameworkChange = (newFramework: SupportedFramework | null) => {
     if (newFramework === null) return;
+
     if (!isValidFramework(newFramework)) return;
 
     const { url, shouldReplace } = resolveFrameworkChange({
@@ -40,6 +41,7 @@ export default function JSPickerClient({ currentFramework, currentSlug }: Props)
       } catch {
         // Ignore storage errors
       }
+
       window.location.replace(url);
     } else {
       window.location.href = url;

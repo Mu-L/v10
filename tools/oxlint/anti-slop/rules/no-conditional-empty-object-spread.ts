@@ -3,9 +3,11 @@ import type { ESTree } from "@oxlint/plugins";
 
 function unwrapParentheses(node: ESTree.Expression): ESTree.Expression {
   let current = node;
+
   while (current.type === "ParenthesizedExpression") {
     current = current.expression;
   }
+
   return current;
 }
 

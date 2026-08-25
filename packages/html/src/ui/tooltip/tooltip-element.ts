@@ -91,6 +91,7 @@ export class TooltipElement extends UIElement {
 
   override connectedCallback(): void {
     super.connectedCallback();
+
     if (this.destroyed) return;
 
     this.setAttribute(POPUP_HOST_ATTR, '');
@@ -157,6 +158,7 @@ export class TooltipElement extends UIElement {
     // Sync controlled open state
     if (this.#tooltip && changed.has('open')) {
       const { active: interactionOpen } = this.#tooltip.input.current;
+
       if (this.open !== interactionOpen) {
         if (this.open) {
           this.#tooltip.open();
@@ -169,9 +171,11 @@ export class TooltipElement extends UIElement {
 
   protected override update(_changed: PropertyValues): void {
     super.update(_changed);
+
     if (!this.#tooltip) return;
 
     const triggerEl = this.#position.findTrigger(this.trigger);
+
     this.#syncTrigger(triggerEl);
 
     if (this.#currentTrigger && isLabelTrigger(this.#currentTrigger)) {
@@ -180,6 +184,7 @@ export class TooltipElement extends UIElement {
 
     // Derive state from core + input.
     const input = this.#tooltip.input.current;
+
     this.#core.setInput(input);
     const state = this.#core.getState();
 
@@ -241,9 +246,11 @@ export class TooltipElement extends UIElement {
   #syncContent(triggerEl: TriggerElement): void {
     const label = triggerEl.getLabel();
     let resolved = isFunction(triggerEl.getResolvedLabel) ? triggerEl.getResolvedLabel() : undefined;
+
     if (resolved === undefined && label) {
       resolved = translateText(label, this.#i18n.value);
     }
+
     const shortcut = triggerEl.getShortcut?.();
 
     let labelEl = TooltipLabelElement.findIn(this);

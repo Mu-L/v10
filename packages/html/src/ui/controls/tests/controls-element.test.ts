@@ -14,6 +14,7 @@ import { ControlsElement } from '../controls-element';
 
 function ensureCustomElementDefined(Constructor: CustomElementConstructor & { readonly tagName: string }): void {
   const { tagName } = Constructor;
+
   if (!customElements.get(tagName)) {
     customElements.define(tagName, Constructor);
   }
@@ -167,8 +168,10 @@ describe('ControlsElement', () => {
     const provider = document.createElement('test-controls-player-provider') as TestPlayerProviderElement;
     const controls = createDefinedElement(ControlsElement);
     const withoutClose = document.createElement('div');
+
     withoutClose.setAttribute(POPUP_HOST_ATTR, '');
     const wrongClose = document.createElement('div');
+
     wrongClose.setAttribute(POPUP_HOST_ATTR, '');
     Object.assign(wrongClose, { close: 'not-callable' });
 

@@ -25,9 +25,11 @@ export function extractTemplateLiteral(source: string): string {
   const match = source.match(
     /function\s+getTemplateHTML\s*\([^)]*\)\s*\{[\s\S]*?return\s+(?:\/\*html\*\/\s*)?`([\s\S]*?)`\s*;?\s*\}/
   );
+
   if (!match) {
     throw new Error('Could not extract getTemplateHTML template literal');
   }
+
   return match[1];
 }
 
@@ -44,6 +46,7 @@ export function parseImportedNames(source: string): Map<string, string> {
 
     for (const name of names) {
       const [importedName, localName = importedName] = name.split(/\s+as\s+/);
+
       imports.set(localName, match[2]);
     }
   }
@@ -95,11 +98,13 @@ export function replaceSlots(html: string, skin: Pick<SkinDef, 'mediaType' | 'li
 export function prependHtmlSkinScripts(html: string, skin: HtmlSkinDef): string {
   const cdnFileName = skin.variant === 'minimal' ? `${skin.group}-minimal-ui` : `${skin.group}-ui`;
   const scriptTags = [`<script type="module" src="${HTML_CDN_BASE}/${cdnFileName}.js"></script>`];
+
   if (skin.live) {
     scriptTags.push(
       `<script type="module" src="${HTML_CDN_BASE}/media/${LIVE_MEDIA[skin.mediaType].subpath}.js"></script>`
     );
   }
+
   const cssLink = skin.style === 'css' ? '\n<link rel="stylesheet" href="./player.css">' : '';
   const playerTag = `${skin.group}-player`;
   const posterAttr =
@@ -124,10 +129,12 @@ async function loadImportedNames(
     if (!new RegExp(`\\b${name}\\b`).test(template)) continue;
 
     let imported = modules.get(specifier);
+
     if (!imported) {
       const url = specifier.startsWith('@videojs/')
         ? pkgDistUrl(specifier)
         : pathToFileURL(resolve(workspaceRoot, dirname(templatePath), specifier)).href;
+
       imported = (await import(url)) as Record<string, unknown>;
       modules.set(specifier, imported);
     }
@@ -139,6 +146,7 @@ async function loadImportedNames(
 export async function processHtmlSkin(skin: HtmlSkinDef): Promise<string> {
   const sourcePath = resolve(workspaceRoot, skin.template);
   const source = readFileSync(sourcePath, 'utf-8');
+
   validatePackageImports(source, skin.template);
   const templateBody = extractTemplateLiteral(source);
   const context: Record<string, unknown> = { SEEK_TIME: 10 };
@@ -147,5 +155,6 @@ export async function processHtmlSkin(skin: HtmlSkinDef): Promise<string> {
   context.renderIcon = createRenderMediaIcon(skin.iconSet);
 
   const html = evaluateTemplate(templateBody, context);
+
   return prependHtmlSkinScripts(replaceSlots(html, skin), skin);
 }

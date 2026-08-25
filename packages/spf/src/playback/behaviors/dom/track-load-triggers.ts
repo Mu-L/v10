@@ -58,7 +58,9 @@ function deriveState(
   loadActivated: boolean | undefined
 ): LoadTriggersFsmState {
   if (!mediaElement || !presentation?.url) return 'preconditions-unmet';
+
   if (loadActivated) return 'load-active';
+
   return 'monitoring';
 }
 
@@ -126,12 +128,15 @@ function trackLoadTriggersSetup({
           const el = context.mediaElement.get()!;
 
           const setLoadActivated = () => state.loadActivated.set(true);
+
           if (el.autoplay || !el.paused || el.seeking) {
             setLoadActivated();
             return;
           }
+
           const cleanupPlay = listen(el, 'play', setLoadActivated);
           const cleanupSeeking = listen(el, 'seeking', setLoadActivated);
+
           return () => {
             cleanupPlay();
             cleanupSeeking();

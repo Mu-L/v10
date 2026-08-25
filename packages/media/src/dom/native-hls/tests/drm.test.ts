@@ -18,7 +18,9 @@ function skdInitData(contentId: string): ArrayBuffer {
   const uri = `skd://${contentId}`;
   const bytes = new Uint8Array(uri.length * 2);
   const view = new DataView(bytes.buffer);
+
   for (let i = 0; i < uri.length; i++) view.setUint16(i * 2, uri.charCodeAt(i), true);
+
   return bytes.buffer;
 }
 
@@ -59,6 +61,7 @@ function stubKeySystem(): KeySystemStubs {
     keyStatuses: new Map<string, MediaKeyStatus>(),
     addEventListener(type: string, listener: EventListener, options?: AddEventListenerOptions) {
       if (!listeners.has(type)) listeners.set(type, new Set());
+
       listeners.get(type)!.add(listener);
       options?.signal?.addEventListener('abort', () => listeners.get(type)!.delete(listener));
     },
@@ -96,6 +99,7 @@ function stubWebKitKeySystem() {
     close: vi.fn(),
     addEventListener(type: string, listener: EventListener, options?: AddEventListenerOptions) {
       if (!listeners.has(type)) listeners.set(type, new Set());
+
       listeners.get(type)!.add(listener);
       options?.signal?.addEventListener('abort', () => listeners.get(type)!.delete(listener));
     },
@@ -123,6 +127,7 @@ function stubWebKitKeySystem() {
     setMediaKeys,
     install(video: HTMLVideoElement) {
       let current: unknown = null;
+
       setMediaKeys.mockImplementation((value) => {
         current = value;
       });
@@ -137,6 +142,7 @@ function stubFetch() {
   return vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
     const body = url === CERTIFICATE_URL ? CERTIFICATE : CKC;
+
     return { ok: true, arrayBuffer: async () => body.buffer.slice(0) } as Response;
   });
 }
@@ -150,9 +156,11 @@ function setup(
   drm: DrmSystemsConfig | null = { 'com.apple.fps': { licenseUrl: LICENSE_URL, serverCertificateUrl: CERTIFICATE_URL } }
 ) {
   const video = document.createElement('video');
+
   document.body.append(video);
 
   const media = new NativeHlsMedia();
+
   media.attach(video);
   media.source = {
     src: 'https://example.test/protected.m3u8',
@@ -160,6 +168,7 @@ function setup(
   };
 
   const errors = vi.fn();
+
   media.addEventListener('error', errors);
 
   return { media, video, errors };
@@ -202,9 +211,11 @@ describe('NativeHlsMediaDrmMixin', () => {
     const nativeLicense = 'https://license.test/native-fairplay';
     const { session } = stubKeySystem();
     const video = document.createElement('video');
+
     document.body.append(video);
 
     const media = new NativeHlsMedia();
+
     media.attach(video);
     video.setMediaKeys = vi.fn(async () => {});
     media.source = {
@@ -229,6 +240,7 @@ describe('NativeHlsMediaDrmMixin', () => {
     const { session } = stubKeySystem();
     const setMediaKeys = vi.fn(async () => {});
     const { video } = setup();
+
     video.setMediaKeys = setMediaKeys;
 
     fireKeyRequest(video);
@@ -252,6 +264,7 @@ describe('NativeHlsMediaDrmMixin', () => {
     const rotated = 'https://license.test/fairplay?token=rotated';
     const { session } = stubKeySystem();
     const { media, video } = setup();
+
     video.setMediaKeys = vi.fn(async () => {});
 
     fireKeyRequest(video);
@@ -271,6 +284,7 @@ describe('NativeHlsMediaDrmMixin', () => {
   it('negotiates FairPlay against the manifest, without persistent state', async () => {
     const { requestMediaKeySystemAccess } = stubKeySystem();
     const { video } = setup();
+
     video.setMediaKeys = vi.fn(async () => {});
 
     fireKeyRequest(video);
@@ -299,6 +313,7 @@ describe('NativeHlsMediaDrmMixin', () => {
 
   it('fails when only key systems native playback cannot negotiate are configured', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
     stubKeySystem();
     const { media, video } = setup({ 'com.widevine.alpha': { licenseUrl: 'https://license.test/widevine' } });
 
@@ -310,6 +325,7 @@ describe('NativeHlsMediaDrmMixin', () => {
 
   it('ignores initialization data it cannot act on', async () => {
     const { requestMediaKeySystemAccess } = stubKeySystem();
+
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { video, errors } = setup();
 
@@ -322,6 +338,7 @@ describe('NativeHlsMediaDrmMixin', () => {
 
   it('reports a rejected key system as a fatal encrypted error', async () => {
     const { requestMediaKeySystemAccess } = stubKeySystem();
+
     requestMediaKeySystemAccess.mockRejectedValue(new Error('unsupported'));
 
     const { media, video } = setup();
@@ -335,9 +352,11 @@ describe('NativeHlsMediaDrmMixin', () => {
 
   it('reports a rejected application certificate', async () => {
     const { mediaKeys } = stubKeySystem();
+
     mediaKeys.setServerCertificate.mockResolvedValue(false);
 
     const { media, video } = setup();
+
     video.setMediaKeys = vi.fn(async () => {});
 
     fireKeyRequest(video);
@@ -348,6 +367,7 @@ describe('NativeHlsMediaDrmMixin', () => {
 
   it('reports a license server that answers with an error', async () => {
     const { session } = stubKeySystem();
+
     fetchMock.mockImplementation(async (input: RequestInfo | URL) =>
       String(input) === CERTIFICATE_URL
         ? ({ ok: true, arrayBuffer: async () => CERTIFICATE.buffer.slice(0) } as Response)
@@ -355,6 +375,7 @@ describe('NativeHlsMediaDrmMixin', () => {
     );
 
     const { media, video } = setup();
+
     video.setMediaKeys = vi.fn(async () => {});
 
     fireKeyRequest(video);
@@ -370,6 +391,7 @@ describe('NativeHlsMediaDrmMixin', () => {
   it('announces an insecure output without latching it as the error', async () => {
     const { session } = stubKeySystem();
     const { media, video, errors } = setup();
+
     video.setMediaKeys = vi.fn(async () => {});
 
     fireKeyRequest(video);
@@ -379,6 +401,7 @@ describe('NativeHlsMediaDrmMixin', () => {
     session.dispatch(new Event('keystatuseschange'));
 
     const event = errors.mock.calls[0]![0] as ErrorEvent;
+
     expect(event.error.context).toBe(NativeHlsDrmErrors.OUTPUT_RESTRICTED);
     expect(event.error.fatal).toBe(false);
     // Playback continues, so it must not stand in for whatever fails next.
@@ -389,6 +412,7 @@ describe('NativeHlsMediaDrmMixin', () => {
     const { session } = stubKeySystem();
     const setMediaKeys = vi.fn(async (_keys: MediaKeys | null) => {});
     const { video } = setup();
+
     video.setMediaKeys = setMediaKeys;
 
     fireKeyRequest(video);
@@ -410,6 +434,7 @@ describe('NativeHlsMediaDrmMixin', () => {
     const granted = new Promise<void>((resolve) => {
       grantAccess = resolve;
     });
+
     requestMediaKeySystemAccess.mockImplementation(async () => {
       await granted;
       return { createMediaKeys: async () => mediaKeys };
@@ -417,6 +442,7 @@ describe('NativeHlsMediaDrmMixin', () => {
 
     const setMediaKeys = vi.fn(async (_keys: MediaKeys | null) => {});
     const { video } = setup();
+
     video.setMediaKeys = setMediaKeys;
 
     fireKeyRequest(video);
@@ -461,10 +487,12 @@ describe('NativeHlsMediaDrmMixin', () => {
      */
     async function setupFallback() {
       const eme = stubKeySystem();
+
       eme.session.generateRequest.mockRejectedValue(new DOMException('nope', 'NotSupportedError'));
 
       const webkit = stubWebKitKeySystem();
       const { media, video, errors } = setup();
+
       video.setMediaKeys = vi.fn(async () => {});
       video.load = vi.fn();
       webkit.install(video);
@@ -513,11 +541,13 @@ describe('NativeHlsMediaDrmMixin', () => {
 
       let offset = initData.byteLength;
       const contentIdLength = view.getUint32(offset, true);
+
       offset += 4;
       expect(new TextDecoder('utf-16le').decode(packed.slice(offset, offset + contentIdLength))).toBe('abc123');
 
       offset += contentIdLength;
       const certificateLength = view.getUint32(offset, true);
+
       offset += 4;
       expect(certificateLength).toBe(CERTIFICATE.byteLength);
       expect(packed.slice(offset, offset + certificateLength)).toEqual(CERTIFICATE);

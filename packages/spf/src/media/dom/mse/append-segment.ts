@@ -31,6 +31,7 @@ export async function appendSegment(sourceBuffer: SourceBuffer, data: AppendData
         // appendBuffer call. The current chunk (if any) has already landed in the
         // SourceBuffer; the partial: true flag in the actor model reflects this.
         if (signal?.aborted) throw signal.reason ?? new DOMException('Aborted', 'AbortError');
+
         await appendChunk(sourceBuffer, chunk);
       }
     } catch (e) {
@@ -54,6 +55,7 @@ export async function appendSegment(sourceBuffer: SourceBuffer, data: AppendData
           // Thrown if the MediaSource is not "open" (e.g. during teardown).
         }
       }
+
       throw e;
     }
   }
@@ -66,6 +68,7 @@ async function appendChunk(sourceBuffer: SourceBuffer, data: ArrayBuffer | Uint8
         sourceBuffer.removeEventListener('updateend', onUpdateEnd);
         resolve();
       };
+
       sourceBuffer.addEventListener('updateend', onUpdateEnd);
     });
   }

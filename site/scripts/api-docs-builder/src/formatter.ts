@@ -12,10 +12,13 @@ import type { PropDef } from './types.js';
  */
 function isFunctionType(type: string): boolean {
   if (!type.startsWith('(')) return false;
+
   let depth = 0;
+
   for (let i = 0; i < type.length; i++) {
     if (type[i] === '(' || type[i] === '{' || type[i] === '[') depth++;
     else if (type[i] === ')' || type[i] === '}' || type[i] === ']') depth--;
+
     if (depth === 0) {
       return type
         .slice(i + 1)
@@ -23,6 +26,7 @@ function isFunctionType(type: string): boolean {
         .startsWith('=>');
     }
   }
+
   return false;
 }
 
@@ -47,9 +51,11 @@ export function abbreviateType(name: string, type: string): string | undefined {
   if (name === 'className' && type.includes('=>')) {
     return 'string | function';
   }
+
   if (name === 'style' && type.includes('=>')) {
     return 'CSSProperties | function';
   }
+
   if (name === 'render' && type.includes('=>')) {
     return 'ReactElement | function';
   }
@@ -73,9 +79,11 @@ export function abbreviateType(name: string, type: string): string | undefined {
   if (type.includes('=>')) {
     const parts = type.split(' | ');
     const nonFunctionParts = parts.filter((p) => !p.includes('=>'));
+
     if (nonFunctionParts.length > 0) {
       return `${nonFunctionParts.join(' | ')} | function`;
     }
+
     return 'function';
   }
 
@@ -97,6 +105,7 @@ export function formatProperties(props: tae.PropertyNode[], allExports?: tae.Exp
   for (const prop of props) {
     // Skip ref for components
     if (prop.name === 'ref') continue;
+
     // Skip props marked with @ignore
     if (prop.documentation?.hasTag('ignore')) continue;
 
@@ -106,9 +115,13 @@ export function formatProperties(props: tae.PropertyNode[], allExports?: tae.Exp
     const abbreviated = abbreviateType(prop.name, expandedType);
 
     const entry: PropDef = { type: abbreviated ?? expandedType };
+
     if (abbreviated && expandedType !== abbreviated) entry.detailedType = expandedType;
+
     if (prop.documentation?.defaultValue !== undefined) entry.default = String(prop.documentation.defaultValue);
+
     if (!prop.optional) entry.required = true;
+
     if (prop.documentation?.description !== undefined) entry.description = prop.documentation.description;
 
     result[prop.name] = entry;
@@ -134,6 +147,7 @@ export function formatDetailedType(
 
     if (!visited.has(name)) {
       const resolved = allExports.find((exp) => exp.name === name && exp.reexportedFrom === undefined);
+
       if (resolved) {
         visited.add(name);
         return formatDetailedType(resolved.type, allExports, removeUndefined, visited);
@@ -222,9 +236,11 @@ export function formatType(type: tae.AnyType, removeUndefined: boolean): string 
 
   if (type instanceof tae.ArrayNode) {
     const formattedMemberType = formatType(type.elementType, false);
+
     if (formattedMemberType.includes(' ')) {
       return `(${formattedMemberType})[]`;
     }
+
     return `${formattedMemberType}[]`;
   }
 
@@ -237,9 +253,11 @@ export function formatType(type: tae.AnyType, removeUndefined: boolean): string 
       .map((s) => {
         const params = s.parameters.map((p) => `${p.name}: ${formatType(p.type, false)}`).join(', ');
         const returnType = formatType(s.returnValueType, false);
+
         return `(${params}) => ${returnType}`;
       })
       .join(' | ');
+
     return `(${functionSignature})`;
   }
 
@@ -247,13 +265,16 @@ export function formatType(type: tae.AnyType, removeUndefined: boolean): string 
     if (type.typeName) {
       return getFullyQualifiedName(type.typeName);
     }
+
     return `[${type.types.map((member: tae.AnyType) => formatType(member, false)).join(', ')}]`;
   }
 
   if (type instanceof tae.TypeParameterNode) {
     if (type.constraint === undefined) return type.name;
+
     // Large union constraints (e.g., keyof JSX.IntrinsicElements) — show the parameter name
     if (type.constraint instanceof tae.UnionNode && type.constraint.types.length > 5) return type.name;
+
     return formatType(type.constraint, removeUndefined);
   }
 
@@ -267,6 +288,7 @@ function flattenUnionMembers(members: readonly tae.AnyType[], removeUndefined: b
       if (member instanceof tae.UnionNode) {
         return member.typeName ? member : member.types;
       }
+
       if (
         member instanceof tae.TypeParameterNode &&
         member.constraint instanceof tae.UnionNode &&
@@ -274,6 +296,7 @@ function flattenUnionMembers(members: readonly tae.AnyType[], removeUndefined: b
       ) {
         return member.constraint.types;
       }
+
       return member;
     });
 }
@@ -305,6 +328,7 @@ function createNameWithTypeArguments(typeName: tae.TypeName): string {
  */
 function orderMembers(members: readonly tae.AnyType[]): readonly tae.AnyType[] {
   let ordered = pushToEnd(members, 'any');
+
   ordered = pushToEnd(ordered, 'null');
   ordered = pushToEnd(ordered, 'undefined');
   return ordered;
@@ -317,6 +341,7 @@ function pushToEnd(members: readonly tae.AnyType[], name: string): readonly tae.
 
   if (index !== -1) {
     const member = members[index];
+
     return [...members.slice(0, index), ...members.slice(index + 1), member!];
   }
 
@@ -330,5 +355,6 @@ function normalizeQuotes(str: string): string {
       .replaceAll('\\"', '"')
       .replace(/^"(.*)"$/, "'$1'");
   }
+
   return str;
 }

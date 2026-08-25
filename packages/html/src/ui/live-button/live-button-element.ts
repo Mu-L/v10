@@ -53,9 +53,11 @@ export class LiveButtonElement extends UIElement {
 
   override connectedCallback(): void {
     super.connectedCallback();
+
     if (this.destroyed) return;
 
     this.#defaultContent ||= !this.textContent?.trim();
+
     if (this.#defaultContent) {
       this.textContent = translateText(LiveButtonCore.defaultText, this.#i18n.value);
     }
@@ -65,6 +67,7 @@ export class LiveButtonElement extends UIElement {
     const buttonProps = createButton({
       onActivate: () => {
         const media = this.#getMedia();
+
         if (media) this.core.seekToLive(media);
       },
       isDisabled: () => this.disabled || !this.#getMedia(),
@@ -91,8 +94,11 @@ export class LiveButtonElement extends UIElement {
   /** Resolved label for tooltips and other display surfaces. */
   getResolvedLabel(): string | undefined {
     const media = this.#getMedia();
+
     if (!media) return undefined;
+
     const state = this.core.getState();
+
     return translateText(this.core.getLabel(state), this.#i18n.value);
   }
 
@@ -109,11 +115,13 @@ export class LiveButtonElement extends UIElement {
     }
 
     const media = this.#getMedia();
+
     if (!media) return;
 
     this.core.setMedia(media);
     const state = this.core.getState();
     const attrs = this.core.getAttrs(state);
+
     applyElementProps(this, {
       ...attrs,
       'aria-label': translateText(attrs['aria-label'], this.#i18n.value),
@@ -130,7 +138,9 @@ export class LiveButtonElement extends UIElement {
     const live = this.live.value;
     const time = this.time.value;
     const buffer = this.buffer.value;
+
     if (!live || !time || !buffer) return null;
+
     return {
       currentTime: time.currentTime,
       seek: time.seek,

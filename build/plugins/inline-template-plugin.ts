@@ -27,9 +27,11 @@ export function inlineTemplatePlugin(options: TemplatePluginOptions = {}): Build
 
     transform(code, _id, meta) {
       if (!minify) return null;
+
       if (!code.includes(HTML_MARKER) && !code.includes(CSS_MARKER)) return null;
 
       const magicString = meta?.magicString;
+
       if (!magicString) {
         throw new Error('inline-template requires experimental.nativeMagicString: true.');
       }
@@ -73,6 +75,7 @@ function processTemplates(code: string, output: BuildMagicString): boolean {
 
     // Skip marker + optional whitespace to find the opening backtick.
     let i = idx + marker.length;
+
     while (i < code.length && isWhitespace(code[i]!)) i++;
 
     if (i >= code.length || code[i] !== '`') {
@@ -85,12 +88,15 @@ function processTemplates(code: string, output: BuildMagicString): boolean {
     const minified = marker === HTML_MARKER ? minifyHtmlQuasis(quasis) : minifyCssQuasis(quasis);
 
     let replacement = `${marker} \``;
+
     for (let q = 0; q < minified.length; q++) {
       replacement += minified[q];
+
       if (q < expressions.length) {
         replacement += `\${${expressions[q]}}`;
       }
     }
+
     replacement += '`';
 
     if (replacement !== code.slice(idx, end)) {
@@ -124,6 +130,7 @@ function minifyHtmlQuasis(quasis: string[]): string[] {
 
     // 4. Trim edges of the whole template (first / last quasi only).
     if (qIdx === 0) s = s.replace(/^\s+/, '');
+
     if (qIdx === quasis.length - 1) s = s.replace(/\s+$/, '');
 
     return s;
@@ -147,15 +154,19 @@ function collapseInterTagWhitespace(s: string): string {
 
     // At '<' — scan forward to the matching '>', skipping quoted attributes.
     let j = i + 1;
+
     while (j < s.length && s[j] !== '>') {
       if (s[j] === '"' || s[j] === "'") {
         const q = s[j++]!;
+
         while (j < s.length && s[j] !== q) j++;
+
         if (j < s.length) j++; // skip closing quote
       } else {
         j++;
       }
     }
+
     if (j < s.length) j++; // include '>'
 
     out += s.slice(i, j);
@@ -164,7 +175,9 @@ function collapseInterTagWhitespace(s: string): string {
     // After the tag's '>', skip whitespace when followed by '<'.
     if (i < s.length && (s[i] === ' ' || s[i] === '\t' || s[i] === '\n' || s[i] === '\r')) {
       let k = i;
+
       while (k < s.length && (s[k] === ' ' || s[k] === '\t' || s[k] === '\n' || s[k] === '\r')) k++;
+
       if (k < s.length && s[k] === '<') {
         i = k; // skip the whitespace
       }
@@ -319,18 +332,22 @@ function collectExpression(code: string, start: number): ParsedExpression {
       i++;
     } else if (ch === '}') {
       depth--;
+
       if (depth === 0) {
         i++; // skip closing }
         break;
       }
+
       src += ch;
       i++;
     } else if (ch === "'" || ch === '"') {
       const consumed = skipString(code, i);
+
       src += consumed.text;
       i = consumed.end;
     } else if (ch === '`') {
       const consumed = skipNestedTemplate(code, i);
+
       src += consumed.text;
       i = consumed.end;
     } else {

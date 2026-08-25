@@ -23,9 +23,11 @@ test.describe('Captions', () => {
   test('captions settings lists tracks when subtitle track is added', async ({ page }) => {
     await page.evaluate(() => {
       const video = document.querySelector('video') as HTMLVideoElement;
+
       if (!video) return;
 
       const track = document.createElement('track');
+
       track.kind = 'subtitles';
       track.label = 'English';
       track.srclang = 'en';
@@ -37,15 +39,18 @@ test.describe('Captions', () => {
     await player.openCaptionsSettings();
 
     const options = page.locator(SELECTORS.activeMenuOptions);
+
     await expect(options).toHaveCount(2, { timeout: 5_000 });
   });
 
   test('captions button toggles captions', async ({ page }) => {
     await page.evaluate(() => {
       const video = document.querySelector('video') as HTMLVideoElement;
+
       if (!video) return;
 
       const track = document.createElement('track');
+
       track.kind = 'subtitles';
       track.label = 'English';
       track.srclang = 'en';
@@ -81,11 +86,15 @@ test.describe('Captions sideloaded before an hls.js source', () => {
     return page.evaluate(() => {
       const media = document.querySelector('hlsjs-video');
       const track = Array.from(media?.textTracks ?? []).find(({ label }) => label === 'English');
+
       if (!track) return -1;
 
       const { mode } = track;
+
       if (mode === 'disabled') track.mode = 'hidden';
+
       const cues = track.cues?.length ?? 0;
+
       if (mode === 'disabled') track.mode = mode;
 
       return cues;
@@ -104,6 +113,7 @@ test.describe('Captions sideloaded before an hls.js source', () => {
     return page.waitForFunction(() => {
       const media = document.querySelector('hlsjs-video');
       const track = Array.from(media?.textTracks ?? []).find(({ label }) => label === 'English');
+
       if (!track) return false;
 
       track.mode = 'showing';
@@ -118,6 +128,7 @@ test.describe('Captions sideloaded before an hls.js source', () => {
   const setSource = (page: Page, url: string) => {
     return page.evaluate((src) => {
       const media = document.querySelector('hlsjs-video');
+
       if (media) media.src = src;
     }, url);
   };

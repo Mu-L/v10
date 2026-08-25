@@ -35,11 +35,13 @@ function readBoolean(name: string): boolean {
 
 function readPreload(): PreloadValue {
   const value = params.get('preload');
+
   return PRELOAD_VALUES.includes(value as PreloadValue) ? (value as PreloadValue) : DEFAULT_PRELOAD;
 }
 
 function readResolution(name: string): MediaResolution | undefined {
   const value = params.get(name);
+
   if (!value || !RESOLUTION_PATTERN.test(value) || Number.parseInt(value, 10) <= 0) return undefined;
 
   return value as MediaResolution;
@@ -48,6 +50,7 @@ function readResolution(name: string): MediaResolution | undefined {
 /** Absent unless named, so the source default is what runs otherwise. */
 function readOptionalBoolean(name: string): boolean | undefined {
   const value = params.get(name);
+
   if (value === null) return undefined;
 
   return value !== '0' && value !== 'false';
@@ -55,6 +58,7 @@ function readOptionalBoolean(name: string): boolean | undefined {
 
 function readPreferPlayback(): PreferPlaybackValue | undefined {
   const value = params.get('preferPlayback');
+
   return PREFER_PLAYBACK_VALUES.includes(value as PreferPlaybackValue) ? (value as PreferPlaybackValue) : undefined;
 }
 
@@ -65,6 +69,7 @@ let currentMuted = readBoolean('muted');
 let currentLoop = readBoolean('loop');
 let currentPreload = readPreload();
 let currentLocale = readLocale();
+
 const initialMaxAutoResolution = readResolution('maxAutoResolution');
 const initialMinAutoResolution = readResolution('minAutoResolution');
 const initialCapRenditionToPlayerSize = readOptionalBoolean('capRenditionToPlayerSize');
@@ -88,6 +93,7 @@ window.addEventListener('message', (event) => {
 
 function readLocale(): SandboxLocaleTag {
   const value = params.get('locale');
+
   return SANDBOX_LOCALE_TAGS.includes(value as SandboxLocaleTag) ? (value as SandboxLocaleTag) : DEFAULT_SANDBOX_LOCALE;
 }
 

@@ -39,7 +39,9 @@ export function isHotkeyToggleAction(action: string): boolean {
 const HOTKEY_ACTIONS: Record<HotkeyActionName, HotkeyActionResolver> = {
   togglePaused({ store }) {
     const playback = selectPlayback(store.state);
+
     if (!playback) return;
+
     playback.paused ? playback.play() : playback.pause();
   },
 
@@ -49,7 +51,9 @@ const HOTKEY_ACTIONS: Record<HotkeyActionName, HotkeyActionResolver> = {
 
   toggleFullscreen({ store }) {
     const fs = selectFullscreen(store.state);
+
     if (!fs) return;
+
     fs.fullscreen ? fs.exitFullscreen() : fs.requestFullscreen();
   },
 
@@ -59,7 +63,9 @@ const HOTKEY_ACTIONS: Record<HotkeyActionName, HotkeyActionResolver> = {
 
   togglePictureInPicture({ store }) {
     const pip = selectPiP(store.state);
+
     if (!pip) return;
+
     pip.pip ? pip.exitPictureInPicture() : pip.requestPictureInPicture();
   },
 
@@ -73,6 +79,7 @@ const HOTKEY_ACTIONS: Record<HotkeyActionName, HotkeyActionResolver> = {
 
   seekToPercent({ store, value, key }) {
     const time = selectTime(store.state);
+
     if (!time || time.duration <= 0) return;
 
     let percent: number;

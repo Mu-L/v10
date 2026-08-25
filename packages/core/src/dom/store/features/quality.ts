@@ -29,6 +29,7 @@ function toMediaRendition(rendition: VideoRenditionLike): MediaVideoRendition {
 
 function getSize(rendition: Pick<VideoRenditionLike, 'width' | 'height'>): number | undefined {
   if (rendition.width && rendition.height) return Math.min(rendition.width, rendition.height);
+
   return rendition.height ?? rendition.width;
 }
 
@@ -39,6 +40,7 @@ export const qualityFeature = definePlayerFeature({
     activeVideoRendition: null,
     selectVideoRendition(value: string) {
       const { media } = target();
+
       if (!isMediaVideoRenditionCapable(media)) return;
 
       if (value === QUALITY_AUTO_VALUE) {
@@ -65,6 +67,7 @@ export const qualityFeature = definePlayerFeature({
 
       const renditions = [...list];
       const active = renditions.find((rendition) => rendition.active);
+
       if (active) return active;
 
       if (!isMediaVideoDimensionsCapable(media) || (!media.videoWidth && !media.videoHeight)) return null;

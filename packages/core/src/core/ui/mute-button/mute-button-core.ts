@@ -59,6 +59,7 @@ export class MuteButtonCore {
 
   getLabel(state: MuteButtonState): Text | string {
     const label = resolveLabel(this.#props.label, state);
+
     if (label) return label;
 
     return state.muted ? unmuteText : muteText;
@@ -81,6 +82,7 @@ export class MuteButtonCore {
     // offering no way to set a level, so reading the volume slider's would hide
     // a button that works.
     const availability = media.mutedAvailability;
+
     this.state.patch({
       muted: media.muted || media.volume === 0,
       volumeLevel: getVolumeLevel(media),
@@ -94,6 +96,7 @@ export class MuteButtonCore {
 
   toggle(media: MediaVolumeState): void {
     if (this.#props.disabled || media.mutedAvailability !== 'available') return;
+
     media.toggleMuted();
   }
 }
@@ -105,7 +108,10 @@ export namespace MuteButtonCore {
 
 function getVolumeLevel(media: MediaVolumeState): VolumeLevel {
   if (media.muted || media.volume === 0) return 'off';
+
   if (media.volume < 0.5) return 'low';
+
   if (media.volume < 0.75) return 'medium';
+
   return 'high';
 }

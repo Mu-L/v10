@@ -41,6 +41,7 @@ function AudioTrackRadioGroup({
   formatTrack?: ((track: MediaAudioTrack) => string) | undefined;
 }): ReactNode {
   const audioTrack = useAudioTrackOptions(formatTrack ? { formatTrack } : undefined);
+
   if (!audioTrack) return null;
 
   const { options, selectedLabel, setValue, value } = audioTrack;
@@ -70,6 +71,7 @@ describe('useAudioTrackOptions', () => {
 
   it('sets the selected audio track', () => {
     const selectAudioTrack = vi.fn();
+
     renderAudioTrackOptions({ selectAudioTrack });
 
     fireEvent.click(screen.getByRole('menuitemradio', { name: 'Spanish' }));

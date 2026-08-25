@@ -29,14 +29,17 @@ const renderer: MarkedExtension['renderer'] = {
     const tag = token.ordered ? 'ol' : 'ul';
     const cls = token.ordered ? classes.ol : classes.ul;
     const body = token.items.map((item) => this.listitem(item)).join('\n');
+
     return `<${tag} class="${cls}">${body}</${tag}>`;
   },
 
   listitem(item: Tokens.ListItem) {
     let body = this.parser.parse(item.tokens);
+
     if (!item.loose) {
       body = body.replace(/^<p class="[^"]*">/, '').replace(/<\/p>$/, '');
     }
+
     return `<li class="${classes.li}">${body}</li>`;
   },
 
@@ -102,16 +105,20 @@ const marked = new Marked({ renderer });
 function unwrapSingleParagraph(html: string): string {
   const trimmed = html.trim();
   const match = trimmed.match(/^<p class="[^"]*">([\s\S]*)<\/p>$/);
+
   if (match && !trimmed.includes('<p', 1)) {
     return match[1]!;
   }
+
   return trimmed;
 }
 
 export function renderInlineMarkdown(markdown: string): string {
   const raw = marked.parse(markdown);
+
   if (typeof raw !== 'string') {
     return markdown;
   }
+
   return unwrapSingleParagraph(raw);
 }

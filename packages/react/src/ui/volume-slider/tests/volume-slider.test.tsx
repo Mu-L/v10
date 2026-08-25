@@ -61,6 +61,7 @@ const { mockSliderApi, mockVolumeState, mutableVolume } = vi.hoisted(() => {
 
 vi.mock('@videojs/core/dom', async (importOriginal) => {
   const orig: Record<string, unknown> = await importOriginal();
+
   return { ...orig, createSlider: vi.fn(mockSliderApi) };
 });
 
@@ -71,10 +72,12 @@ vi.mock('@videojs/store/react', () => ({
 
     // Return the mutable volume state directly for volume selectors.
     const vol = mutableVolume.current;
+
     if (!vol) return undefined;
 
     try {
       const result = selector(vol);
+
       if (result !== undefined) return result;
     } catch {
       // fall through
@@ -103,6 +106,7 @@ describe('VolumeSliderRoot', () => {
     );
 
     const el = container.querySelector('[data-orientation]');
+
     expect(el).toBeTruthy();
     expect(el?.tagName).toBe('DIV');
   });
@@ -110,6 +114,7 @@ describe('VolumeSliderRoot', () => {
   it('forwards ref', () => {
     const { Wrapper } = createPlayerWrapper();
     const ref = createRef<HTMLDivElement>();
+
     render(
       <Wrapper>
         <VolumeSliderRoot ref={ref} />
@@ -139,6 +144,7 @@ describe('VolumeSliderRoot', () => {
     );
 
     const el = container.querySelector('[data-orientation]');
+
     expect(el?.getAttribute('data-orientation')).toBe('horizontal');
   });
 
@@ -163,6 +169,7 @@ describe('VolumeSliderRoot', () => {
     );
 
     const el = container.querySelector('[data-orientation]') as HTMLElement;
+
     expect(el?.style.getPropertyValue('--media-slider-fill')).toBeTruthy();
     expect(el?.style.getPropertyValue('--media-slider-pointer')).toBeTruthy();
   });
@@ -201,6 +208,7 @@ describe('VolumeSlider compound', () => {
     );
 
     const thumb = container.querySelector('[data-testid="thumb"]');
+
     expect(thumb?.getAttribute('role')).toBe('slider');
     expect(thumb?.getAttribute('aria-label')).toBe('Volume');
   });
@@ -216,6 +224,7 @@ describe('VolumeSlider compound', () => {
     );
 
     const output = container.querySelector('[data-testid="value"]');
+
     expect(output?.textContent).toContain('%');
   });
 });
@@ -234,11 +243,14 @@ describe('VolumeSliderRoot wheel handling', () => {
       if (type === 'wheel' && typeof options === 'object') {
         capturedOptions.push({ ...options });
       }
+
       return origAdd.call(this, type, listener, options as AddEventListenerOptions);
     });
+
     HTMLDivElement.prototype.addEventListener = addSpy as typeof origAdd;
 
     const { Wrapper } = createPlayerWrapper();
+
     render(
       <Wrapper>
         <VolumeSliderRoot />
@@ -262,6 +274,7 @@ describe('VolumeSliderRoot wheel handling', () => {
     );
 
     const el = container.querySelector('[data-orientation]') as HTMLElement;
+
     expect(el).toBeTruthy();
 
     el.dispatchEvent(new WheelEvent('wheel', { deltaY: -120, bubbles: true }));
@@ -301,6 +314,7 @@ describe('VolumeSliderRoot wheel handling', () => {
     );
 
     const el = container.querySelector('[data-orientation]') as HTMLElement;
+
     expect(el).toBeTruthy();
 
     // Wheel on the newly mounted root should call setVolume.

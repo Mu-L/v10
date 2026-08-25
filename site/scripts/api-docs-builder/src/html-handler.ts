@@ -10,6 +10,7 @@ export function extractHtml(
   elementName?: string
 ): HtmlExtraction | null {
   const sourceFile = program.getSourceFile(filePath);
+
   if (!sourceFile) return null;
 
   const className = elementName ?? `${componentName}Element`;
@@ -19,6 +20,7 @@ export function extractHtml(
   function visit(node: ts.Node) {
     if (ts.isClassDeclaration(node) && node.name?.text === className) {
       elementClass = node;
+
       for (const member of node.members) {
         if (
           ts.isPropertyDeclaration(member) &&
@@ -33,6 +35,7 @@ export function extractHtml(
         }
       }
     }
+
     ts.forEachChild(node, visit);
   }
 
@@ -46,11 +49,14 @@ export function extractHtml(
 
   function collectProperties(classNode: ts.ClassDeclaration) {
     if (seen.has(classNode)) return;
+
     seen.add(classNode);
 
     const type = checker.getTypeAtLocation(classNode);
+
     for (const baseType of checker.getBaseTypes(type as ts.InterfaceType) ?? []) {
       const declaration = baseType.getSymbol()?.declarations?.find(ts.isClassDeclaration);
+
       if (declaration) collectProperties(declaration);
     }
 
@@ -67,6 +73,7 @@ export function extractHtml(
       }
 
       let initializer = member.initializer;
+
       while (
         ts.isSatisfiesExpression(initializer) ||
         ts.isAsExpression(initializer) ||
@@ -74,15 +81,19 @@ export function extractHtml(
       ) {
         initializer = initializer.expression;
       }
+
       if (!ts.isObjectLiteralExpression(initializer)) continue;
 
       for (const property of initializer.properties) {
         if (!ts.isPropertyAssignment(property) || !property.name) continue;
+
         const name =
           ts.isIdentifier(property.name) || ts.isStringLiteral(property.name) ? property.name.text : undefined;
+
         if (!name) continue;
 
         let declaration = property.initializer;
+
         while (
           ts.isSatisfiesExpression(declaration) ||
           ts.isAsExpression(declaration) ||
@@ -90,6 +101,7 @@ export function extractHtml(
         ) {
           declaration = declaration.expression;
         }
+
         if (
           ts.isObjectLiteralExpression(declaration) &&
           declaration.properties.some(

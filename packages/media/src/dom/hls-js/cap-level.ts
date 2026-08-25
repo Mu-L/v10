@@ -55,6 +55,7 @@ export function resolutionToPixelArea(resolution: MediaResolution | undefined): 
   if (resolution === undefined) return Number.POSITIVE_INFINITY;
 
   const height = Number.parseInt(resolution, 10);
+
   if (!(Number.isFinite(height) && height > 0)) return Number.POSITIVE_INFINITY;
 
   return Math.ceil((height * 16) / 9) * height;
@@ -80,6 +81,7 @@ export function levelIndexAtOrBelow(
   resolution: MediaResolution | undefined
 ): number | undefined {
   const maxPixelArea = resolutionToPixelArea(resolution);
+
   if (maxPixelArea === Number.POSITIVE_INFINITY || levels.length === 0) return undefined;
 
   const overBudget = levels.findIndex((level) => (level.width ?? 0) * (level.height ?? 0) > maxPixelArea);
@@ -109,6 +111,7 @@ export function levelIndexAtOrAbove(
   resolution: MediaResolution | undefined
 ): number | undefined {
   const minPixelArea = resolutionToPixelArea(resolution);
+
   if (minPixelArea === Number.POSITIVE_INFINITY || levels.length === 0) return undefined;
 
   const atFloor = levels.findIndex((level) => (level.width ?? 0) * (level.height ?? 0) >= minPixelArea);
@@ -158,7 +161,9 @@ export function createCapLevelController(
     destroy() {
       this.#hls.off(Hls.Events.MANIFEST_PARSED, this.#onLevelsChanged);
       this.#hls.off(Hls.Events.LEVELS_UPDATED, this.#onLevelsChanged);
+
       if (policy.controller === this) policy.controller = undefined;
+
       super.destroy();
     }
 
@@ -205,6 +210,7 @@ export function createCapLevelController(
      */
     #topAllowedLevel(capLevelIndex: number): number {
       this.#measuringWithoutSize = true;
+
       try {
         return super.getMaxLevel(capLevelIndex);
       } finally {
@@ -238,6 +244,7 @@ export function createCapLevelController(
       // Narrowing after the floor is what subordinates it: a caller asking for
       // at most 360p gets 360p, however high the floor sits.
       const byResolution = levelIndexAtOrBelow(levels, policy.maxAutoResolution);
+
       if (byResolution !== undefined) ceiling = Math.min(ceiling, byResolution);
 
       // A floor can push past the top of the ladder; `capLevelIndex` is the real bound.
@@ -253,9 +260,11 @@ export function createCapLevelController(
      */
     detectPlayerSize() {
       super.detectPlayerSize();
+
       // Through the base getters: the overrides above report an unbounded size
       // while the cap is off, which would pass for a measurable element.
       if (super.mediaWidth > 0 && super.mediaHeight > 0) return;
+
       this.#applyResolutionCap();
     }
 
@@ -266,6 +275,7 @@ export function createCapLevelController(
         this.detectPlayerSize();
         return;
       }
+
       this.#applyResolutionCap();
     }
 
@@ -279,6 +289,7 @@ export function createCapLevelController(
      */
     #applyResolutionCap() {
       const { levels } = this.#hls;
+
       if (!levels?.length) return;
 
       // `-1` is how hls.js spells "uncapped".

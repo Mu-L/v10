@@ -63,11 +63,13 @@ function formatPixels(value: number): string {
 
 function shiftCrossAxis(value: number, boundaryStart: number, boundaryEnd: number, size: number): number {
   const max = boundaryEnd - size;
+
   return max < boundaryStart ? boundaryStart : clamp(value, boundaryStart, max);
 }
 
 function getHorizontalAlign({ align, direction = 'ltr' }: PositioningOptions): PopoverAlign {
   if (direction !== 'rtl') return align;
+
   return align === 'start' ? 'end' : align === 'end' ? 'start' : align;
 }
 
@@ -127,6 +129,7 @@ export function getAnchorPositionStyle(
   // JS fallback when CSS Anchor Positioning is not supported.
   if (triggerRect && popupRect) {
     const resolved: PositioningOffsets = offsets ?? ZERO_OFFSETS;
+
     return {
       position: 'fixed',
       margin: '0',
@@ -148,6 +151,7 @@ function getAnchorPositionCSS(
 ): PopoverPositionStyle {
   const SIDE_OFFSET_VAR = `var(${cssVars.sideOffset}, 0px)`;
   const ALIGN_OFFSET_VAR = `var(${cssVars.alignOffset}, 0px)`;
+
   const { side, align } = opts;
   const boundaryOffset = offsets.boundaryOffset ?? 0;
   const style: PopoverPositionStyle = {
@@ -175,6 +179,7 @@ function getAnchorPositionCSS(
   // is resolved at paint time without any JS round-trip.
   if (side === 'top' || side === 'bottom') {
     const horizontalAlign = getHorizontalAlign(opts);
+
     style[insetProp] = `calc(anchor(${side}) + ${SIDE_OFFSET_VAR})`;
 
     if (triggerRect && boundaryRect) {
@@ -253,6 +258,7 @@ export function getPositioningCSSVars(
 ): Record<string, string> {
   const vars: Record<string, string> = {};
   const { side } = opts;
+
   const boundaryOffset = offsets.boundaryOffset ?? 0;
   const boundaryStartX = boundaryRect.left + boundaryOffset;
   const boundaryEndX = boundaryRect.right - boundaryOffset;
@@ -296,6 +302,7 @@ export function getManualPositionStyle(
 ) {
   const { side, align } = opts;
   const { sideOffset, alignOffset } = offsets;
+
   let top = 0;
   let bottom: string | undefined;
   let left = 0;
@@ -316,6 +323,7 @@ export function getManualPositionStyle(
   // Alignment along cross axis
   if (side === 'top' || side === 'bottom') {
     const horizontalAlign = getHorizontalAlign(opts);
+
     if (horizontalAlign === 'start') {
       left = triggerRect.left + alignOffset;
     } else if (horizontalAlign === 'end') {
@@ -367,6 +375,7 @@ export function getManualPositionStyle(
  */
 export function resolveOffsets(el: Element, cssVars: PositioningCSSVars = PopoverCSSVars): PositioningOffsets {
   const computed = getComputedStyle(el);
+
   return {
     sideOffset: resolveCSSLength(el, computed.getPropertyValue(cssVars.sideOffset)),
     alignOffset: resolveCSSLength(el, computed.getPropertyValue(cssVars.alignOffset)),

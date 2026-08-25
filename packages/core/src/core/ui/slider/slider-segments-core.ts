@@ -58,11 +58,13 @@ export class SliderSegmentsCore {
   getGeometry(input: SliderSegmentsGeometryInput): SliderSegmentGeometry[] {
     const { ranges, min, max, orientation } = input;
     const domain = max - min;
+
     if (!Number.isFinite(domain) || domain <= 0) return [];
 
     const valid = ranges.filter((segment) => {
       const size = (segment.end - segment.start) / domain;
       const offset = (segment.start - min) / domain;
+
       return Number.isFinite(size) && Number.isFinite(offset) && size > 0;
     });
 
@@ -89,6 +91,7 @@ export class SliderSegmentsCore {
     const { last, ...geometry } = segment;
     const contains = (value: number): boolean =>
       value >= segment.start && (value < segment.end || (last && value === segment.end));
+
     const active = contains(slider.value);
     const pointing = slider.pointing && contains(pointerValue);
     const dragging = slider.dragging && contains(pointerValue);

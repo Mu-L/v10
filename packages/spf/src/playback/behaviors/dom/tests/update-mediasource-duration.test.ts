@@ -8,6 +8,7 @@ function setupUpdateMediaSourceDuration() {
   const state = { presentation: signal<MaybeResolvedPresentation | undefined>(undefined) };
   const context = { mediaSource: signal<MediaSource | undefined>(undefined) };
   const reactor = updateMediaSourceDuration.setup({ state, context });
+
   return { state, context, reactor };
 }
 
@@ -23,6 +24,7 @@ function makeMediaSource({
   // Back the mock with a real EventTarget so tests can dispatch
   // sourceopen / sourceended to drive `waitForMediaSourceOpen`.
   const target = new EventTarget();
+
   return Object.create(MediaSource.prototype, {
     readyState: { value: readyState, writable: true },
     duration: { value: duration, writable: true },
@@ -52,6 +54,7 @@ function makeUpdatingSourceBuffer() {
 
   const finishUpdating = () => {
     (buffer as unknown as { updating: boolean }).updating = false;
+
     for (const h of updateEndListeners) h();
   };
 
@@ -63,6 +66,7 @@ describe('updateMediaSourceDuration', () => {
     const { state, context, reactor } = setupUpdateMediaSourceDuration();
 
     const mockMediaSource = makeMediaSource();
+
     context.mediaSource.set(mockMediaSource);
     state.presentation.set({ duration: 60 } as Presentation);
 
@@ -79,6 +83,7 @@ describe('updateMediaSourceDuration', () => {
     const { state, context, reactor } = setupUpdateMediaSourceDuration();
 
     const mockMediaSource = makeMediaSource();
+
     context.mediaSource.set(mockMediaSource);
     state.presentation.set({ duration: 60 } as Presentation);
 
@@ -99,6 +104,7 @@ describe('updateMediaSourceDuration', () => {
     const { state, context, reactor } = setupUpdateMediaSourceDuration();
 
     const mockMediaSource = makeMediaSource({ readyState: 'closed' });
+
     context.mediaSource.set(mockMediaSource);
     state.presentation.set({ duration: 60 } as Presentation);
 
@@ -120,6 +126,7 @@ describe('updateMediaSourceDuration', () => {
     const { state, context, reactor } = setupUpdateMediaSourceDuration();
 
     const mockMediaSource = makeMediaSource({ readyState: 'closed' });
+
     context.mediaSource.set(mockMediaSource);
     state.presentation.set({ duration: 60 } as Presentation);
 
@@ -157,6 +164,7 @@ describe('updateMediaSourceDuration', () => {
     const { state, context, reactor } = setupUpdateMediaSourceDuration();
 
     const mockMediaSource = makeMediaSource();
+
     context.mediaSource.set(mockMediaSource);
     state.presentation.set({ duration: Number.POSITIVE_INFINITY } as Presentation);
 
@@ -176,6 +184,7 @@ describe('updateMediaSourceDuration', () => {
     const { state, context, reactor } = setupUpdateMediaSourceDuration();
 
     const mockMediaSource = makeMediaSource({ readyState: 'closed' });
+
     context.mediaSource.set(mockMediaSource);
     state.presentation.set({ duration: Number.POSITIVE_INFINITY } as Presentation);
 
@@ -202,6 +211,7 @@ describe('updateMediaSourceDuration', () => {
 
     const { buffer: mockBuffer, finishUpdating } = makeUpdatingSourceBuffer();
     const mockMediaSource = makeMediaSource({ duration: 30, sourceBuffers: [mockBuffer] });
+
     context.mediaSource.set(mockMediaSource);
     state.presentation.set({ duration: Number.POSITIVE_INFINITY } as Presentation);
 
@@ -233,6 +243,7 @@ describe('updateMediaSourceDuration', () => {
     });
 
     const mockMediaSource = makeMediaSource({ sourceBuffers: [mockBuffer] });
+
     context.mediaSource.set(mockMediaSource);
 
     // Presentation duration is 60, but buffered is 60.5
@@ -345,6 +356,7 @@ describe('updateMediaSourceDuration', () => {
     // Attach an updating SourceBuffer so the task must await updateend
     const { buffer: mockBuffer, finishUpdating } = makeUpdatingSourceBuffer();
     const mockMediaSource = makeMediaSource({ sourceBuffers: [mockBuffer] });
+
     context.mediaSource.set(mockMediaSource);
     state.presentation.set({ duration: 60 } as Presentation);
 

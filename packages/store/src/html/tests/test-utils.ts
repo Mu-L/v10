@@ -76,6 +76,7 @@ export function createCoreTestStore(): { store: TestStore; target: MockMedia } {
   const store = createCoreStore<MockMedia>()(audioSlice, { onError: noop });
 
   const target = new MockMedia();
+
   store.attach(target);
 
   return { store, target };
@@ -89,9 +90,11 @@ let testHostCounter = 0;
 /** Creates a test host element for controller tests. */
 export function createTestHost(): TestHost {
   const tagName = `test-host-${testHostCounter++}`;
+
   if (!customElements.get(tagName)) {
     customElements.define(tagName, class extends TestHostElement {});
   }
+
   return document.createElement(tagName) as TestHost;
 }
 

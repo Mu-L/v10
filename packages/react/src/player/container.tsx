@@ -42,7 +42,9 @@ export const Container = forwardRef<HTMLDivElement, ContainerProps>(function Con
   const setContainer = useContainerAttach();
   const translator = useTranslator();
   const i18n = useContext(I18nContext);
+
   const [popupGroup] = useState(() => createPopupGroup());
+
   const internalRef = useRef<HTMLDivElement>(null);
   const composedRef = useComposedRefs(ref, internalRef);
 
@@ -54,7 +56,9 @@ export const Container = forwardRef<HTMLDivElement, ContainerProps>(function Con
   const handlePointerUp: PointerEventHandler<HTMLDivElement> = (event) => {
     props.onPointerUp?.(event);
     const el = internalRef.current;
+
     if (!el) return;
+
     focusContainer(el);
   };
 

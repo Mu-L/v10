@@ -67,6 +67,7 @@ export interface MediaTrackInfo {
 export function readFirstMediaTimescale(initSegment: ArrayBuffer | Uint8Array): number | undefined {
   const view = toDataView(initSegment);
   const mdhd = findBox(view, ['moov', 'trak', 'mdia', 'mdhd']);
+
   return mdhd ? readMdhdTimescale(view, mdhd) : undefined;
 }
 
@@ -78,6 +79,7 @@ export function readFirstMediaTimescale(initSegment: ArrayBuffer | Uint8Array): 
 export function readFirstBaseMediaDecodeTime(mediaSegment: ArrayBuffer | Uint8Array): number | undefined {
   const view = toDataView(mediaSegment);
   const tfdt = findBox(view, ['moof', 'traf', 'tfdt']);
+
   return tfdt ? readTfdtBaseMediaDecodeTime(view, tfdt) : undefined;
 }
 
@@ -94,18 +96,24 @@ export function findMediaTrack(
 ): MediaTrackInfo | undefined {
   const view = toDataView(initSegment);
   const moov = findBox(view, ['moov']);
+
   if (!moov) return undefined;
 
   for (const trak of iterateBoxesOfType(view, 'trak', moov.dataStart, moov.end)) {
     if (readTrakHandler(view, trak) !== handlerType) continue;
+
     const tkhd = findBox(view, ['tkhd'], trak.dataStart, trak.end);
     const mdhd = findBox(view, ['mdia', 'mdhd'], trak.dataStart, trak.end);
+
     if (!tkhd || !mdhd) return undefined;
+
     // tkhd FullBox: version(1)+flags(3), creation/modification dates (v0: 4+4, v1:
     // 8+8), then track_id.
     const trackId = view.getUint32(tkhd.dataStart + 4 + (readFullBoxVersion(view, tkhd.dataStart) === 1 ? 16 : 8));
+
     return { trackId, timescale: readMdhdTimescale(view, mdhd) };
   }
+
   return undefined;
 }
 
@@ -117,13 +125,17 @@ export function findMediaTrack(
 export function readBaseMediaDecodeTime(mediaSegment: ArrayBuffer | Uint8Array, trackId: number): number | undefined {
   const view = toDataView(mediaSegment);
   const moof = findBox(view, ['moof']);
+
   if (!moof) return undefined;
 
   for (const traf of iterateBoxesOfType(view, 'traf', moof.dataStart, moof.end)) {
     if (readTrafTrackId(view, traf) !== trackId) continue;
+
     const tfdt = findBox(view, ['tfdt'], traf.dataStart, traf.end);
+
     return tfdt ? readTfdtBaseMediaDecodeTime(view, tfdt) : undefined;
   }
+
   return undefined;
 }
 
@@ -137,6 +149,7 @@ function readMdhdTimescale(view: DataView, mdhd: Box): number {
 /** `tfdt.baseMediaDecodeTime`: FullBox, then the value — v0: (4), v1: (8). */
 function readTfdtBaseMediaDecodeTime(view: DataView, tfdt: Box): number {
   const at = tfdt.dataStart + 4;
+
   return readFullBoxVersion(view, tfdt.dataStart) === 1 ? Number(view.getBigUint64(at)) : view.getUint32(at);
 }
 
@@ -145,11 +158,13 @@ function readTfdtBaseMediaDecodeTime(view: DataView, tfdt: Box): number {
 /** `hdlr.handler_type` for a `trak`: FullBox version(1)+flags(3) + pre_defined(4) + handler_type(4). */
 function readTrakHandler(view: DataView, trak: Box): string | undefined {
   const hdlr = findBox(view, ['mdia', 'hdlr'], trak.dataStart, trak.end);
+
   return hdlr ? readFourCC(view, hdlr.dataStart + 8) : undefined;
 }
 
 /** `tfhd.track_id` for a `traf`: FullBox version(1)+flags(3) + track_id(4). */
 function readTrafTrackId(view: DataView, traf: Box): number | undefined {
   const tfhd = findBox(view, ['tfhd'], traf.dataStart, traf.end);
+
   return tfhd ? view.getUint32(tfhd.dataStart + 4) : undefined;
 }

@@ -38,6 +38,7 @@ export function MuxVideoMixin<Class extends AnyConstructor<HTMLElement>>(BaseCla
     // would also coerce a removed attribute to `0`, which is a valid poster time.
     static get observedAttributes(): string[] {
       const inherited = (BaseClass as unknown as { observedAttributes?: string[] }).observedAttributes ?? [];
+
       return [...inherited, 'poster-time'];
     }
 
@@ -60,14 +61,17 @@ export function MuxVideoMixin<Class extends AnyConstructor<HTMLElement>>(BaseCla
         // `source.poster.time` set through JS.
         if (newValue === null) this.#applyPosterTime(undefined);
         else this.#syncPosterTime();
+
         return;
       }
+
       super.attributeChangedCallback?.(name, oldValue, newValue);
     }
 
     #posterTimeAttr() {
       const attr = this.getAttribute('poster-time');
       const parsed = attr ? Number(attr) : Number.NaN;
+
       return Number.isNaN(parsed) ? undefined : parsed;
     }
 
@@ -77,6 +81,7 @@ export function MuxVideoMixin<Class extends AnyConstructor<HTMLElement>>(BaseCla
     // removing the attribute clears it.
     #syncPosterTime() {
       const time = this.#posterTimeAttr();
+
       if (!isUndefined(time)) this.#applyPosterTime(time);
     }
 
@@ -84,13 +89,16 @@ export function MuxVideoMixin<Class extends AnyConstructor<HTMLElement>>(BaseCla
     // the derived poster URL is built from.
     #applyPosterTime(time: number | undefined) {
       const source = this.host.source;
+
       if (source?.poster?.time === time) return;
+
       // Nothing to write into yet. `#syncPosterTime` re-applies the attribute once a
       // source arrives, so a poster-only source is never worth fabricating — it has
       // no URL to play, and assigning it would schedule a load anyway.
       if (!source) return;
 
       const poster = { ...source?.poster };
+
       if (isUndefined(time)) delete poster.time;
       else poster.time = time;
 
@@ -100,6 +108,7 @@ export function MuxVideoMixin<Class extends AnyConstructor<HTMLElement>>(BaseCla
     // Mirrors the host `src` to the `src` attribute so it matches the active playback URL.
     #reflectSrc() {
       const src = this.host.src;
+
       if (src) {
         if (this.getAttribute('src') !== src) this.setAttribute('src', src);
       } else if (this.hasAttribute('src')) {
@@ -128,6 +137,7 @@ export function MuxVideoMixin<Class extends AnyConstructor<HTMLElement>>(BaseCla
       }
 
       if (track.getAttribute('src') !== src) track.setAttribute('src', src);
+
       if (track.parentNode !== this) this.append(track);
     }
   }

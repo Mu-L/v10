@@ -69,17 +69,22 @@ export function parseSpotifyEntityId(src: string) {
  */
 export function parseSpotifySource(src: string): ParsedSpotifySource | null {
   if (!src) return null;
+
   const match = MATCH_URI.exec(src) ?? MATCH_SRC.exec(src);
   const type = match?.[1]?.toLowerCase() as SpotifyEntityType | undefined;
   const id = match?.[2];
+
   if (!type || !id) return null;
+
   return { type, id, startTime: parseStartTime(src) };
 }
 
 /** Build the iframe `src` URL for an initial Spotify embed from the given props. */
 export function buildSpotifyIframeSrc(src: string, props: Partial<SpotifyMediaProps> = {}) {
   const parsed = parseSpotifySource(src);
+
   if (!parsed) return '';
+
   // Neither of these is an embed parameter: `preferVideo` picks the path below,
   // and `referrerPolicy` is an attribute of the iframe hosting the embed.
   const { preferVideo, referrerPolicy: _referrerPolicy, ...spotify } = props.source?.engine?.spotify ?? {};
@@ -91,12 +96,14 @@ export function buildSpotifyIframeSrc(src: string, props: Partial<SpotifyMediaPr
   const videoPath = preferVideo ? '/video' : '';
   // Spotify publishes so few parameters that most embeds need none at all.
   const query = serializeEmbedParams(params);
+
   return `${EMBED_BASE}/embed/${parsed.type}/${parsed.id}${videoPath}${query ? `?${query}` : ''}`;
 }
 
 /** Parse the `t` parameter from a Spotify share URL. Spotify spells it in seconds. */
 function parseStartTime(url: string): number | null {
   const value = /[?&]t=(\d+)/.exec(url)?.[1];
+
   return value ? Number.parseInt(value, 10) : null;
 }
 

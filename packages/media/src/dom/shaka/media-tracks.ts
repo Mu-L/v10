@@ -41,6 +41,7 @@ export function ShakaMediaMediaTracksMixin<Base extends Constructor<MediaTracksH
       super(...args);
 
       const { engine } = this;
+
       if (!engine) return;
 
       engine.addEventListener('trackschanged', this.#onTracksChanged);
@@ -78,17 +79,21 @@ export function ShakaMediaMediaTracksMixin<Base extends Constructor<MediaTracksH
     // different.
     #onTracksChanged = () => {
       const { engine } = this;
+
       if (!engine) return;
 
       const videoTracks = engine.getVideoTracks();
       const key = videoTracksKey(videoTracks);
+
       if (key === this.#videoTracksKey) return;
+
       this.#videoTracksKey = key;
 
       this.#removeVideoTracks();
       this.#restoreAbr();
 
       const videoTrack = this.addVideoTrack('main');
+
       // Selecting the track is what puts its renditions in `videoRenditions`, so
       // it happens before any is added and their `addrendition` events land.
       videoTrack.selected = true;
@@ -118,11 +123,14 @@ export function ShakaMediaMediaTracksMixin<Base extends Constructor<MediaTracksH
 
     #onAudioTracksChanged = () => {
       const { engine } = this;
+
       if (!engine) return;
 
       const audioTracks = engine.getAudioTracks();
       const key = audioTracksKey(audioTracks);
+
       if (key === this.#audioTracksKey) return;
+
       this.#audioTracksKey = key;
 
       this.#removeAudioTracks();
@@ -141,11 +149,13 @@ export function ShakaMediaMediaTracksMixin<Base extends Constructor<MediaTracksH
 
     #onVariantChanged = () => {
       const { engine } = this;
+
       if (engine) this.#setActiveRendition(engine.getVideoTracks());
     };
 
     #onAudioTrackChanged = () => {
       const { engine } = this;
+
       if (!engine) return;
 
       const activeIndex = engine.getAudioTracks().findIndex((track) => track.active);
@@ -157,6 +167,7 @@ export function ShakaMediaMediaTracksMixin<Base extends Constructor<MediaTracksH
 
     #switchRendition = () => {
       const { engine } = this;
+
       if (!engine) return;
 
       // Multiple renditions can be selected, but Shaka plays exactly one video
@@ -169,6 +180,7 @@ export function ShakaMediaMediaTracksMixin<Base extends Constructor<MediaTracksH
       }
 
       const videoTrack = engine.getVideoTracks()[Number(selected.id)];
+
       if (!videoTrack) return;
 
       this.#isAbrOff = true;
@@ -178,6 +190,7 @@ export function ShakaMediaMediaTracksMixin<Base extends Constructor<MediaTracksH
 
     #switchAudioTrack = () => {
       const { engine } = this;
+
       if (!engine) return;
 
       // `enabled` is not exclusive the way video `selected` is, so prefer a
@@ -186,9 +199,11 @@ export function ShakaMediaMediaTracksMixin<Base extends Constructor<MediaTracksH
       const audioTracks = engine.getAudioTracks();
 
       const selectedTrack = enabledTracks.find((track) => !audioTracks[Number(track.id)]?.active) ?? enabledTracks[0];
+
       if (!selectedTrack?.id) return;
 
       const audioTrack = audioTracks[Number(selectedTrack.id)];
+
       if (audioTrack && !audioTrack.active) engine.selectAudioTrack(audioTrack);
 
       // Disable the rest so future change events resolve unambiguously.
@@ -199,6 +214,7 @@ export function ShakaMediaMediaTracksMixin<Base extends Constructor<MediaTracksH
 
     #onSourceChange = () => {
       const srcChanged = this.src !== this.#src;
+
       this.#src = this.src;
 
       // A new asset announces tracks of its own, and the one that is going away
@@ -243,6 +259,7 @@ export function ShakaMediaMediaTracksMixin<Base extends Constructor<MediaTracksH
     // that disables adaptation on purpose is left as configured.
     #restoreAbr() {
       if (!this.#isAbrOff) return;
+
       this.#isAbrOff = false;
       this.engine?.configure({ abr: { enabled: true } });
     }

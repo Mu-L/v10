@@ -16,6 +16,7 @@ export const AlertDialogClose = forwardRef<HTMLButtonElement, AlertDialogClosePr
 
   const handleClick = useCallback(() => {
     if (disabled) return;
+
     dialog.close();
   }, [dialog, disabled]);
 

@@ -14,12 +14,15 @@ function isRuntimeFunction(node: ESTree.Node): node is RuntimeFunction {
 
 function isInsideTypeGuard(node: ESTree.Node): boolean {
 	let current: ESTree.Node | null = node.parent;
+
 	while (current !== null && current.type !== "Program") {
 		if (isRuntimeFunction(current)) {
 			return current.returnType?.typeAnnotation.type === "TSTypePredicate";
 		}
+
 		current = current.parent;
 	}
+
 	return false;
 }
 
@@ -55,6 +58,7 @@ export const noRuntimeTypeofRule = defineRule({
 					option !== null &&
 					!Array.isArray(option) &&
 					option.allowInTypeGuards === true;
+
 				if (
 					node.operator === "typeof" &&
 					(!allowInTypeGuards || !isInsideTypeGuard(node))

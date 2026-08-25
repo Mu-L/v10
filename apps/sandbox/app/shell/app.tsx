@@ -27,6 +27,7 @@ import { Preview } from './preview';
 
 function getPagePath(platform: Platform, preset: Preset): string {
   if (platform === 'cdn') return '/cdn/';
+
   return `/${platform}-${preset}/`;
 }
 
@@ -44,6 +45,7 @@ function readParams() {
   const params = new URLSearchParams(location.search);
   const preload = params.get('preload');
   const preset = (params.get('preset') ?? 'video') as Preset;
+
   return {
     platform: (params.get('platform') ?? 'html') as Platform,
     styling: (params.get('styling') ?? 'css') as Styling,
@@ -58,6 +60,7 @@ function readParams() {
     accentColor: params.get('accent')?.trim() ?? '',
     locale: (() => {
       const value = params.get('locale');
+
       return SANDBOX_LOCALE_TAGS.includes(value as SandboxLocaleTag)
         ? (value as SandboxLocaleTag)
         : DEFAULT_SANDBOX_LOCALE;
@@ -78,6 +81,7 @@ export function App() {
   const [preload, setPreload] = useState<PreloadValue>(initial.preload);
   const [accentColor, setAccentColor] = useState(initial.accentColor);
   const [locale, setLocale] = useState<SandboxLocaleTag>(initial.locale);
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const pagePath = getPagePath(platform, preset);
@@ -129,7 +133,9 @@ export function App() {
       preload,
       locale,
     });
+
     if (accentColor) params.set('accent', accentColor);
+
     history.replaceState(null, '', `/?${params}`);
   }, [platform, styling, preset, skin, source, autoplay, muted, loop, preload, accentColor, locale]);
 
@@ -192,9 +198,12 @@ export function App() {
   // `readParams` covers the first-mount half. Keyed on entry, so a source picked
   // afterwards sticks.
   const previousPreset = useRef(preset);
+
   useEffect(() => {
     const entered = spfBackgroundPreset && previousPreset.current !== preset;
+
     previousPreset.current = preset;
+
     if (entered) setSource(DEFAULT_BACKGROUND_SOURCE);
   }, [preset, spfBackgroundPreset]);
 

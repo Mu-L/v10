@@ -49,6 +49,7 @@ export const PART_ELEMENT_OVERRIDES: Record<string, string> = {
 
 export function buildProps(coreData: CoreExtraction): Record<string, PropDef> {
   const props: Record<string, PropDef> = {};
+
   for (const prop of coreData.props) {
     props[prop.name] = {
       type: prop.type,
@@ -59,33 +60,44 @@ export function buildProps(coreData: CoreExtraction): Record<string, PropDef> {
     };
 
     if (props[prop.name]!.detailedType === undefined) delete props[prop.name]!.detailedType;
+
     if (props[prop.name]!.description === undefined) delete props[prop.name]!.description;
+
     if (props[prop.name]!.default === undefined) delete props[prop.name]!.default;
+
     if (!props[prop.name]!.required) delete props[prop.name]!.required;
   }
+
   return props;
 }
 
 export function buildState(coreData: CoreExtraction): Record<string, StateDef> {
   const state: Record<string, StateDef> = {};
+
   for (const s of coreData.state) {
     state[s.name] = {
       type: s.type,
       detailedType: s.detailedType,
       description: s.description,
     };
+
     if (state[s.name]!.detailedType === undefined) delete state[s.name]!.detailedType;
+
     if (state[s.name]!.description === undefined) delete state[s.name]!.description;
   }
+
   return state;
 }
 
 export function buildDataAttrs(dataAttrsData: DataAttrsExtraction): Record<string, DataAttrDef> {
   const dataAttributes: Record<string, DataAttrDef> = {};
+
   for (const attr of dataAttrsData.attrs) {
     const def: DataAttrDef = { description: attr.description };
+
     if (attr.type) {
       const abbreviated = abbreviateType(attr.name, attr.type);
+
       if (abbreviated) {
         def.type = abbreviated;
         def.detailedType = attr.type;
@@ -93,16 +105,20 @@ export function buildDataAttrs(dataAttrsData: DataAttrsExtraction): Record<strin
         def.type = attr.type;
       }
     }
+
     dataAttributes[attr.name] = def;
   }
+
   return dataAttributes;
 }
 
 export function buildCSSVars(cssVarsData: CSSVarsExtraction): Record<string, CSSVarDef> {
   const cssCustomProperties: Record<string, CSSVarDef> = {};
+
   for (const v of cssVarsData.vars) {
     cssCustomProperties[v.name] = { description: v.description };
   }
+
   return cssCustomProperties;
 }
 
@@ -129,19 +145,24 @@ function discoverExtraDataAttrs(componentDir: string, componentKebab: string): E
     const sourceFile = ts.createSourceFile(filePath, fs.readFileSync(filePath, 'utf-8'), ts.ScriptTarget.Latest, true);
 
     let tagValue: string | undefined;
+
     ts.forEachChild(sourceFile, (node) => {
       if (!ts.isVariableStatement(node)) return;
+
       const declaresExport = node.declarationList.declarations.some(
         (decl) => ts.isIdentifier(decl.name) && decl.name.text === exportName
       );
+
       if (declaresExport) tagValue = getJSDocTagValue(node, 'parts');
     });
+
     if (!tagValue) continue;
 
     const parts = tagValue
       .split(',')
       .map((part) => part.trim())
       .filter(Boolean);
+
     if (parts.length === 0) continue;
 
     extras.push({ path: filePath, parts });
@@ -196,14 +217,19 @@ export function discoverComponents(monorepoRoot: string): ComponentSource[] {
     };
 
     if (fs.existsSync(coreFile)) source.corePath = coreFile;
+
     if (fs.existsSync(dataAttrsFile)) source.dataAttrsPath = dataAttrsFile;
+
     if (fs.existsSync(cssVarsFile)) source.cssVarsPath = cssVarsFile;
+
     if (fs.existsSync(htmlFile)) source.htmlPath = htmlFile;
 
     const partsIndexFile = path.join(reactUiPath, dir.name, 'index.parts.ts');
+
     if (fs.existsSync(partsIndexFile)) source.partsIndexPath = partsIndexFile;
 
     const extraDataAttrs = discoverExtraDataAttrs(componentDir, dir.name);
+
     if (extraDataAttrs.length > 0) source.extraDataAttrs = extraDataAttrs;
 
     if (source.corePath) {
@@ -222,16 +248,23 @@ export function createComponentProgram(sources: ComponentSource[], monorepoRoot:
 
   for (const source of sources) {
     if (source.corePath) files.push(source.corePath);
+
     if (source.dataAttrsPath) files.push(source.dataAttrsPath);
+
     if (source.cssVarsPath) files.push(source.cssVarsPath);
+
     if (source.htmlPath) files.push(source.htmlPath);
+
     if (source.partsIndexPath) files.push(source.partsIndexPath);
+
     if (source.extraDataAttrs) files.push(...source.extraDataAttrs.map((extra) => extra.path));
 
     if (source.partsIndexPath) {
       const htmlDir = path.join(htmlUiPath, source.kebab);
+
       if (fs.existsSync(htmlDir)) {
         const elementFiles = findFiles(htmlDir, (file) => file.endsWith('-element.ts'));
+
         for (const fullPath of elementFiles) {
           if (!files.includes(fullPath)) {
             files.push(fullPath);
@@ -241,6 +274,7 @@ export function createComponentProgram(sources: ComponentSource[], monorepoRoot:
 
       const reactDir = path.dirname(source.partsIndexPath);
       const reactFiles = findFiles(reactDir, (file) => file.endsWith('.tsx'));
+
       for (const fullPath of reactFiles) {
         if (!files.includes(fullPath)) {
           files.push(fullPath);
@@ -249,6 +283,7 @@ export function createComponentProgram(sources: ComponentSource[], monorepoRoot:
 
       const partsSource = fs.readFileSync(source.partsIndexPath, 'utf-8');
       const nonLocalImports = partsSource.match(/from\s+['"]([^.][^'"]*)['"]/g);
+
       if (nonLocalImports) {
         for (const match of nonLocalImports) {
           const importPath = match.replace(/from\s+['"]/, '').replace(/['"]$/, '');
@@ -256,8 +291,10 @@ export function createComponentProgram(sources: ComponentSource[], monorepoRoot:
           const originKebab = path.basename(originDir);
 
           const originHtmlDir = path.join(htmlUiPath, originKebab);
+
           if (fs.existsSync(originHtmlDir)) {
             const originElementFiles = findFiles(originHtmlDir, (file) => file.endsWith('-element.ts'));
+
             for (const fullPath of originElementFiles) {
               if (!files.includes(fullPath)) {
                 files.push(fullPath);
@@ -267,6 +304,7 @@ export function createComponentProgram(sources: ComponentSource[], monorepoRoot:
 
           if (fs.existsSync(originDir)) {
             const originReactFiles = findFiles(originDir, (file) => file.endsWith('.tsx'));
+
             for (const fullPath of originReactFiles) {
               if (!files.includes(fullPath)) {
                 files.push(fullPath);
@@ -286,6 +324,7 @@ export function createComponentProgram(sources: ComponentSource[], monorepoRoot:
 function instantiatesCore(filePath: string, componentName: string): boolean {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
+
     return new RegExp(`new ${componentName}Core\\b`).test(content);
   } catch {
     return false;
@@ -303,6 +342,7 @@ function usesDataAttrs(filePath: string): boolean {
 function resolvePartElement(htmlDir: string, componentKebab: string, source: string, partKebab: string): string {
   const override = PART_ELEMENT_OVERRIDES[`${componentKebab}/${partKebab}`];
   const relative = source.replace(/^\.\//, '');
+
   return path.join(htmlDir, override ? `${override}.ts` : `${relative}-element.ts`);
 }
 
@@ -313,6 +353,7 @@ export function discoverParts(source: ComponentSource, program: ts.Program, mono
   const coreUiPath = path.join(monorepoRoot, 'packages/core/src/core/ui');
 
   const partExports = extractParts(source.partsIndexPath, program);
+
   if (partExports.length === 0) return [];
 
   const localExports = partExports.filter((p) => p.source.startsWith('./'));
@@ -354,8 +395,10 @@ export function discoverParts(source: ComponentSource, program: ts.Program, mono
 
   if (nonLocalExports.length > 0) {
     const bySource = new Map<string, typeof nonLocalExports>();
+
     for (const exp of nonLocalExports) {
       const list = bySource.get(exp.source) ?? [];
+
       list.push(exp);
       bySource.set(exp.source, list);
     }
@@ -364,6 +407,7 @@ export function discoverParts(source: ComponentSource, program: ts.Program, mono
 
     for (const [sourcePath, exports] of bySource) {
       const originPartsFile = path.resolve(partsDir, `${sourcePath}.ts`);
+
       if (!fs.existsSync(originPartsFile)) continue;
 
       const originKebab = path.basename(path.dirname(originPartsFile));
@@ -374,6 +418,7 @@ export function discoverParts(source: ComponentSource, program: ts.Program, mono
 
       for (const reExport of exports) {
         const originExport = originExports.find((o) => o.name === reExport.name);
+
         if (!originExport) continue;
 
         const kebab = partKebabFromSource(originExport.source, originKebab);
@@ -407,11 +452,14 @@ export function discoverParts(source: ComponentSource, program: ts.Program, mono
   }
 
   const primaryCount = parts.filter((p) => p.isPrimary).length;
+
   if (primaryCount > 1) {
     let foundFirst = false;
+
     for (const p of parts) {
       if (p.isPrimary) {
         if (foundFirst) p.isPrimary = false;
+
         foundFirst = true;
       }
     }
@@ -482,6 +530,7 @@ function buildMultiPartReference(
       };
 
       if (!partRef.description) delete partRef.description;
+
       if (htmlData) {
         partRef.platforms.html = { tagName: htmlData.tagName };
       }
@@ -498,6 +547,7 @@ function buildMultiPartReference(
           : null;
 
       const subPartProps = part.reactPath ? extractSubPartProps(part.reactPath, program, part.localName) : {};
+
       if (htmlData) {
         for (const [name, prop] of Object.entries(subPartProps)) {
           if (htmlData.properties.includes(name)) prop.frameworks = ['html', 'react'];
@@ -515,6 +565,7 @@ function buildMultiPartReference(
       };
 
       if (!partRef.description) delete partRef.description;
+
       if (htmlData) {
         partRef.platforms.html = { tagName: htmlData.tagName };
       }
@@ -526,18 +577,22 @@ function buildMultiPartReference(
   for (const extra of source.extraDataAttrs ?? []) {
     const componentName = dataAttrsComponentName(path.basename(extra.path));
     const extraData = extractDataAttrs(extra.path, program, componentName);
+
     if (!extraData) {
       log.warn(`No ${componentName}DataAttrs export found in ${extra.path}; skipping @parts merge`);
       continue;
     }
 
     const extraAttrs = buildDataAttrs(extraData);
+
     for (const partKebab of extra.parts) {
       const partRef = partsRecord[partKebab];
+
       if (!partRef) {
         log.warn(`@parts in ${extra.path} references unknown part "${partKebab}" on ${source.name}`);
         continue;
       }
+
       partRef.dataAttributes = { ...partRef.dataAttributes, ...extraAttrs };
     }
   }
@@ -560,6 +615,7 @@ export function buildComponentReference(
 ): ComponentReference | null {
   if (source.partsIndexPath) {
     const parts = discoverParts(source, program, monorepoRoot);
+
     if (parts.length > 1) {
       return buildMultiPartReference(source, program, parts);
     }
@@ -582,6 +638,7 @@ export interface ComponentResult {
 
 export function generateComponentReferences(monorepoRoot: string): ComponentResult[] {
   const sources = discoverComponents(monorepoRoot);
+
   if (sources.length === 0) return [];
 
   const program = createComponentProgram(sources, monorepoRoot);
@@ -589,6 +646,7 @@ export function generateComponentReferences(monorepoRoot: string): ComponentResu
 
   for (const source of sources) {
     const apiRef = buildComponentReference(source, program, monorepoRoot);
+
     if (apiRef) {
       apiRef.props = sortProps(apiRef.props);
       results.push({ name: source.name, kebab: source.kebab, reference: apiRef });

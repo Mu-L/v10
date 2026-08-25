@@ -32,6 +32,7 @@ export function liveWindowFor(
   if (!isResolvedPresentation(presentation) || !trackId) return null;
 
   const track = findTrackById(presentation, trackId);
+
   if (!track || !isResolvedTrack(track) || track.segments.length === 0) return null;
 
   // Complete playlist (VoD, or live that has ended) → no live edge. `Track.duration`
@@ -40,6 +41,7 @@ export function liveWindowFor(
 
   const { segments } = track;
   const last = segments[segments.length - 1]!;
+
   return {
     start: segments[0]!.startTime,
     end: last.startTime + last.duration,

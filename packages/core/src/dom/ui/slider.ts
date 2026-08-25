@@ -114,6 +114,7 @@ export function createSlider(options: SliderOptions): SliderApi {
     if (isNull(capturedPointerId)) return;
 
     const id = capturedPointerId;
+
     capturedPointerId = null;
 
     try {
@@ -227,6 +228,7 @@ export function createSlider(options: SliderOptions): SliderApi {
 
       const percent = getPercentFromPointerEvent(event, cachedRect!, options.getOrientation());
       const releaseRect = options.getElement().getBoundingClientRect();
+
       pointingOnRelease =
         event.pointerType !== 'touch' &&
         event.clientX >= releaseRect.left &&
@@ -243,6 +245,7 @@ export function createSlider(options: SliderOptions): SliderApi {
 
     onPointerLeave() {
       if (!isNull(capturedPointerId)) return;
+
       input.patch({ pointing: false });
     },
 
@@ -256,6 +259,7 @@ export function createSlider(options: SliderOptions): SliderApi {
     onKeyDown(event) {
       if (options.isDisabled()) {
         if (event.key !== 'Tab') event.preventDefault();
+
         return;
       }
 
@@ -320,6 +324,7 @@ export function createSlider(options: SliderOptions): SliderApi {
 
     const rootEl = options.getElement();
     const thumbEl = options.getThumbElement?.();
+
     if (!thumbEl) return state;
 
     const isHorizontal = state.orientation === 'horizontal';
@@ -351,6 +356,7 @@ export function createSlider(options: SliderOptions): SliderApi {
     adjustForAlignment,
     destroy() {
       if (abort.signal.aborted) return;
+
       abort.abort();
       stopObservingResize?.();
       releaseCapture();

@@ -37,6 +37,7 @@ class TestPlayerProviderElement extends UIElement {
 if (!customElements.get(ThumbnailElement.tagName)) {
   customElements.define(ThumbnailElement.tagName, ThumbnailElement);
 }
+
 if (!customElements.get('test-thumbnail-player')) {
   customElements.define('test-thumbnail-player', TestPlayerProviderElement);
 }
@@ -90,11 +91,13 @@ describe('ThumbnailElement', () => {
       const attribute = await renderCrossOrigin('use-credentials', (el) => {
         el.setAttribute('crossorigin', 'anonymous');
       });
+
       expect(attribute).toBe('anonymous');
 
       const property = await renderCrossOrigin('use-credentials', (el) => {
         el.crossOrigin = 'anonymous';
       });
+
       expect(property).toBe('anonymous');
     });
 

@@ -79,6 +79,7 @@ http://example.com/segment2.m4s
     await vi.waitFor(() => {
       const currentPres = state.presentation.get();
       const track = findTrackById(currentPres!, 'track-1');
+
       expect(isResolvedTrack(track!)).toBe(true);
     });
 
@@ -86,6 +87,7 @@ http://example.com/segment2.m4s
     const resolvedTrack = findTrackById(resolvedPres, 'track-1');
 
     expect(isResolvedTrack(resolvedTrack!)).toBe(true);
+
     if (isResolvedTrack(resolvedTrack!)) {
       expect(resolvedTrack.segments).toBeDefined();
       expect(resolvedTrack.segments.length).toBeGreaterThan(0);
@@ -216,6 +218,7 @@ http://example.com/segment1.m4s
     await vi.waitFor(() => {
       const currentPres = state.presentation.get();
       const track = findTrackById(currentPres!, 'audio-1');
+
       expect(isResolvedTrack(track!)).toBe(true);
     });
 
@@ -223,6 +226,7 @@ http://example.com/segment1.m4s
     const resolvedTrack = findTrackById(resolvedPres, 'audio-1');
 
     expect(isResolvedTrack(resolvedTrack!)).toBe(true);
+
     if (isResolvedTrack(resolvedTrack!)) {
       expect(resolvedTrack.segments).toBeDefined();
       expect(resolvedTrack.segments.length).toBeGreaterThan(0);
@@ -285,6 +289,7 @@ http://example.com/subtitle1.webvtt
     await vi.waitFor(() => {
       const currentPres = state.presentation.get();
       const track = findTrackById(currentPres!, 'text-1');
+
       expect(isResolvedTrack(track!)).toBe(true);
     });
 
@@ -292,6 +297,7 @@ http://example.com/subtitle1.webvtt
     const resolvedTrack = findTrackById(resolvedPres, 'text-1');
 
     expect(isResolvedTrack(resolvedTrack!)).toBe(true);
+
     if (isResolvedTrack(resolvedTrack!)) {
       expect(resolvedTrack.type).toBe('text');
     }
@@ -342,7 +348,9 @@ ${segUrl}
 
     vi.spyOn(globalThis, 'fetch').mockImplementation((requestOrUrl: RequestInfo | URL) => {
       const url = requestOrUrl instanceof Request ? requestOrUrl.url : String(requestOrUrl);
+
       if (url.includes('track-a')) return Promise.resolve(new Response(makePlaylist('http://example.com/a-seg1.m4s')));
+
       return Promise.resolve(new Response(makePlaylist('http://example.com/b-seg1.m4s')));
     });
 
@@ -352,14 +360,17 @@ ${segUrl}
 
     await vi.waitFor(() => {
       const pres = state.presentation.get()!;
+
       expect(isResolvedTrack(findTrackById(pres, 'track-a')!)).toBe(true);
       expect(isResolvedTrack(findTrackById(pres, 'track-b')!)).toBe(true);
     });
 
     const fetchedUrls = vi.mocked(globalThis.fetch).mock.calls.map((call) => {
       const arg: RequestInfo | URL = call[0];
+
       return arg instanceof Request ? arg.url : String(arg);
     });
+
     expect(fetchedUrls.filter((u: string) => u.includes('track-a'))).toHaveLength(1);
     expect(fetchedUrls.filter((u: string) => u.includes('track-b'))).toHaveLength(1);
 
@@ -434,6 +445,7 @@ http://example.com/seg0.m4s`;
       mimeType: 'video/mp4',
       codecs: [],
     };
+
     return {
       id: 'pres-1',
       url: 'http://example.com/playlist.m3u8',
@@ -488,6 +500,7 @@ http://example.com/seg0.m4s`;
     // Observe the resolved track; stop (false) once it's complete.
     const reschedule = async (task: TaskLike<ResolvedTrack>) => {
       const current = await task.run().catch(() => undefined);
+
       return !(current && Number.isFinite(current.duration));
     };
     const reactor = resolveVideoTrack.setup({ state, config: { reschedule } });
@@ -504,6 +517,7 @@ http://example.com/seg0.m4s`;
   it('stops resolving on a fetch failure (an errored run is terminal — no retry)', async () => {
     const state = makeState({ presentation: liveVideoPresentation(), selectedVideoTrackId: 'track-1' });
     let calls = 0;
+
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
       calls += 1;
       throw new TypeError('Failed to fetch');
@@ -524,6 +538,7 @@ http://example.com/seg0.m4s`;
 
   it('sets presentation.streamType from the parsed playlist', async () => {
     const state = makeState({ presentation: liveVideoPresentation(), selectedVideoTrackId: 'track-1' });
+
     // No EXT-X-PLAYLIST-TYPE:VOD → live.
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(LIVE_PLAYLIST));
 
@@ -585,6 +600,7 @@ http://example.com/seg0.m4s`;
     const started = new Promise<void>((resolve) => {
       markStarted = resolve;
     });
+
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
       markStarted();
       await inFlight;
@@ -597,6 +613,7 @@ http://example.com/seg0.m4s`;
     // Establish + stamp the anchor mid-fetch, exactly as the establishment
     // reactor's stampStartDates does.
     const current = state.presentation.get() as Presentation;
+
     state.presentation.set({
       ...current,
       selectionSets: current.selectionSets.map((selectionSet) => ({
@@ -614,6 +631,7 @@ http://example.com/seg0.m4s`;
     });
 
     const resolved = findTrackById(state.presentation.get()!, 'track-1');
+
     expect(resolved.startDate).toBe(ANCHOR);
     expect(resolved.segments[0].startTime).toBe(20);
 
@@ -701,6 +719,7 @@ http://example.com/audio-seg1.m4s
     // land the segment at startTime 5.
     const anchor = SEGMENT_PDT - 5;
     const presentation = state.presentation.get()!;
+
     state.presentation.set({
       ...presentation,
       selectionSets: presentation.selectionSets!.map((selectionSet) =>
@@ -724,6 +743,7 @@ http://example.com/audio-seg1.m4s
     // snapshot: segments are placed on the anchor, and the recomputed track
     // startDate reads back as the anchor.
     const resolved = findTrackById(state.presentation.get()!, 'audio-1')!;
+
     expect(resolved.segments[0].startTime).toBe(5);
     expect(resolved.startDate).toBe(anchor);
 
@@ -764,9 +784,11 @@ function findTrackById(
   for (const selectionSet of presentation.selectionSets ?? []) {
     for (const switchingSet of selectionSet.switchingSets) {
       const track = switchingSet.tracks.find((t) => t.id === trackId);
+
       if (track) return track;
     }
   }
+
   return undefined;
 }
 
@@ -808,6 +830,7 @@ http://example.com/segment1.m4s
       ...makeState({ presentation: presentation(), selectedVideoTrackId: 'track-1' }),
       errors: signal<SvtaError[] | undefined>(undefined),
     };
+
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(playlist(keyLine)));
     return state;
   };
@@ -817,6 +840,7 @@ http://example.com/segment1.m4s
   it('reports nothing for a playable rendition', async () => {
     const state = setup();
     const reactor = resolveVideoTrack.setup({ state, config: { reportUnsupportedTrackConditions } });
+
     await flush();
 
     expect(state.errors.get()).toBeUndefined();
@@ -826,6 +850,7 @@ http://example.com/segment1.m4s
   it('reports unsupported DRM when the playlist is encrypted', async () => {
     const state = setup('#EXT-X-KEY:METHOD=SAMPLE-AES,URI="skd://k"');
     const reactor = resolveVideoTrack.setup({ state, config: { reportUnsupportedTrackConditions } });
+
     await flush();
 
     expect(state.errors.get()?.map((error) => error.code)).toEqual([SVTA_UNSUPPORTED_DRM_SYSTEM]);
@@ -835,6 +860,7 @@ http://example.com/segment1.m4s
   it('reports nothing when no seam is wired', async () => {
     const state = setup('#EXT-X-KEY:METHOD=SAMPLE-AES,URI="skd://k"');
     const reactor = resolveVideoTrack.setup({ state });
+
     await flush();
 
     expect(state.errors.get()).toBeUndefined();

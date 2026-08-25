@@ -42,12 +42,14 @@ async function resolveFramework(flags: ParsedFlags): Promise<Framework> {
   if (flags.framework === 'html' || flags.framework === 'react') {
     return flags.framework;
   }
+
   if (flags.framework) {
     console.error(`Invalid framework: "${flags.framework}". Must be "html" or "react".`);
     process.exit(1);
   }
 
   const saved = getConfigValue('framework');
+
   if (saved === 'html' || saved === 'react') return saved;
 
   return promptFramework();
@@ -55,11 +57,14 @@ async function resolveFramework(flags: ParsedFlags): Promise<Framework> {
 
 function mapPresetToUseCase(preset: string): UseCase {
   const result = USE_CASES.find((useCase) => getInstallationPreset(useCase).flag === preset);
+
   if (!result) {
     const valid = USE_CASES.map((useCase) => `"${getInstallationPreset(useCase).flag}"`).join(', ');
+
     console.error(`Invalid preset: "${preset}". Valid options: ${valid}`);
     process.exit(1);
   }
+
   return result;
 }
 
@@ -70,15 +75,18 @@ function validateMedia(media: string): Renderer {
     console.error(`Invalid media type: "${media}". Valid options: ${ALL_RENDERERS.join(', ')}`);
     process.exit(1);
   }
+
   return media as Renderer;
 }
 
 function validateInstallMethod(method: string, framework: Framework): InstallMethod {
   const valid = framework === 'html' ? ['cdn', 'npm', 'pnpm', 'yarn', 'bun'] : ['npm', 'pnpm', 'yarn', 'bun'];
+
   if (!valid.includes(method)) {
     console.error(`Invalid install method: "${method}". Valid options: ${valid.join(', ')}`);
     process.exit(1);
   }
+
   return method as InstallMethod;
 }
 
@@ -135,15 +143,18 @@ export async function handleDocs(flags: ParsedFlags, positionals: string[]): Pro
   if (flags.list) {
     const framework = await resolveFramework(flags);
     const content = readLlmsTxt(framework);
+
     if (!content) {
       console.error(`No documentation index found for framework "${framework}".`);
       process.exit(1);
     }
+
     console.log(content);
     return;
   }
 
   const slug = positionals[0];
+
   if (!slug) {
     console.error(DOCS_HELP);
     process.exit(1);
@@ -186,6 +197,7 @@ export async function handleDocs(flags: ParsedFlags, positionals: string[]): Pro
     }
 
     const validation = validateInstallationOptions(opts);
+
     if (!validation.valid) {
       console.error(`Error: ${validation.reason}`);
       process.exit(1);
@@ -202,6 +214,7 @@ export async function handleDocs(flags: ParsedFlags, positionals: string[]): Pro
 
     const generated = formatInstallationCode(opts);
     const output = stripOmitMarkers(replaceMarker(markdown, 'installation', generated));
+
     printVersionHeader();
     console.log(output);
     return;

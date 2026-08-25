@@ -122,6 +122,7 @@ export function selectQuality(
 
   // If no track fits with safety margin, fall back to lowest quality
   const optimal = chosen ?? sortedTracks[0];
+
   if (!optimal) return undefined;
 
   // Apply upgrade hysteresis. No currentTrack → no hysteresis, return
@@ -129,8 +130,11 @@ export function selectQuality(
   // Upgrade → only when `optimal.bandwidth >= current * upgradeMargin`,
   // else stay put (return currentTrack so caller's id-compare no-ops).
   if (!currentTrack) return optimal;
+
   if (optimal.bandwidth < currentTrack.bandwidth) return optimal;
+
   if (optimal.bandwidth >= currentTrack.bandwidth * upgradeMargin) return optimal;
+
   return currentTrack;
 }
 
@@ -151,6 +155,7 @@ export function selectQuality(
  */
 export function selectLowestQuality<T extends { bandwidth: number }>(tracks: readonly T[]): T | undefined {
   if (tracks.length === 0) return undefined;
+
   return tracks.reduce((min, t) => (t.bandwidth < min.bandwidth ? t : min));
 }
 

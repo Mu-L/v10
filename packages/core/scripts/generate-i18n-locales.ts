@@ -15,6 +15,7 @@ const coreLocalesDir = resolve(coreRoot, 'src/core/i18n/locales');
 const htmlLocalesDir = resolve(coreRoot, '../html/src/i18n/locales');
 const reactLocalesDir = resolve(coreRoot, '../react/src/i18n/locales');
 const textDir = resolve(coreRoot, 'src/core/i18n/text');
+
 const generatedFiles = new Set<string>();
 const changedFiles = new Set<string>();
 
@@ -27,6 +28,7 @@ function importBinding(tag: string): string {
 
 function objectEntry(tag: string): string {
   const binding = importBinding(tag);
+
   return tag === binding ? `  ${tag},` : `  '${tag}': ${binding},`;
 }
 
@@ -93,6 +95,7 @@ function generatePlatformAllReExport(): string {
 
 function exportName(key: string): string {
   const name = key.slice(key.indexOf('.') + 1);
+
   return name === 'default' ? 'defaultText' : `${name}Text`;
 }
 
@@ -121,6 +124,7 @@ async function validateLocaleCompleteness(): Promise<void> {
     const { default: locale } = await import(pathToFileURL(resolve(coreLocalesDir, `${tag}.ts`)).href);
     const localeKeys = new Set(flattenEntries(locale ?? {}).map(([key]) => key));
     const missing = [...englishKeys].filter((key) => !localeKeys.has(key));
+
     if (missing.length) errors.push(`${tag}: ${missing.join(', ')}`);
   }
 
@@ -133,9 +137,11 @@ function generateTextModules(): void {
   mkdirSync(textDir, { recursive: true });
 
   const namespaces = new Map<string, [string, string][]>();
+
   for (const [key, text] of flattenEntries(en)) {
     const namespace = key.slice(0, key.indexOf('.'));
     const entries = namespaces.get(namespace) ?? [];
+
     entries.push([key, text]);
     namespaces.set(namespace, entries);
   }
@@ -146,6 +152,7 @@ function generateTextModules(): void {
 
   for (const file of readdirSync(textDir)) {
     const path = resolve(textDir, file);
+
     if (file.endsWith('.ts') && !generatedFiles.has(path)) unlinkSync(path);
   }
 }
@@ -170,10 +177,12 @@ for (const [tag, translations] of Object.entries(all)) {
 
 function writeGenerated(path: string, content: string): void {
   const next = content.endsWith('\n') ? content : `${content}\n`;
+
   if (!existsSync(path) || readFileSync(path, 'utf8') !== next) {
     writeFileSync(path, next);
     changedFiles.add(path);
   }
+
   generatedFiles.add(path);
 }
 
@@ -183,12 +192,14 @@ function syncPlatformLocaleDir(dir: string): void {
   for (const tag of PLATFORM_LOCALE_TAGS) {
     writeGenerated(resolve(dir, `${tag}.ts`), generatePlatformDefaultReExport(tag));
     const registerDir = resolve(dir, tag);
+
     mkdirSync(registerDir, { recursive: true });
     writeGenerated(resolve(registerDir, 'register.ts'), generatePlatformRegisterTs(tag));
   }
 
   writeGenerated(resolve(dir, 'all.ts'), generatePlatformAllReExport());
   const allRegisterDir = resolve(dir, 'all');
+
   mkdirSync(allRegisterDir, { recursive: true });
   writeGenerated(resolve(allRegisterDir, 'register.ts'), generatePlatformRegisterAllTs());
 
@@ -196,14 +207,17 @@ function syncPlatformLocaleDir(dir: string): void {
     if (!file.endsWith('.ts') || expected.has(file)) {
       continue;
     }
+
     unlinkSync(resolve(dir, file));
   }
 
   const expectedDirs = new Set([...PLATFORM_LOCALE_TAGS, 'all']);
+
   for (const file of readdirSync(dir, { withFileTypes: true })) {
     if (!file.isDirectory() || expectedDirs.has(file.name)) {
       continue;
     }
+
     rmSync(resolve(dir, file.name), { recursive: true, force: true });
   }
 }
@@ -214,6 +228,7 @@ writeGenerated(resolve(coreRoot, 'src/core/i18n/load-locale.ts'), generateLoadLo
 generateTextModules();
 syncPlatformLocaleDir(htmlLocalesDir);
 syncPlatformLocaleDir(reactLocalesDir);
+
 if (changedFiles.size > 0) {
   execFileSync('pnpm', ['exec', 'vp', 'check', '--fix', ...changedFiles], {
     cwd: repoRoot,

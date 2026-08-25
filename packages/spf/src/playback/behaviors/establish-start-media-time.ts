@@ -69,6 +69,7 @@ export interface EstablishStartMediaTimeState {
  */
 function ownOrigin(data: MediaContainerData | undefined): number | undefined {
   const { timescale, baseMediaDecodeTime, segmentStartTime } = data ?? {};
+
   return timescale != null && baseMediaDecodeTime != null && segmentStartTime != null
     ? baseMediaDecodeTime / timescale - segmentStartTime
     : undefined;
@@ -111,17 +112,23 @@ function thresholdOrigin(origin: number): number {
  */
 export const deriveSharedMinStartMediaTime: DeriveStartMediaTime = (containerData, ctx) => {
   const contributingTypes: string[] = [];
+
   if (ctx.selectedVideoTrackId != null) contributingTypes.push('video');
+
   if (ctx.selectedAudioTrackId != null) contributingTypes.push('audio');
+
   const types = contributingTypes.length > 0 ? contributingTypes : Object.keys(containerData);
 
   const origins = types.map((type) => ownOrigin(containerData[type]));
+
   // Barrier: not ready until every contributing type has a complete origin.
   if (origins.length === 0 || origins.some((origin) => origin === undefined)) return {};
 
   const shared = thresholdOrigin(Math.min(...(origins as number[])));
   const out: Record<string, number | undefined> = {};
+
   for (const type of Object.keys(containerData)) out[type] = shared;
+
   return out;
 };
 
@@ -138,10 +145,13 @@ export const deriveSharedMinStartMediaTime: DeriveStartMediaTime = (containerDat
  */
 export const derivePerTypeStartMediaTime: DeriveStartMediaTime = (containerData) => {
   const out: Record<string, number | undefined> = {};
+
   for (const [type, data] of Object.entries(containerData)) {
     const origin = ownOrigin(data);
+
     out[type] = origin === undefined ? undefined : thresholdOrigin(origin);
   }
+
   return out;
 };
 
@@ -169,13 +179,20 @@ function referenceTrackId(ctx: GateFirstParseContext): string | undefined {
  */
 export const gateFirstParseOnAnchor: GateFirstParse = (presentation, ctx, trackId) => {
   const referenceId = referenceTrackId(ctx);
+
   if (referenceId === undefined || referenceId === trackId) return true;
+
   if (!isResolvedPresentation(presentation)) return false;
+
   const reference = findTrackById(presentation, referenceId);
+
   // A dangling reference id can never anchor — don't deadlock on it.
   if (!reference) return true;
+
   if (!isResolvedTrack(reference)) return false;
+
   if (reference.startDate === undefined) return true;
+
   return findTrackById(presentation, trackId)?.startDate !== undefined;
 };
 
@@ -204,11 +221,13 @@ function stampStartDates(presentation: Presentation, anchor: number): Presentati
       ...switchingSet,
       tracks: switchingSet.tracks.map((track) => {
         if (track.startDate !== undefined) return track;
+
         changed = true;
         return { ...track, startDate: anchor };
       }),
     })),
   }));
+
   return changed ? ({ ...presentation, selectionSets } as Presentation) : presentation;
 }
 
@@ -221,12 +240,15 @@ function stampTracks(presentation: Presentation, startMediaTimes: Record<string,
       ...switchingSet,
       tracks: switchingSet.tracks.map((track) => {
         const startMediaTime = startMediaTimes[track.type];
+
         if (startMediaTime === undefined || track.startMediaTime === startMediaTime) return track;
+
         changed = true;
         return { ...track, startMediaTime };
       }),
     })),
   }));
+
   return changed ? ({ ...presentation, selectionSets } as Presentation) : presentation;
 }
 
@@ -258,10 +280,13 @@ function establishStartMediaTimeSetup({
   /** Established once the selected A/V tracks (whichever exist) carry `startMediaTime`. */
   const established = (): boolean => {
     const presentation = state.presentation.get();
+
     if (!isResolvedPresentation(presentation)) return false;
+
     const ids = [state.selectedVideoTrackId?.get(), state.selectedAudioTrackId?.get()].filter(
       (id): id is string => id !== undefined
     );
+
     return ids.length > 0 && ids.every((id) => findTrackById(presentation, id)?.startMediaTime !== undefined);
   };
 
@@ -269,6 +294,7 @@ function establishStartMediaTimeSetup({
     initial: 'inactive',
     monitor: () => {
       if (!isResolvedPresentation(state.presentation.get())) return 'inactive';
+
       return established() ? 'established' : 'monitoring';
     },
     states: {
@@ -287,12 +313,18 @@ function establishStartMediaTimeSetup({
           // re-run sets an identical value and stops).
           () => {
             const presentation = state.presentation.get();
+
             if (!isResolvedPresentation(presentation)) return;
+
             const referenceId = referenceTrackId(selectionContext());
             const reference = referenceId === undefined ? undefined : findTrackById(presentation, referenceId);
+
             if (!reference || !isResolvedTrack(reference)) return;
+
             const anchor = reference.startDate;
+
             if (anchor === undefined) return;
+
             update(state.presentation as Signal<MaybeResolvedPresentation>, (current) =>
               stampStartDates(current as Presentation, anchor)
             );
@@ -302,8 +334,11 @@ function establishStartMediaTimeSetup({
           // reads presentation untracked, so no self-loop.
           () => {
             const containerData = state.mediaContainerData.get();
+
             if (!containerData) return;
+
             const startMediaTimes = derive(containerData, selectionContext());
+
             // `current` is always resolved here — the monitor gates `monitoring` on a
             // resolved presentation and transitions before effects re-run — so we cast
             // to `Presentation` rather than re-narrowing.

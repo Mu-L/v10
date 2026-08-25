@@ -14,6 +14,7 @@ type FunctionExpression = ESTree.ArrowFunctionExpression | ESTree.Function;
 
 function unwrapExpression(expression: ESTree.Expression): ESTree.Expression {
 	let current = expression;
+
 	while (
 		current.type === "ParenthesizedExpression" ||
 		current.type === "TSAsExpression" ||
@@ -23,6 +24,7 @@ function unwrapExpression(expression: ESTree.Expression): ESTree.Expression {
 	) {
 		current = current.expression;
 	}
+
 	return current;
 }
 
@@ -31,16 +33,21 @@ function resolveVariable(
 	identifier: ESTree.IdentifierReference,
 ): Variable | null {
 	let scope: Scope | null = sourceCode.getScope(identifier);
+
 	while (scope !== null) {
 		const variable = scope.set.get(identifier.name);
+
 		if (variable !== undefined) return variable;
+
 		scope = scope.upper;
 	}
+
 	return null;
 }
 
 function variableDeclarator(variable: Variable): ESTree.VariableDeclarator | null {
 	if (variable.defs.length !== 1) return null;
+
 	const [definition] = variable.defs;
 	return definition?.type === "Variable" && definition.node.type === "VariableDeclarator"
 		? definition.node
@@ -61,11 +68,17 @@ function hasKnownEvidence(
 	visitedVariables = new Set<Variable>(),
 ): boolean {
 	if (isKnownEvidenceExpression(expression)) return true;
+
 	const unwrapped = unwrapExpression(expression);
+
 	if (unwrapped.type !== "Identifier") return false;
+
 	const variable = resolveVariable(sourceCode, unwrapped);
+
 	if (variable === null || visitedVariables.has(variable)) return false;
+
 	const declarator = variableDeclarator(variable);
+
 	if (
 		declarator === null ||
 		declarator.init === null ||
@@ -73,6 +86,7 @@ function hasKnownEvidence(
 	) {
 		return false;
 	}
+
 	visitedVariables.add(variable);
 	return hasKnownEvidence(sourceCode, declarator.init, visitedVariables);
 }
@@ -88,6 +102,7 @@ function annotationTarget(
 
 function enclosingFunction(node: ESTree.Node): FunctionExpression | null {
 	let current: ESTree.Node | null = node.parent;
+
 	while (current !== null && current.type !== "Program") {
 		if (
 			current.type === "ArrowFunctionExpression" ||
@@ -96,24 +111,33 @@ function enclosingFunction(node: ESTree.Node): FunctionExpression | null {
 		) {
 			return current;
 		}
+
 		current = current.parent;
 	}
+
 	return null;
 }
 
 function sourceKeyName(sourceCode: SourceCode, key: ESTree.PropertyKey): string {
 	if (key.type === "Identifier" || key.type === "PrivateIdentifier") return key.name;
+
 	if (key.type === "Literal") return String(key.value);
+
 	return sourceCode.getText(key);
 }
 
 function functionName(sourceCode: SourceCode, owner: FunctionExpression | null): string {
 	if (owner === null) return "anonymous function";
+
 	if (owner.id !== null) return owner.id.name;
+
 	const parent = owner.parent;
+
 	if (parent.type === "VariableDeclarator" && parent.id.type === "Identifier")
 		return parent.id.name;
+
 	if (parent.type === "MethodDefinition") return sourceKeyName(sourceCode, parent.key);
+
 	return "anonymous function";
 }
 
@@ -152,13 +176,16 @@ export const noKnownValueWideningRule = defineRule({
 			subject: string,
 		) => {
 			if (destination === null) return;
+
 			if (
 				isDictionaryAccumulatorTarget(destination) &&
 				isEmptyObjectExpression(expression)
 			) {
 				return;
 			}
+
 			if (!hasKnownEvidence(context.sourceCode, expression)) return;
+
 			context.report({
 				node: expression,
 				messageId: "widening",
@@ -175,6 +202,7 @@ export const noKnownValueWideningRule = defineRule({
 			},
 			VariableDeclarator(node) {
 				if (node.init === null || node.id.type !== "Identifier") return;
+
 				reportFlow(
 					node.init,
 					targetFromAnnotation(node.id.typeAnnotation),
@@ -183,6 +211,7 @@ export const noKnownValueWideningRule = defineRule({
 			},
 			PropertyDefinition(node) {
 				if (node.value === null) return;
+
 				reportFlow(
 					node.value,
 					targetFromAnnotation(node.typeAnnotation),
@@ -191,6 +220,7 @@ export const noKnownValueWideningRule = defineRule({
 			},
 			AccessorProperty(node) {
 				if (node.value === null) return;
+
 				reportFlow(
 					node.value,
 					targetFromAnnotation(node.typeAnnotation),
@@ -199,10 +229,15 @@ export const noKnownValueWideningRule = defineRule({
 			},
 			AssignmentExpression(node) {
 				if (node.operator !== "=" || node.left.type !== "Identifier") return;
+
 				const variable = resolveVariable(context.sourceCode, node.left);
+
 				if (variable === null) return;
+
 				const declarator = variableDeclarator(variable);
+
 				if (declarator === null || declarator.id.type !== "Identifier") return;
+
 				reportFlow(
 					node.right,
 					targetFromAnnotation(declarator.id.typeAnnotation),
@@ -211,6 +246,7 @@ export const noKnownValueWideningRule = defineRule({
 			},
 			ReturnStatement(node) {
 				if (node.argument === null) return;
+
 				const owner = enclosingFunction(node);
 				reportFlow(
 					node.argument,
@@ -220,6 +256,7 @@ export const noKnownValueWideningRule = defineRule({
 			},
 			ArrowFunctionExpression(node) {
 				if (node.body.type === "BlockStatement") return;
+
 				reportFlow(
 					node.body,
 					targetFromAnnotation(node.returnType),
@@ -228,6 +265,7 @@ export const noKnownValueWideningRule = defineRule({
 			},
 			TSAsExpression(node) {
 				if (environment === null || hasParentAssertion(node)) return;
+
 				reportFlow(
 					node.expression,
 					classifyWideningTarget(node.typeAnnotation, environment),
@@ -236,6 +274,7 @@ export const noKnownValueWideningRule = defineRule({
 			},
 			TSTypeAssertion(node) {
 				if (environment === null || hasParentAssertion(node)) return;
+
 				reportFlow(
 					node.expression,
 					classifyWideningTarget(node.typeAnnotation, environment),

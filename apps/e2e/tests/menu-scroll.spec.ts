@@ -21,6 +21,7 @@ async function resolveActiveMenuPanel(page: Page, player: PlayerPage): Promise<P
     .toBe('auto');
 
   const handle = await player.activeMenuPanel.elementHandle();
+
   if (!handle) throw new Error('Menu panel is not attached');
 
   return handle as PanelHandle;
@@ -37,12 +38,14 @@ async function getStableBox(panel: PanelHandle): Promise<{ x: number; y: number;
         ? `${Math.round(box.x)},${Math.round(box.y)},${Math.round(box.width)},${Math.round(box.height)}`
         : '';
       const settled = key !== '' && key === previous;
+
       previous = key;
       return settled;
     })
     .toBe(true);
 
   const box = await panel.boundingBox();
+
   if (!box) throw new Error('Menu panel is not visible');
 
   return box;
@@ -74,6 +77,7 @@ for (const { name, path } of UI_VIDEO_PAGES) {
     // https://github.com/videojs/v10/issues/2095
     test('hovering options keeps the scroll position', async ({ page }) => {
       const overflows = await panel.evaluate((element) => element.scrollHeight > element.clientHeight + 1);
+
       expect(overflows, 'speed menu must overflow for this test to be meaningful').toBe(true);
 
       const box = await getStableBox(panel);
@@ -82,6 +86,7 @@ for (const { name, path } of UI_VIDEO_PAGES) {
         element.scrollTop = element.scrollHeight - element.clientHeight;
       });
       const scrollTop = await getScrollTop(panel);
+
       expect(scrollTop).toBeGreaterThan(0);
 
       const centerX = box.x + box.width / 2;
@@ -120,6 +125,7 @@ for (const { name, path } of UI_VIDEO_PAGES) {
         .poll(() =>
           panel.evaluate((element) => {
             const root = element.getRootNode() as Document | ShadowRoot;
+
             return element.contains(root.activeElement);
           })
         )

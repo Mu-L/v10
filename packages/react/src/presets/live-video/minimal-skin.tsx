@@ -122,6 +122,7 @@ function VolumePopover(): ReactNode {
 function CaptionsTrigger(): ReactNode {
   const t = useTranslator();
   const captions = useCaptionsOptions();
+
   if (!captions) return null;
 
   const { disabled } = captions;
