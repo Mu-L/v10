@@ -15,11 +15,13 @@ type CoreSchema = typeof coreSchema;
 const componentParts: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   Controls: {
     Root: 'Controls',
+    Backdrop: 'ControlsBackdrop',
     Group: 'ControlsGroup',
   },
   ErrorDialog: {
     Root: 'ErrorDialog',
-    Popup: 'ErrorDialog',
+    Backdrop: 'AlertDialogBackdrop',
+    Popup: 'AlertDialogPopup',
     Title: 'AlertDialogTitle',
     Description: 'AlertDialogDescription',
     Close: 'AlertDialogClose',
@@ -129,6 +131,7 @@ export const htmlComponentTarget: ComponentTarget<CoreSchema> = defineComponentT
 }) => {
   const Button = element('button');
   const Div = element('div');
+  const Img = element('img');
   const Slot = element('slot');
   const Span = element('span');
   const Sup = element('sup');
@@ -153,9 +156,6 @@ export const htmlComponentTarget: ComponentTarget<CoreSchema> = defineComponentT
       return name ? htmlElementTarget(name, element) : undefined;
     },
     components: {
-      ErrorDialog: {
-        Root: ({ children }) => children,
-      },
       Menu: ({ props, parts, id }) => {
         const popup = parts.Popup?.one();
         const trigger = parts.Trigger.one();
@@ -187,6 +187,13 @@ export const htmlComponentTarget: ComponentTarget<CoreSchema> = defineComponentT
         parts.Trigger.children,
         <target.Popover.Popup {...props.merge(parts.Popup.props)}>{parts.Popup.children}</target.Popover.Popup>,
       ],
+      Poster: ({ props }) => (
+        <target.Poster {...props}>
+          <Slot name="poster">
+            <Img alt="" decoding="async" />
+          </Slot>
+        </target.Poster>
+      ),
       Slider: {
         Thumbnail: {
           Root: Div,
@@ -204,7 +211,7 @@ export const htmlComponentTarget: ComponentTarget<CoreSchema> = defineComponentT
       },
     },
     primitives: {
-      Group: Div,
+      Box: Div,
       Slot,
       Text: ({ props, children }) =>
         props.has('token') ? <I18nText {...props}>{children}</I18nText> : <Span {...props}>{children}</Span>,

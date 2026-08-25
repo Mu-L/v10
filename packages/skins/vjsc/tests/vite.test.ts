@@ -7,11 +7,15 @@ const packageDir = resolve(import.meta.dirname, '../..');
 const configFile = resolve(packageDir, 'dev/vite.config.ts');
 const reactTarget = '?style=css&target=react&skin=default-video';
 const defaultSkinUrl = `/../vjsc/skins/default-video/skin.tsx${reactTarget}`;
+const defaultControlsUrl = `/../vjsc/skins/default-video/controls.tsx${reactTarget}`;
 const htmlContainerUrl = '/../vjsc/components/layout/container.tsx?style=tailwind&target=html&skin=minimal-video';
 const playButtonUrl = `/../vjsc/components/buttons/play-button.tsx${reactTarget}`;
 const settingsMenuUrl = `/../vjsc/components/menus/settings-menu.tsx${reactTarget}`;
 const volumePopoverUrl = `/../vjsc/components/controls/volume-popover.tsx${reactTarget}`;
-const buttonStyles = resolve(packageDir, 'vjsc/styles/components/button.styles.ts');
+const htmlPosterUrl = '/../vjsc/components/layout/poster.tsx?style=tailwind&target=html&skin=default-video';
+const reactPosterUrl = '/../vjsc/components/layout/poster.tsx?style=tailwind&target=react&skin=default-video';
+const buttonStyles = resolve(packageDir, 'vjsc/styles/buttons/button.styles.ts');
+const controlsStyles = resolve(packageDir, 'vjsc/skins/default-video/controls.styles.ts');
 const designStyles = resolve(packageDir, 'vjsc/styles/base.css');
 const skinConfig = resolve(packageDir, 'vjsc/config.ts');
 const vjscPlayButton = resolve(packageDir, 'vjsc/components/buttons/play-button.tsx');
@@ -64,8 +68,15 @@ describe('Skins Vite workflow', () => {
 
       if (variant.framework === 'react') expect(result?.code, url).toContain('$RefreshReg$');
 
-      if (variant.style === 'css') expect(result?.code, url).toContain('virtual:vjsc/css');
-      else expect(result?.code, url).not.toContain('virtual:vjsc/css');
+      const controls = await server.transformRequest(controlsUrl(variant));
+
+      if (variant.style === 'css') {
+        const code = controls?.code ?? '';
+
+        expect(code, url).toContain('virtual:vjsc/css');
+        expect(code, url).toContain('/base.css');
+        expect(code.indexOf('/base.css'), url).toBeLessThan(code.indexOf('/controls.css'));
+      } else expect(controls?.code, url).not.toContain('virtual:vjsc/css');
     }
 
     const htmlContainer = await server.transformRequest(htmlContainerUrl);
@@ -94,6 +105,21 @@ describe('Skins Vite workflow', () => {
     expect([...warn.mock.calls, ...warnOnce.mock.calls].flat().join('\n')).not.toContain('emitFile() is not supported');
   }, 30_000);
 
+  it('includes Shadow DOM utilities only for HTML targets', async () => {
+    server = await createServer({
+      configFile,
+      logLevel: 'silent',
+      optimizeDeps: { include: [], noDiscovery: true },
+      server: { middlewareMode: true },
+    });
+
+    const html = await server.transformRequest(htmlPosterUrl);
+    const react = await server.transformRequest(reactPosterUrl);
+
+    expect(html?.code).toContain('[&_::slotted(img)]:absolute');
+    expect(react?.code).not.toContain('::slotted');
+  }, 30_000);
+
   it('invalidates transformed owners for component, style, and design changes', async () => {
     server = await createServer({
       configFile,
@@ -109,6 +135,11 @@ describe('Skins Vite workflow', () => {
     const skinModule = resolved && server.moduleGraph.getModuleById(resolved.id);
 
     expect(skinModule?.transformResult).not.toBeNull();
+    await server.transformRequest(defaultControlsUrl);
+    const targetedControlsId = await server.pluginContainer.resolveId(defaultControlsUrl);
+    const targetedControls = targetedControlsId && server.moduleGraph.getModuleById(targetedControlsId.id);
+
+    expect(targetedControls?.transformResult).not.toBeNull();
     await server.transformRequest(playButtonUrl);
     const targetedPlayButtonId = await server.pluginContainer.resolveId(`${vjscPlayButton}${reactTarget}`);
     const targetedPlayButton = targetedPlayButtonId && server.moduleGraph.getModuleById(targetedPlayButtonId.id);
@@ -116,7 +147,7 @@ describe('Skins Vite workflow', () => {
     expect(targetedPlayButton).toBeDefined();
     expect(targetedPlayButton?.transformResult).not.toBeNull();
 
-    if (!skinModule || !targetedPlayButton) throw new Error('Expected targeted VJSC modules.');
+    if (!skinModule || !targetedControls || !targetedPlayButton) throw new Error('Expected targeted VJSC modules.');
 
     const styleInvalidation = {
       skin: skinModule.lastInvalidationTimestamp,
@@ -131,6 +162,17 @@ describe('Skins Vite workflow', () => {
 
     await server.transformRequest(playButtonUrl);
     expect(targetedPlayButton.transformResult).not.toBeNull();
+
+    const controlsInvalidation = {
+      skin: skinModule.lastInvalidationTimestamp,
+      controls: targetedControls.lastInvalidationTimestamp,
+    };
+
+    server.watcher.emit('change', controlsStyles);
+    await vi.waitFor(() => {
+      expect(skinModule.lastInvalidationTimestamp).toBeGreaterThan(controlsInvalidation.skin);
+      expect(targetedControls.lastInvalidationTimestamp).toBeGreaterThan(controlsInvalidation.controls);
+    });
 
     const designInvalidation = targetedPlayButton.lastInvalidationTimestamp;
 
@@ -174,11 +216,14 @@ describe('Skins Vite workflow', () => {
 
     const loaded = await server.pluginContainer.load(resolved.id);
     const source = typeof loaded === 'string' ? loaded : loaded?.code;
-    const runtime = await server.pluginContainer.resolveId('virtual:videojs/icons/element-runtime');
+    const runtime = resolve(packageDir, '../icons/src/element.ts');
+    const transformed = await server.transformRequest(resolved.id);
 
     expect(source).toContain('aria-hidden');
-    expect(source).toContain('virtual:videojs/icons/element-runtime');
-    expect(runtime?.id).toBe(resolve(packageDir, '../icons/src/element.ts'));
+    expect(source).toContain(runtime);
+    expect(transformed?.code).toContain('/@fs/');
+    expect(transformed?.code).toContain('MediaIconElement');
+    expect(await server.pluginContainer.resolveId(runtime, resolved.id)).toMatchObject({ id: runtime });
   }, 30_000);
 
   it('builds the same VJSC configuration for production', async () => {
@@ -219,4 +264,8 @@ describe('Skins Vite workflow', () => {
 
 function skinUrl(variant: (typeof variants)[number]): string {
   return `/../vjsc/skins/${variant.skin}/skin.tsx?style=${variant.style}&target=${variant.framework}&skin=${variant.skin}`;
+}
+
+function controlsUrl(variant: (typeof variants)[number]): string {
+  return `/../vjsc/skins/${variant.skin}/controls.tsx?style=${variant.style}&target=${variant.framework}&skin=${variant.skin}`;
 }

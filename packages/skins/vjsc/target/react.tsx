@@ -75,7 +75,7 @@ export const reactComponentTarget: ComponentTarget<CoreSchema> = defineComponent
       },
     },
     primitives: {
-      Group: Div,
+      Box: Div,
       Slot: ({ children }) => children,
       Text: ({ props, children }) =>
         props.has('token') ? <I18nText {...props}>{children}</I18nText> : <Span {...props}>{children}</Span>,
