@@ -110,7 +110,7 @@ Media option groups can render the current selection beside a submenu trigger. S
 
 Use data attributes to style open state, highlighted items, selected radio items, and submenu views:
 
-`data-highlighted` is added to the current menu item. The highlighted item is the item that keyboard selection will act on. It changes when the menu opens, when the pointer moves over another item, when the user presses arrow keys, or when type-ahead search finds a match.
+`data-highlighted` identifies the current menu item. Its value is `"pointer"` when pointer movement caused the highlight and an empty string for other highlights, including keyboard navigation and type-ahead search. Use `[data-highlighted]` to match any highlighted item or `[data-highlighted=""]` to match highlights that were not caused by pointer movement.
 
 The root `Menu.Popup` or `<media-menu>` receives `data-open`, `data-side`, and `data-align`. Each Content receives menu state such as `data-open` and `data-submenu`; a Content with an open logical child receives `data-child-open`.
 
@@ -126,6 +126,11 @@ The root `Menu.Popup` or `<media-menu>` receives `data-open`, `data-side`, and `
 
   .menu-item[data-highlighted] {
     background: rgba(255, 255, 255, 0.16);
+    transition: background-color 100ms ease-in-out;
+  }
+
+  .menu-item[data-highlighted=""] {
+    transition-duration: 0ms;
   }
 
   [role="menuitemradio"][aria-checked="true"] {
@@ -146,6 +151,11 @@ The root `Menu.Popup` or `<media-menu>` receives `data-open`, `data-side`, and `
 
   media-menu-item[data-highlighted] {
     background: rgba(255, 255, 255, 0.16);
+    transition: background-color 100ms ease-in-out;
+  }
+
+  media-menu-item[data-highlighted=""] {
+    transition-duration: 0ms;
   }
 
   media-menu-radio-item[aria-checked="true"] {

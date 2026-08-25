@@ -224,6 +224,7 @@ export const sidebar: Sidebar = [
           { slug: 'reference/use-player-context', frameworks: ['react'] },
           { slug: 'reference/use-quality-options', frameworks: ['react'] },
           { slug: 'reference/use-selector', frameworks: ['react'] },
+          { slug: 'reference/use-slider', frameworks: ['react'] },
           { slug: 'reference/use-snapshot', frameworks: ['react'] },
           { slug: 'reference/media-attach-mixin', frameworks: ['html'] },
           { slug: 'reference/player-context', frameworks: ['html'] },
