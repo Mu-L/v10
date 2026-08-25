@@ -126,7 +126,7 @@ function getTemplateHTML() {
               </media-volume-slider>
             </media-popover>
 
-            <media-playback-rate-button commandfor="playback-rate-menu" class="${cn(button.base, button.subtle, button.icon, playbackRate.button)}">
+            <media-playback-rate-button id="playback-rate-trigger" commandfor="playback-rate-menu" class="${cn(button.base, button.subtle, button.icon, playbackRate.button)}">
             </media-playback-rate-button>
             <media-menu id="playback-rate-menu" side="top" align="center" boundary="viewport" class="${cn(popup.popover, menu.root)}">
               <media-menu-content class="${menu.content}">
@@ -142,6 +142,10 @@ function getTemplateHTML() {
                 </media-playback-rate-radio-group>
               </media-menu-content>
             </media-menu>
+            <media-tooltip trigger="playback-rate-trigger" side="top" boundary="viewport" class="${popup.tooltip}">
+              <media-tooltip-label></media-tooltip-label>
+              <media-tooltip-shortcut class="${popup.tooltipShortcut}"></media-tooltip-shortcut>
+            </media-tooltip>
 
           </div>
         </media-tooltip-group>
