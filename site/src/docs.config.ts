@@ -60,6 +60,7 @@ export const sidebar: Sidebar = [
       { slug: 'concepts/mux-data' },
       { slug: 'concepts/security' },
       { slug: 'concepts/i18n', sidebarLabel: 'Internationalization' },
+      { slug: 'concepts/custom-element-lifecycle', frameworks: ['html'] },
     ],
   },
   {
