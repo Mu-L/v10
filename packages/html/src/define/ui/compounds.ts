@@ -1,12 +1,11 @@
-import { AlertDialogBackdropElement } from '../../ui/alert-dialog/alert-dialog-backdrop-element';
-import { AlertDialogCloseElement } from '../../ui/alert-dialog/alert-dialog-close-element';
-import { AlertDialogDescriptionElement } from '../../ui/alert-dialog/alert-dialog-description-element';
 import { AlertDialogElement } from '../../ui/alert-dialog/alert-dialog-element';
-import { AlertDialogPopupElement } from '../../ui/alert-dialog/alert-dialog-popup-element';
-import { AlertDialogTitleElement } from '../../ui/alert-dialog/alert-dialog-title-element';
 import { ControlsBackdropElement } from '../../ui/controls/controls-backdrop-element';
 import { ControlsElement } from '../../ui/controls/controls-element';
 import { ControlsGroupElement } from '../../ui/controls/controls-group-element';
+import { DialogBackdropElement } from '../../ui/dialog/dialog-backdrop-element';
+import { DialogCloseElement } from '../../ui/dialog/dialog-close-element';
+import { DialogDescriptionElement } from '../../ui/dialog/dialog-description-element';
+import { DialogTitleElement } from '../../ui/dialog/dialog-title-element';
 import { ErrorDialogElement } from '../../ui/error-dialog/error-dialog-element';
 import { MenuCheckboxItemElement } from '../../ui/menu/menu-checkbox-item-element';
 import { MenuContentElement } from '../../ui/menu/menu-content-element';
@@ -67,24 +66,23 @@ export function defineControls(): void {
   safeDefine(ControlsGroupElement);
 }
 
-function defineAlertDialogParts(): void {
-  safeDefine(AlertDialogBackdropElement);
-  safeDefine(AlertDialogPopupElement);
-  safeDefine(AlertDialogCloseElement);
-  safeDefine(AlertDialogDescriptionElement);
-  safeDefine(AlertDialogTitleElement);
+function defineDialogParts(): void {
+  safeDefine(DialogBackdropElement);
+  safeDefine(DialogCloseElement);
+  safeDefine(DialogDescriptionElement);
+  safeDefine(DialogTitleElement);
 }
 
 export function defineAlertDialog(): void {
   // Parent first — child elements consume its context.
   safeDefine(AlertDialogElement);
-  defineAlertDialogParts();
+  defineDialogParts();
 }
 
 export function defineErrorDialog(): void {
   // Parent first — child elements consume its context.
   safeDefine(ErrorDialogElement);
-  defineAlertDialogParts();
+  defineDialogParts();
 }
 
 export function defineInputIndicators(): void {

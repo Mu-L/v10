@@ -72,13 +72,7 @@ export * from './store/media-attach-mixin';
 export * from './store/provider-mixin';
 export * from './store/types';
 export { AirPlayButtonElement } from './ui/airplay-button/airplay-button-element';
-export { AlertDialogBackdropElement } from './ui/alert-dialog/alert-dialog-backdrop-element';
-export { AlertDialogCloseElement } from './ui/alert-dialog/alert-dialog-close-element';
-export { AlertDialogDescriptionElement } from './ui/alert-dialog/alert-dialog-description-element';
 export { AlertDialogElement } from './ui/alert-dialog/alert-dialog-element';
-export { AlertDialogPopupElement } from './ui/alert-dialog/alert-dialog-popup-element';
-export { AlertDialogTitleElement } from './ui/alert-dialog/alert-dialog-title-element';
-export { type AlertDialogContextValue, alertDialogContext } from './ui/alert-dialog/context';
 // UI Components
 export { AudioTrackRadioGroupElement } from './ui/audio-track-radio-group/audio-track-radio-group-element';
 export { BufferingIndicatorElement } from './ui/buffering-indicator/buffering-indicator-element';
@@ -90,6 +84,12 @@ export { ContextPartElement, type PartContextValue } from './ui/context-part-ele
 export { ControlsBackdropElement } from './ui/controls/controls-backdrop-element';
 export { ControlsElement } from './ui/controls/controls-element';
 export { ControlsGroupElement } from './ui/controls/controls-group-element';
+export { type DialogContextValue, dialogContext } from './ui/dialog/context';
+export { DialogBackdropElement } from './ui/dialog/dialog-backdrop-element';
+export { DialogCloseElement } from './ui/dialog/dialog-close-element';
+export { DialogDescriptionElement } from './ui/dialog/dialog-description-element';
+export { DialogElement } from './ui/dialog/dialog-element';
+export { DialogTitleElement } from './ui/dialog/dialog-title-element';
 export { ErrorDialogElement } from './ui/error-dialog/error-dialog-element';
 export { FullscreenButtonElement } from './ui/fullscreen-button/fullscreen-button-element';
 export { GestureElement } from './ui/gesture/gesture-element';

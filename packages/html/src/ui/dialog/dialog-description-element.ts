@@ -1,14 +1,14 @@
-import type { AlertDialogState } from '@videojs/core';
+import type { DialogState } from '@videojs/core';
 import type { PropertyValues } from '@videojs/element';
 import { ContextConsumer } from '@videojs/element/context';
 
 import { ContextPartElement } from '../context-part-element';
-import { alertDialogContext } from './context';
+import { dialogContext } from './context';
 
-export class AlertDialogDescriptionElement extends ContextPartElement<AlertDialogState> {
-  static readonly tagName = 'media-alert-dialog-description';
+export class DialogDescriptionElement extends ContextPartElement<DialogState> {
+  static readonly tagName: string = 'media-dialog-description';
 
-  protected readonly consumer = new ContextConsumer(this, { context: alertDialogContext, subscribe: true });
+  protected readonly consumer = new ContextConsumer(this, { context: dialogContext, subscribe: true });
 
   protected override update(changed: PropertyValues): void {
     super.update(changed);

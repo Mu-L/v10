@@ -151,24 +151,23 @@ describe('composite define registration', () => {
       const batch = batchSince(before);
 
       expect(batch[0]).toBe('media-alert-dialog');
-      expect(batch).toContain('media-alert-dialog-backdrop');
-      expect(batch).toContain('media-alert-dialog-popup');
-      expect(batch).toContain('media-alert-dialog-close');
-      expect(batch).toContain('media-alert-dialog-description');
-      expect(batch).toContain('media-alert-dialog-title');
+      expect(batch).toContain('media-dialog-backdrop');
+      expect(batch).toContain('media-dialog-close');
+      expect(batch).toContain('media-dialog-description');
+      expect(batch).toContain('media-dialog-title');
     });
   });
 
   describe('ui/error-dialog', () => {
-    it('registers media-error-dialog and reuses alert-dialog parts', async () => {
+    it('registers media-error-dialog and reuses dialog parts', async () => {
       const before = spy.mock.calls.length;
 
       await import('../ui/error-dialog');
       const batch = batchSince(before);
 
       expect(batch).toContain('media-error-dialog');
-      expect(batch).not.toContain('media-alert-dialog-backdrop');
-      expect(batch).not.toContain('media-alert-dialog-popup');
+      expect(batch).not.toContain('media-dialog-backdrop');
+      expect(batch).not.toContain('media-dialog-close');
     });
   });
 
@@ -230,11 +229,10 @@ describe('composite define registration', () => {
         'media-controls-group',
         // Dialogs
         'media-alert-dialog',
-        'media-alert-dialog-backdrop',
-        'media-alert-dialog-popup',
-        'media-alert-dialog-close',
-        'media-alert-dialog-description',
-        'media-alert-dialog-title',
+        'media-dialog-backdrop',
+        'media-dialog-close',
+        'media-dialog-description',
+        'media-dialog-title',
         'media-error-dialog',
       ];
 

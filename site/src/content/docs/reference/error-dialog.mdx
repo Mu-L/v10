@@ -39,16 +39,16 @@ import basicUsageHtmlTs from "@/components/docs/demos/error-dialog/html/css/Basi
 <FrameworkCase frameworks={["html"]}>
 ```html
 <media-error-dialog>
-  <media-alert-dialog-title></media-alert-dialog-title>
-  <media-alert-dialog-description></media-alert-dialog-description>
-  <media-alert-dialog-close></media-alert-dialog-close>
+  <media-dialog-title></media-dialog-title>
+  <media-dialog-description></media-dialog-description>
+  <media-dialog-close></media-dialog-close>
 </media-error-dialog>
 ```
 </FrameworkCase>
 
 ## Behavior
 
-`ErrorDialog` is a specialized alert dialog driven by the player's <DocsLink slug="reference/feature-error">error feature</DocsLink>. It opens when the attached media reports an error and stays hidden otherwise. Closing it dismisses the current error in the player store.
+`ErrorDialog` builds on <DocsLink slug="reference/dialog">`Dialog`</DocsLink> with alert semantics and is driven by the player's <DocsLink slug="reference/feature-error">error feature</DocsLink>. It re-exports the dialog backdrop and popup under the `ErrorDialog` namespace. It opens when the attached media reports an error and stays hidden otherwise. Closing it dismisses the current error in the player store.
 
 The title, description, and close label use localized default text. Provide children to any of those parts to replace its default content. Known media error codes use the matching translated message, while custom error messages are shown as written.
 
@@ -84,7 +84,7 @@ React renders the popup as a standard DOM element. Add a `className` and use it 
 
 ## Accessibility
 
-The popup uses `role="alertdialog"` and `aria-modal="true"`. Its title and description are connected with `aria-labelledby` and `aria-describedby`. Pressing <kbd>Escape</kbd> or activating the close part dismisses the error.
+The popup uses `role="alertdialog"` and `aria-modal="true"`. Its title and description are connected with `aria-labelledby` and `aria-describedby`. Focus stays within the popup and content outside it is inert while the error is open. Pressing <kbd>Escape</kbd> or activating the close part dismisses the error.
 
 ## Examples
 

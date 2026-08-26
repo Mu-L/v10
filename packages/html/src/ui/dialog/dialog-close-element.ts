@@ -3,10 +3,10 @@ import type { PropertyDeclarationMap, PropertyValues } from '@videojs/element';
 import { ContextConsumer } from '@videojs/element/context';
 
 import { UIElement } from '../ui-element';
-import { alertDialogContext } from './context';
+import { dialogContext } from './context';
 
-export class AlertDialogCloseElement extends UIElement {
-  static readonly tagName = 'media-alert-dialog-close';
+export class DialogCloseElement extends UIElement {
+  static readonly tagName: string = 'media-dialog-close';
 
   static override properties = {
     disabled: { type: Boolean },
@@ -14,8 +14,7 @@ export class AlertDialogCloseElement extends UIElement {
 
   disabled = false;
 
-  readonly #ctx = new ContextConsumer(this, { context: alertDialogContext, subscribe: true });
-
+  readonly #ctx = new ContextConsumer(this, { context: dialogContext, subscribe: true });
   #disconnect: AbortController | null = null;
 
   override connectedCallback(): void {
