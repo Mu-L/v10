@@ -358,22 +358,20 @@ export function MinimalVideoSkin(props: MinimalVideoSkinProps): ReactNode {
       />
 
       <ErrorDialog.Root>
-        <ErrorDialog.Backdrop className="media-overlay media-error-backdrop" />
-        <ErrorDialog.Popup className="media-error">
-          <div className="media-error__dialog">
-            <div className="media-error__content">
-              <ErrorDialog.Title className="media-error__title"></ErrorDialog.Title>
-              <ErrorDialog.Description className="media-error__description" />
-            </div>
-            <div className="media-error__actions">
-              <ErrorDialog.Close className="media-button media-button--primary"></ErrorDialog.Close>
-            </div>
+        <ErrorDialog.Backdrop className="media-dialog__backdrop" />
+        <ErrorDialog.Popup className="media-dialog__popup media-surface">
+          <div className="media-dialog__content">
+            <ErrorDialog.Title className="media-dialog__title"></ErrorDialog.Title>
+            <ErrorDialog.Description className="media-dialog__description" />
+          </div>
+          <div className="media-dialog__actions">
+            <ErrorDialog.Close className="media-button media-button--primary"></ErrorDialog.Close>
           </div>
         </ErrorDialog.Popup>
       </ErrorDialog.Root>
 
       <Controls.Root>
-        <Controls.Backdrop className="media-overlay" />
+        <Controls.Backdrop className="media-controls__backdrop" />
         <Controls.Content className="media-controls">
           <Tooltip.Provider>
             <div className="media-button-group">
@@ -540,7 +538,7 @@ export function MinimalVideoSkin(props: MinimalVideoSkinProps): ReactNode {
 
       {/* Input Indicators */}
       <StatusAnnouncer className="media-sr-only" />
-      <div className="media-input-indicator-overlay">
+      <div className="media-input-indicator">
         <VolumeIndicator.Root className="media-volume-indicator">
           <VolumeIndicator.Fill className="media-volume-indicator__content">
             <VolumeHighIcon className="media-icon media-icon--volume-high" />

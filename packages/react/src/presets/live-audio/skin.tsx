@@ -82,14 +82,13 @@ export function LiveAudioSkin(props: LiveAudioSkinProps): ReactNode {
       {children}
 
       <ErrorDialog.Root>
-        <ErrorDialog.Backdrop className="media-overlay media-error-backdrop" />
-        <ErrorDialog.Popup className="media-error">
-          <div className="media-error__dialog">
-            <div className="media-error__content">
-              <ErrorDialog.Title className="media-error__title"></ErrorDialog.Title>
-              <ErrorDialog.Description className="media-error__description" />
+        <ErrorDialog.Popup className="media-dialog__popup">
+          <div className="media-dialog__dialog">
+            <div className="media-dialog__content">
+              <ErrorDialog.Title className="media-dialog__title"></ErrorDialog.Title>
+              <ErrorDialog.Description className="media-dialog__description" />
             </div>
-            <div className="media-error__actions">
+            <div className="media-dialog__actions">
               <ErrorDialog.Close className="media-button media-button--subtle"></ErrorDialog.Close>
             </div>
           </div>

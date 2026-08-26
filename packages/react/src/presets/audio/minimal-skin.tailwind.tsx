@@ -6,13 +6,12 @@ import {
   buttonGroup,
   container,
   controls,
-  error,
+  dialog,
   icon,
   iconContainer,
   iconFlipped,
   iconState,
   menu,
-  overlay,
   playButton,
   playbackRate,
   popup,
@@ -202,14 +201,13 @@ export function MinimalAudioSkinTailwind(props: MinimalAudioSkinProps): ReactNod
       {children}
 
       <ErrorDialog.Root>
-        <ErrorDialog.Backdrop data-error-backdrop="" className={overlay} />
-        <ErrorDialog.Popup className={error.root}>
-          <div className={error.dialog}>
-            <div className={error.content}>
-              <ErrorDialog.Title className={error.title}></ErrorDialog.Title>
-              <ErrorDialog.Description className={error.description} />
+        <ErrorDialog.Popup className={dialog.root}>
+          <div className={dialog.dialog}>
+            <div className={dialog.content}>
+              <ErrorDialog.Title className={dialog.title}></ErrorDialog.Title>
+              <ErrorDialog.Description className={dialog.description} />
             </div>
-            <div className={error.actions}>
+            <div className={dialog.actions}>
               <ErrorDialog.Close className={cn(button.base, button.subtle)}></ErrorDialog.Close>
             </div>
           </div>
