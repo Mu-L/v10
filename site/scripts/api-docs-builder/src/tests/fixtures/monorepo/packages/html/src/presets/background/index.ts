@@ -5,4 +5,4 @@
  * The skin and media element are NOT re-exported here, proving the pipeline
  * must scan the directory (define/background/) to find them.
  */
-export { backgroundFeatures } from '../../../core/src/dom/store/features/presets';
+export { backgroundFeatures } from '../../../../core/src/dom/store/features/presets';
