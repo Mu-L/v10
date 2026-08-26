@@ -26,10 +26,18 @@ const createPackConfig = (mode: PackageBuildMode): PackUserConfig => ({
     'dom/tiktok/index': './src/dom/tiktok/index.ts',
     'dom/twitch/index': './src/dom/twitch/index.ts',
     'dom/vimeo/index': './src/dom/vimeo/index.ts',
+    'dom/wistia/index': './src/dom/wistia/index.ts',
+    'dom/wistia/server': './src/dom/wistia/server.ts',
     'dom/youtube/index': './src/dom/youtube/index.ts',
     'dom/mux/index': './src/dom/mux/index.ts',
     'dom/mux/source/index': './src/dom/mux/source/index.ts',
     'dom/google-cast/index': './src/dom/google-cast/index.ts',
+  },
+  deps: {
+    // `WistiaMedia` extends Wistia's own element, so its declarations reach for the package's types. Those do
+    // not bundle: they import a file the published package omits, and pull in `preact`'s CommonJS ones. Left
+    // as an import for the consumer's compiler to resolve, which is where it resolves correctly.
+    neverBundle: [/^@wistia\//, /^preact/],
   },
   define: {
     __DEV__: mode === 'dev' ? 'true' : 'false',
