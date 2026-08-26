@@ -1,9 +1,10 @@
 import rss from '@astrojs/rss';
+import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 
 import { SITE_TITLE } from '@/consts';
 
-export async function GET(context) {
+export const GET: APIRoute = async (context) => {
   const entries = (await getCollection('changelog')).sort(
     (a, b) =>
       b.data.date.valueOf() - a.data.date.valueOf() ||
@@ -13,7 +14,7 @@ export async function GET(context) {
   return rss({
     title: `${SITE_TITLE} Changelog`,
     description: 'New features, fixes, and improvements in every Video.js release',
-    site: context.site,
+    site: context.site!,
     trailingSlash: false,
     items: entries.map((entry) => ({
       title: `v${entry.data.version}`,
@@ -22,4 +23,4 @@ export async function GET(context) {
       link: `/changelog/${entry.id}`,
     })),
   });
-}
+};

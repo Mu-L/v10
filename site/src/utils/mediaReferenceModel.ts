@@ -1,17 +1,69 @@
 /** Centralized media API subsection definitions shared by the renderer and the generated table of contents. */
 
+import type { HtmlMediaReference, MediaReference, ReactMediaReference } from '@/types/media-reference';
+
+import type { TocHeading } from './componentReferenceModel';
+
+type MediaReferenceSectionKey =
+  | 'attributes'
+  | 'properties'
+  | 'engineOptions'
+  | 'methods'
+  | 'events'
+  | 'cssCustomProperties'
+  | 'props'
+  | 'ref';
+
+export interface MediaReferenceSection {
+  key: MediaReferenceSectionKey;
+  title: string;
+  id: string;
+  depth: number;
+}
+
+export interface MediaReferenceEngine {
+  key: string;
+  id: string;
+  title: string;
+}
+
+interface MediaPlatformModel<Reference> {
+  sections: MediaReferenceSection[];
+  data: Reference;
+}
+
+export interface MediaReferenceModel {
+  mediaName: string;
+  engines: MediaReferenceEngine[];
+  heading: { id: string; depth: number; text: string };
+  platforms: {
+    html: MediaPlatformModel<HtmlMediaReference>;
+    react?: MediaPlatformModel<ReactMediaReference>;
+  };
+  data: MediaReference;
+}
+
+interface MediaSubsectionDefinition<Reference> {
+  key: MediaReferenceSectionKey;
+  title: string;
+  id: string;
+  isEmpty: (source: Reference, ref: MediaReference) => boolean;
+}
+
 /**
  * Options under `source.engine`, shared by both platforms: the structured source has the same shape in HTML and React,
  * so the section is defined once and placed after the properties or props it extends.
  */
-const ENGINE_OPTIONS_SUBSECTION = Object.freeze({
-  key: 'engineOptions',
-  title: 'Engine options',
-  id: 'engine-options',
-  isEmpty: (_platform, ref) => Object.keys(ref.engineOptions ?? {}).length === 0,
-});
+function createEngineOptionsSubsection<Reference>(): MediaSubsectionDefinition<Reference> {
+  return Object.freeze({
+    key: 'engineOptions',
+    title: 'Engine options',
+    id: 'engine-options',
+    isEmpty: (_platform: Reference, ref: MediaReference) => Object.keys(ref.engineOptions ?? {}).length === 0,
+  });
+}
 
-const HTML_SUBSECTIONS = Object.freeze([
+const HTML_SUBSECTIONS: readonly MediaSubsectionDefinition<HtmlMediaReference>[] = Object.freeze([
   {
     key: 'attributes',
     title: 'Attributes',
@@ -26,7 +78,7 @@ const HTML_SUBSECTIONS = Object.freeze([
     isEmpty: (html) =>
       Object.keys(html.properties?.definitions ?? {}).length === 0 && (html.properties?.native ?? []).length === 0,
   },
-  ENGINE_OPTIONS_SUBSECTION,
+  createEngineOptionsSubsection<HtmlMediaReference>(),
   {
     key: 'methods',
     title: 'Methods',
@@ -47,14 +99,14 @@ const HTML_SUBSECTIONS = Object.freeze([
   },
 ]);
 
-const REACT_SUBSECTIONS = Object.freeze([
+const REACT_SUBSECTIONS: readonly MediaSubsectionDefinition<ReactMediaReference>[] = Object.freeze([
   {
     key: 'props',
     title: 'Props',
     id: 'props',
     isEmpty: (react) => !react.acceptsNativeProps && Object.keys(react.props ?? {}).length === 0,
   },
-  ENGINE_OPTIONS_SUBSECTION,
+  createEngineOptionsSubsection<ReactMediaReference>(),
   {
     key: 'ref',
     title: 'Ref',
@@ -69,7 +121,11 @@ const REACT_SUBSECTIONS = Object.freeze([
   },
 ]);
 
-function createSections(definitions, source, ref) {
+function createSections<Reference>(
+  definitions: readonly MediaSubsectionDefinition<Reference>[],
+  source: Reference,
+  ref: MediaReference
+): MediaReferenceSection[] {
   return definitions.flatMap((definition) => {
     if (definition.isEmpty(source, ref)) return [];
 
@@ -88,7 +144,7 @@ function createSections(definitions, source, ref) {
  * One entry per engine under `source.engine`, in the order the generator emitted them. Ids are lowercased so `hlsJs`
  * and `nativeHls` anchor predictably; titles are the exact path a reader types.
  */
-function createEngines(ref) {
+function createEngines(ref: MediaReference): MediaReferenceEngine[] {
   return Object.keys(ref.engineOptions ?? {}).map((key) => ({
     key,
     id: `engine-options-${key.toLowerCase()}`,
@@ -96,10 +152,23 @@ function createEngines(ref) {
   }));
 }
 
-export function createMediaReferenceModel(mediaName, ref) {
+export function createMediaReferenceModel(mediaName: string, ref: MediaReference | null): MediaReferenceModel | null {
   if (!ref) return null;
 
   const engines = createEngines(ref);
+  const platforms: MediaReferenceModel['platforms'] = {
+    html: {
+      sections: createSections(HTML_SUBSECTIONS, ref.platforms.html, ref),
+      data: ref.platforms.html,
+    },
+  };
+
+  if (ref.platforms.react) {
+    platforms.react = {
+      sections: createSections(REACT_SUBSECTIONS, ref.platforms.react, ref),
+      data: ref.platforms.react,
+    };
+  }
 
   return {
     mediaName,
@@ -109,28 +178,15 @@ export function createMediaReferenceModel(mediaName, ref) {
       depth: 2,
       text: 'API Reference',
     },
-    platforms: {
-      html: {
-        sections: createSections(HTML_SUBSECTIONS, ref.platforms.html, ref),
-        data: ref.platforms.html,
-      },
-      ...(ref.platforms.react
-        ? {
-            react: {
-              sections: createSections(REACT_SUBSECTIONS, ref.platforms.react, ref),
-              data: ref.platforms.react,
-            },
-          }
-        : {}),
-    },
+    platforms,
     data: ref,
   };
 }
 
-export function buildMediaReferenceTocHeadings(model) {
+export function buildMediaReferenceTocHeadings(model: MediaReferenceModel | null): TocHeading[] {
   if (!model) return [];
 
-  const headings = [
+  const headings: TocHeading[] = [
     {
       depth: model.heading.depth,
       text: model.heading.text,
@@ -138,7 +194,7 @@ export function buildMediaReferenceTocHeadings(model) {
     },
   ];
 
-  for (const framework of ['html', 'react']) {
+  for (const framework of ['html', 'react'] as const) {
     const platform = model.platforms[framework];
     if (!platform) continue;
 
