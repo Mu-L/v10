@@ -18,6 +18,12 @@ export function HlsJsMediaAirPlayMixin<Base extends Constructor<HlsEngineHost>>(
   class HlsJsMediaAirPlay extends (BaseClass as Constructor<HlsEngineHost>) {
     #sourceEl: HTMLSourceElement | null = null;
     #disconnect: AbortController | null = null;
+    /**
+     * The author's `disableRemotePlayback`, not the element's current value. Tracked because engines (hls.js or SPF)
+     * may alter the value internally (forced on for ManagedMediaSource), so the element on its own cannot tell an
+     * opt-out apart from an MMS requirement.
+     */
+    #authorDisableRemotePlayback = false;
 
     constructor(...args: any[]) {
       super(...args);
@@ -30,16 +36,31 @@ export function HlsJsMediaAirPlayMixin<Base extends Constructor<HlsEngineHost>>(
       });
     }
 
+    override get disableRemotePlayback(): boolean {
+      return super.disableRemotePlayback;
+    }
+
+    override set disableRemotePlayback(value: boolean) {
+      const changed = value !== this.#authorDisableRemotePlayback;
+
+      this.#authorDisableRemotePlayback = value;
+      super.disableRemotePlayback = value;
+
+      // We need to re initialize with the new value so WebKit reconsiders the source.
+      if (changed && this.#sourceEl) this.#init();
+    }
+
     #init(): void {
       this.#destroy();
 
       const target = this.target;
       if (!target || !isWebKitAirPlayCapable(target)) return;
 
-      // Counter the `disableRemotePlayback = true` that other code paths may
-      // set for MSE; AirPlay requires the picker to be available on this
-      // element.
-      target.disableRemotePlayback = false;
+      // Only toggle this if the author did not explicitly turn it off.
+      if (!this.#authorDisableRemotePlayback) {
+        target.disableRemotePlayback = false;
+      }
+
       this.#attachSource(target);
       this.#setupLoadControl(target);
     }

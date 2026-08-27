@@ -1,10 +1,15 @@
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { MediaError } from '../../../core/media-error';
 import type { RemotePlaybackLike } from '../../../core/types';
+import { CustomMediaElement } from '../../custom-media-element';
 import { addMediaComponent, type MediaComponent } from '../../media-host';
 import { NativeHlsMedia } from '../../native-hls';
 import { ContentTypes, Hls, HlsJsMedia, type HlsSource } from '../index';
+
+// Stands in for `<hlsjs-video>`, so markup reaches the media host the same way
+// the HTML binding delivers it.
+customElements.define('test-airplay-video', CustomMediaElement('video', HlsJsMedia as never));
 
 afterEach(() => {
   document.body.innerHTML = '';
@@ -1071,6 +1076,155 @@ describe('HlsJsMedia', () => {
 
       expect(media.liveEdgeStart).toBeNaN();
       expect(media.targetLiveWindow).toBeNaN();
+    });
+  });
+
+  describe('disableRemotePlayback', () => {
+    /**
+     * Jsdom implements neither WebKit's AirPlay APIs nor a `textTracks` list the hls.js mixins can subscribe to, so the
+     * AirPlay bridge needs both stubbed before it will run against a video element.
+     */
+    function stubAirPlay(video: HTMLVideoElement) {
+      Object.defineProperty(video, 'webkitCurrentPlaybackTargetIsWireless', {
+        configurable: true,
+        writable: true,
+        value: false,
+      });
+      Object.defineProperty(video, 'textTracks', {
+        configurable: true,
+        value: Object.assign(new EventTarget(), { length: 0, [Symbol.iterator]: () => [][Symbol.iterator]() }),
+      });
+      return video;
+    }
+
+    function createAirPlayVideo() {
+      const video = stubAirPlay(document.createElement('video'));
+
+      document.body.appendChild(video);
+      return video;
+    }
+
+    function createMseMedia() {
+      vi.spyOn(Hls, 'isSupported').mockReturnValue(true);
+      return new HlsJsMedia();
+    }
+
+    /** Builds the hls.js engine and attaches it to the already-attached element. */
+    function loadMse(media: HlsJsMedia) {
+      media.source = { src: 'https://example.com/master.m3u8', type: ContentTypes.M3U8 };
+      media.load();
+    }
+
+    /** Hls.js forces the flag on for ManagedMediaSource inside `attachMedia`. */
+    function simulateHlsJsMmsAttach(video: HTMLVideoElement) {
+      video.disableRemotePlayback = true;
+    }
+
+    /** Hls.js emits MEDIA_ATTACHED only once the media source opens. */
+    function fireMediaAttached(media: HlsJsMedia, video: HTMLVideoElement) {
+      media.engine!.trigger(Hls.Events.MEDIA_ATTACHED, { media: video } as any);
+      // The bridge appends the AirPlay fallback source in the same pass; if it
+      // is missing the bridge never ran and the assertions below prove nothing.
+      expect(video.querySelector('source')).not.toBeNull();
+    }
+
+    beforeEach(() => {
+      (globalThis as any).WebKitPlaybackTargetAvailabilityEvent = class {};
+    });
+
+    afterEach(() => {
+      delete (globalThis as any).WebKitPlaybackTargetAvailabilityEvent;
+    });
+
+    it('enables AirPlay when nothing opted out', () => {
+      const video = createAirPlayVideo();
+      const media = createMseMedia();
+
+      media.attach(video);
+      loadMse(media);
+
+      simulateHlsJsMmsAttach(video);
+      fireMediaAttached(media, video);
+
+      expect(video.disableRemotePlayback).toBe(false);
+    });
+
+    it('honors a disableremoteplayback attribute on the custom element', () => {
+      // The binding layer converts markup into a media API call, so the opt-out
+      // is known before an engine exists rather than read off the element.
+      vi.spyOn(Hls, 'isSupported').mockReturnValue(true);
+      document.body.innerHTML = '<test-airplay-video disableremoteplayback></test-airplay-video>';
+
+      const el = document.querySelector('test-airplay-video') as HTMLElement & { host: HlsJsMedia };
+      const video = stubAirPlay(el.shadowRoot!.querySelector('video')!);
+      const media = el.host;
+
+      expect(media.disableRemotePlayback).toBe(true);
+
+      loadMse(media);
+      simulateHlsJsMmsAttach(video);
+      fireMediaAttached(media, video);
+
+      expect(video.disableRemotePlayback).toBe(true);
+    });
+
+    it('honors an opt-out set before attach once the engine attaches', () => {
+      // React's ordering: `useSyncProps` sets the prop during render, the ref
+      // attaches on commit, and the engine is built after that.
+      const video = createAirPlayVideo();
+      const media = createMseMedia();
+
+      media.disableRemotePlayback = true;
+      media.attach(video);
+      loadMse(media);
+
+      simulateHlsJsMmsAttach(video);
+      fireMediaAttached(media, video);
+
+      expect(video.disableRemotePlayback).toBe(true);
+    });
+
+    it('ignores a flag only ever set on the video element', () => {
+      const video = createAirPlayVideo();
+
+      video.disableRemotePlayback = true;
+
+      const media = createMseMedia();
+
+      media.attach(video);
+      loadMse(media);
+      fireMediaAttached(media, video);
+
+      expect(video.disableRemotePlayback).toBe(false);
+    });
+
+    it('honors the media API set before the engine is created', () => {
+      const video = createAirPlayVideo();
+      const media = createMseMedia();
+
+      media.attach(video);
+      media.disableRemotePlayback = true;
+
+      loadMse(media);
+
+      simulateHlsJsMmsAttach(video);
+      fireMediaAttached(media, video);
+
+      expect(video.disableRemotePlayback).toBe(true);
+    });
+
+    it('honors the media API set after the engine attached', () => {
+      const video = createAirPlayVideo();
+      const media = createMseMedia();
+
+      media.attach(video);
+      loadMse(media);
+
+      simulateHlsJsMmsAttach(video);
+      media.disableRemotePlayback = true;
+      fireMediaAttached(media, video);
+
+      expect(video.disableRemotePlayback).toBe(true);
     });
   });
 });

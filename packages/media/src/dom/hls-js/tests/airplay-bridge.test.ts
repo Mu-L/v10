@@ -37,6 +37,25 @@ class FakeHost extends EventTarget {
     super();
     this.engine = engine;
   }
+
+  attach(target: HTMLMediaElement) {
+    this.target = target;
+  }
+
+  // Mirrors `HTMLMediaElementHost`: media props forward to the attached target
+  // and are dropped while nothing is attached.
+  get disableRemotePlayback(): boolean {
+    return this.target?.disableRemotePlayback ?? false;
+  }
+
+  set disableRemotePlayback(value: boolean) {
+    if (this.target) this.target.disableRemotePlayback = value;
+  }
+}
+
+/** Hls.js forces the flag on for ManagedMediaSource inside `attachMedia`. */
+function simulateHlsJsMmsAttach(video: HTMLVideoElement) {
+  video.disableRemotePlayback = true;
 }
 
 const AirPlayHost = HlsJsMediaAirPlayMixin(
@@ -85,17 +104,133 @@ describe('HlsJsMediaAirPlayMixin', () => {
     expect(source?.src).toContain('master.m3u8');
   });
 
-  it('sets disableRemotePlayback = false on the target', () => {
-    const engine = createEngine();
-    const host = new AirPlayHost(engine);
-    const video = createVideo();
+  describe('disableRemotePlayback', () => {
+    it('clears the flag hls.js set when no author opted out', () => {
+      const engine = createEngine();
+      const host = new AirPlayHost(engine);
+      const video = createVideo();
 
-    video.disableRemotePlayback = true;
-    host.target = video;
+      host.attach(video);
+      simulateHlsJsMmsAttach(video);
 
-    (engine as any).emit(Hls.Events.MEDIA_ATTACHED);
+      (engine as any).emit(Hls.Events.MEDIA_ATTACHED);
 
-    expect(video.disableRemotePlayback).toBe(false);
+      expect(video.disableRemotePlayback).toBe(false);
+    });
+
+    it('preserves an opt-out set through the media API before attach', () => {
+      const engine = createEngine();
+      const host = new AirPlayHost(engine);
+      const video = createVideo();
+
+      host.disableRemotePlayback = true;
+      host.attach(video);
+      simulateHlsJsMmsAttach(video);
+
+      (engine as any).emit(Hls.Events.MEDIA_ATTACHED);
+
+      expect(video.disableRemotePlayback).toBe(true);
+    });
+
+    it('preserves an opt-out set through the media API after attach', () => {
+      // `attachMedia` writes the flag synchronously but MEDIA_ATTACHED only
+      // fires once the media source opens, so an opt-out can land in between.
+      const engine = createEngine();
+      const host = new AirPlayHost(engine);
+      const video = createVideo();
+
+      host.attach(video);
+      simulateHlsJsMmsAttach(video);
+      host.disableRemotePlayback = true;
+
+      (engine as any).emit(Hls.Events.MEDIA_ATTACHED);
+
+      expect(video.disableRemotePlayback).toBe(true);
+    });
+
+    it('clears the flag again once the author opts back in', () => {
+      const engine = createEngine();
+      const host = new AirPlayHost(engine);
+      const video = createVideo();
+
+      host.disableRemotePlayback = true;
+      host.attach(video);
+      host.disableRemotePlayback = false;
+      simulateHlsJsMmsAttach(video);
+
+      (engine as any).emit(Hls.Events.MEDIA_ATTACHED);
+
+      expect(video.disableRemotePlayback).toBe(false);
+    });
+
+    it('rebuilds the fallback source when the author opts back in after MEDIA_ATTACHED', () => {
+      const engine = createEngine('https://example.com/master.m3u8');
+      const host = new AirPlayHost(engine);
+      const video = createVideo();
+
+      host.disableRemotePlayback = true;
+      host.attach(video);
+      simulateHlsJsMmsAttach(video);
+
+      (engine as any).emit(Hls.Events.MEDIA_ATTACHED);
+
+      const before = video.querySelector('source');
+
+      expect(before).not.toBeNull();
+      expect(video.disableRemotePlayback).toBe(true);
+
+      host.disableRemotePlayback = false;
+
+      // A fresh `<source>` node, so WebKit re-reads the alternatives it decides
+      // AirPlay routes from, alongside the now-cleared flag.
+      const after = video.querySelector('source');
+
+      expect(after).not.toBeNull();
+      expect(after).not.toBe(before);
+      expect(video.disableRemotePlayback).toBe(false);
+    });
+
+    it('does not rebuild before the engine has attached', () => {
+      const engine = createEngine();
+      const host = new AirPlayHost(engine);
+      const video = createVideo();
+
+      host.attach(video);
+      host.disableRemotePlayback = true;
+
+      expect(video.querySelector('source')).toBeNull();
+    });
+
+    it('leaves the setup alone when the value is reassigned unchanged', () => {
+      const engine = createEngine('https://example.com/master.m3u8');
+      const host = new AirPlayHost(engine);
+      const video = createVideo();
+
+      host.attach(video);
+
+      (engine as any).emit(Hls.Events.MEDIA_ATTACHED);
+
+      const before = video.querySelector('source');
+
+      host.disableRemotePlayback = false;
+
+      expect(video.querySelector('source')).toBe(before);
+    });
+
+    it('ignores a flag only ever set on the element', () => {
+      // The binding layers convert markup and props into media API calls, so a
+      // value found on the element alone is hls.js's, not the author's.
+      const engine = createEngine();
+      const host = new AirPlayHost(engine);
+      const video = createVideo();
+
+      video.disableRemotePlayback = true;
+      host.attach(video);
+
+      (engine as any).emit(Hls.Events.MEDIA_ATTACHED);
+
+      expect(video.disableRemotePlayback).toBe(false);
+    });
   });
 
   it('updates the <source> src on MANIFEST_LOADING', () => {
