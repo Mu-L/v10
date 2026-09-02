@@ -10,8 +10,8 @@ import { useSkin } from '@app/shared/react/use-skin';
 import { useSource } from '@app/shared/react/use-source';
 import { SOURCES } from '@app/shared/sources';
 import type { Styling } from '@app/types';
+import { MuxData } from '@videojs/react/extensions/mux-data';
 import { DashVideo } from '@videojs/react/media/dash-video';
-import { MuxData } from '@videojs/react/media/mux-data';
 import { useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 
@@ -41,7 +41,7 @@ function App() {
             playsInline
             crossOrigin=""
           />
-          {/* Mux Data is an opt-in media component. It hands the dash.js engine to the Mux Data
+          {/* Mux Data is an opt-in extension. It hands the dash.js engine to the Mux Data
               SDK, so views carry stream-level detail. These streams aren't Mux-hosted, so the
               sandbox env key is what attributes the views. */}
           <MuxData playerSoftwareName="dash-video" envKey="o9b7ge20gji31ao0rub18505f" />

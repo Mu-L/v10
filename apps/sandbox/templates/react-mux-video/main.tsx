@@ -13,8 +13,8 @@ import { useSkin } from '@app/shared/react/use-skin';
 import { useSource } from '@app/shared/react/use-source';
 import { getChapters, isLiveSource, SOURCES } from '@app/shared/sources';
 import type { Styling } from '@app/types';
-import { GoogleCast } from '@videojs/react/media/google-cast';
-import { MuxData } from '@videojs/react/media/mux-data';
+import { GoogleCast } from '@videojs/react/extensions/google-cast';
+import { MuxData } from '@videojs/react/extensions/mux-data';
 import { MuxVideo } from '@videojs/react/media/mux-video';
 import { useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -75,7 +75,7 @@ function App() {
           >
             <Chapters tracks={getChapters(source)} />
           </MuxVideo>
-          {/* Mux Data and Cast are opt-in media components; no env key is needed for Mux-hosted sources. */}
+          {/* Mux Data and Cast are opt-in extensions; no env key is needed for Mux-hosted sources. */}
           <MuxData playerSoftwareName="mux-video" />
           <GoogleCast />
         </VideoSkinComponent>

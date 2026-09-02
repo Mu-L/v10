@@ -2,8 +2,8 @@ import '@app/styles.css';
 import { renderChapters } from '@app/shared/html/chapters';
 import { bindSandboxHtmlLocaleChange, prepareSandboxHtmlLocale, wrapSandboxHtmlI18n } from '@app/shared/html/i18n';
 import '@videojs/html/video/player';
-import '@videojs/html/media/google-cast';
-import '@videojs/html/media/mux-data';
+import '@videojs/html/extensions/google-cast';
+import '@videojs/html/extensions/mux-data';
 import '@videojs/html/media/mux-video';
 import { createHtmlSandboxState, createLatestLoader, renderMediaAttrs } from '@app/shared/html/sandbox-state';
 import { loadVideoSkinTag } from '@app/shared/html/skins';
@@ -52,7 +52,7 @@ async function render() {
         <mux-video${srcAttr} ${mediaAttrs} playsinline crossorigin>
           ${renderChapters(getChapters(state.source))}
         </mux-video>
-        <!-- Mux Data and Cast are opt-in media components; no env key is needed for Mux-hosted sources. -->
+        <!-- Mux Data and Cast are opt-in extensions; no env key is needed for Mux-hosted sources. -->
         <mux-data player-software-name="mux-video"></mux-data>
         <google-cast></google-cast>
       </${tag}>

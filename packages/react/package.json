@@ -44,6 +44,11 @@
       "development": "./dist/dev/icons/*/index.js",
       "default": "./dist/default/icons/*/index.js"
     },
+    "./extensions/*": {
+      "types": "./dist/dev/extensions/*/index.d.ts",
+      "development": "./dist/dev/extensions/*/index.js",
+      "default": "./dist/default/extensions/*/index.js"
+    },
     "./media/mux-video/hls-js": {
       "types": "./dist/dev/media/mux-video/hls-js.d.ts",
       "development": "./dist/dev/media/mux-video/hls-js.js",
