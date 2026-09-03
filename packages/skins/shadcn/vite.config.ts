@@ -1,12 +1,16 @@
-import { basename, relative, resolve } from 'node:path';
+import { basename, posix, relative, resolve } from 'node:path';
 
 import type { Plugin } from 'vite';
 import { defineConfig } from 'vite-plus';
 import type { UserConfig as PackUserConfig } from 'vite-plus/pack';
 
 import { baseConfig } from '../../../build/pack.ts';
+import corePackage from '../../core/package.json' with { type: 'json' };
+import htmlPackage from '../../html/package.json' with { type: 'json' };
+import reactPackage from '../../react/package.json' with { type: 'json' };
 // Vite+ loads this config before it can schedule builds, so bootstrap the private compiler from source.
 import type { ComponentGraph, ComponentGraphModule } from '../../vjsc/src/graph/index.ts';
+import { createComponentGraphStyles } from '../../vjsc/src/graph/index.ts';
 import {
   componentGraphPlugin,
   shadcnRegistryPlugin,
@@ -15,10 +19,16 @@ import {
   vjscPlugin,
 } from '../../vjsc/src/plugins/index.ts';
 import type { VjscRegistryItem } from '../../vjsc/src/shadcn/index.ts';
+import {
+  createHtmlSkinRegistration,
+  createSourceOwnedHtml,
+  renderHtmlSkins,
+  type RenderedHtmlSkin,
+} from '../build/framework/html.ts';
 import { frameworkSkinsPlugin } from '../build/framework/plugin.ts';
 import type { VideojsRegistryMeta } from '../registry/meta.ts';
 import { configureSkinModule } from '../vjsc/config';
-import { type SkinModuleMeta, type SkinName, skinStyles } from '../vjsc/meta';
+import { isSkinName, type SkinModuleMeta, type SkinName, skinStyles } from '../vjsc/meta';
 import { formatRegistrySources } from './format';
 
 const packageDir = resolve(import.meta.dirname, '..');
@@ -75,6 +85,14 @@ const registryPaths = {
   install: '@components/videojs',
   import: '@/components/videojs',
 } as const;
+const coreRequirement = `${corePackage.name}@${corePackage.version}`;
+const htmlRequirement = `${htmlPackage.name}@${htmlPackage.version}`;
+const reactRequirement = `${reactPackage.name}@${reactPackage.version}`;
+const registryPackages = {
+  [corePackage.name]: coreRequirement,
+  [htmlPackage.name]: htmlRequirement,
+  [reactPackage.name]: reactRequirement,
+};
 const publishedSkins = Object.keys(skinStyles).filter(isSkinName);
 const registryTargets = [
   { framework: 'react', styling: 'tailwind', output: 'r/react' },
@@ -87,6 +105,11 @@ interface RegistryTarget {
   readonly framework: 'html' | 'react';
   readonly styling: 'css' | 'tailwind';
   readonly output: string;
+}
+
+interface SourceStyles {
+  readonly dependencies: string[];
+  readonly imports: string[];
 }
 
 const graph = componentGraphPlugin<SkinModuleMeta>({
@@ -137,11 +160,7 @@ export const shadcnPackConfig: PackUserConfig = {
         imports: {
           '@videojs/utils/style': `${registryPaths.import}/lib/resolve-class-name`,
         },
-        packages: {
-          '@videojs/core': '@videojs/core@10.0.0-beta.32',
-          '@videojs/html': '@videojs/html@10.0.0-beta.32',
-          '@videojs/react': '@videojs/react@10.0.0-beta.32',
-        },
+        packages: registryPackages,
         meta: { framework: target.framework, style: target.styling },
         items: registryItems(target),
       })
@@ -158,18 +177,32 @@ export default defineConfig({
 
 function registryItems(
   target: RegistryTarget
-): (graph: ComponentGraph<SkinModuleMeta>) => readonly VjscRegistryItem<SkinModuleMeta>[] {
-  return (graph) => {
+): (
+  graph: ComponentGraph<SkinModuleMeta>
+) => readonly VjscRegistryItem<SkinModuleMeta>[] | Promise<readonly VjscRegistryItem<SkinModuleMeta>[]> {
+  return async (graph) => {
+    if (target.framework === 'html') {
+      const skins = await renderHtmlSkins(graph, {
+        workspaceDir: resolve(packageDir, '../..'),
+        styling: target.styling,
+      });
+
+      return [
+        ...(await Promise.all(skins.map((skin) => htmlSkinItem(skin, graph, target)))),
+        ...(target.styling === 'tailwind' ? [themeStyleItem(target)] : []),
+      ];
+    }
+
     const modules = [...graph.modules.values()];
     const items = modules.flatMap((module) => {
-      if (module.filename === registryUtils) return target.framework === 'react' ? [utilsItem(module, target)] : [];
+      if (module.filename === registryUtils) return [utilsItem(module, target)];
 
       if (module.transform.target !== target.framework || module.transform.style !== target.styling) return [];
 
       const meta = module.meta;
       if (meta?.type === 'skin') return module.transform.skin === meta.name ? [skinItem(module, meta, target)] : [];
 
-      if (meta?.type === 'component' && target.framework === 'react') {
+      if (meta?.type === 'component') {
         if (module.transform.skin !== undefined) return [];
 
         return privateComponents.has(meta.name)
@@ -177,7 +210,7 @@ function registryItems(
           : [componentItem(module, meta, target, graph)];
       }
 
-      if (target.framework === 'react' && module.transform.skin === undefined) {
+      if (module.transform.skin === undefined) {
         const sourcePath = moduleSourcePath(module);
         const privateName = privateModules.get(sourcePath);
 
@@ -189,6 +222,78 @@ function registryItems(
 
     return [...items, themeStyleItem(target), ...concernStyleItems(modules, target)];
   };
+}
+
+async function htmlSkinItem(
+  skin: RenderedHtmlSkin,
+  graph: ComponentGraph<SkinModuleMeta>,
+  target: RegistryTarget
+): Promise<VjscRegistryItem<SkinModuleMeta>> {
+  const meta = skin.root.meta;
+  const name = meta.style.theme === 'minimal' ? `${skin.preset}-minimal` : skin.preset;
+  const directory = meta.style.theme === 'minimal' ? `skins/${skin.preset}/minimal` : `skins/${skin.preset}`;
+  const template = createSourceOwnedHtml(skin.template);
+  const styleTarget = target.styling === 'css' ? `${directory}/skin.css` : 'styles/theme.css';
+  const styleImport = relativeRegistryImport(`${directory}/skin.ts`, styleTarget);
+  const registration = `${`import '${styleImport}';`}\n\n${createHtmlSkinRegistration(
+    template,
+    skin.modules,
+    'registry'
+  )}`;
+  const files: NonNullable<VjscRegistryItem<SkinModuleMeta>['files']> = [
+    {
+      path: 'skin.html',
+      target: `${registryPaths.install}/${directory}/skin.html`,
+      type: 'registry:file',
+      content: template,
+    },
+    {
+      path: 'skin.ts',
+      target: `${registryPaths.install}/${directory}/skin.ts`,
+      type: 'registry:file',
+      content: registration,
+    },
+  ];
+
+  if (target.styling === 'css') {
+    files.push({
+      path: 'skin.css',
+      target: `${registryPaths.install}/${directory}/skin.css`,
+      type: 'registry:style',
+      content: await createComponentGraphStyles(graph, skin.modules, {
+        label: name,
+        files: ['./styles/base.css'],
+      }),
+    });
+  }
+
+  return {
+    name,
+    type: 'registry:block',
+    title: meta.title,
+    description: meta.description,
+    categories: ['media', 'skins', skin.preset],
+    docs: skinDocs(skin.root, meta, meta.name, target, directory),
+    dependencies: ['@videojs/html'],
+    registryDependencies: target.styling === 'tailwind' ? ['@videojs/_style-theme'] : [],
+    files,
+    meta: {
+      role: 'skin',
+      framework: 'html',
+      styling: target.styling,
+      preset: skin.preset,
+      media: skin.preset.endsWith('audio') ? 'audio' : 'video',
+      theme: meta.style.theme,
+      public: true,
+    } satisfies VideojsRegistryMeta,
+    $vjsc: { kind: 'files', group: 'skins' },
+  };
+}
+
+function relativeRegistryImport(importer: string, target: string): string {
+  const specifier = posix.relative(posix.dirname(importer), target);
+
+  return specifier.startsWith('.') ? specifier : `./${specifier}`;
 }
 
 function privateComponentItem(
@@ -226,7 +331,9 @@ function skinItem(
   meta: Extract<SkinModuleMeta, { type: 'skin' }>,
   target: RegistryTarget
 ): VjscRegistryItem<SkinModuleMeta> {
-  const skin = meta.name as SkinName;
+  const skin = meta.name;
+  if (!isSkinName(skin)) throw new Error(`Unknown Skin registry module: \`${skin}\`.`);
+
   const preset = presetForSkin(skin);
   const theme = meta.style.theme;
   const directory = theme === 'minimal' ? `skins/${preset}/minimal` : `skins/${preset}`;
@@ -254,14 +361,7 @@ function skinItem(
       group: 'skins',
       target: (candidate, root) => skinModuleTarget(candidate, root, skin, target.framework),
       styleImports: ['styles/theme.css'],
-      ...(target.styling === 'css'
-        ? {
-            stylesheet: {
-              target: `${directory}/skin.css`,
-              import: true,
-            },
-          }
-        : {}),
+      stylesheet: target.styling === 'css' ? { target: `${directory}/skin.css`, import: true } : undefined,
     },
   };
 }
@@ -390,13 +490,13 @@ function sourceStyles(
   module: ComponentGraphModule<SkinModuleMeta>,
   target: RegistryTarget,
   graph: ComponentGraph<SkinModuleMeta>
-): { dependencies: string[]; imports: string[] } {
+): SourceStyles {
   const targets = new Set<string>(['styles/theme.css']);
 
   if (target.styling === 'css') {
     for (const id of graph.styles.get(module.id) ?? []) {
       const filename = virtualStyleFilename(id);
-      const styleTarget = filename ? styleTargets[filename as keyof typeof styleTargets] : undefined;
+      const styleTarget = isStyleTarget(filename) ? styleTargets[filename] : undefined;
 
       if (styleTarget) targets.add(styleTarget);
     }
@@ -457,12 +557,8 @@ function themeStyleItem(target: RegistryTarget): VjscRegistryItem<SkinModuleMeta
     title: 'Video.js media theme',
     description: 'Scoped media tokens, resets, preferences, and Tailwind compiler integration.',
     docs: 'Installed automatically with Video.js skins and UI components.',
-    ...(target.styling === 'tailwind'
-      ? {
-          cssVars: { theme: tailwindThemeVariables },
-          css: tailwindRegistryCss,
-        }
-      : {}),
+    cssVars: target.styling === 'tailwind' ? { theme: tailwindThemeVariables } : undefined,
+    css: target.styling === 'tailwind' ? tailwindRegistryCss : undefined,
     meta: privateStyleMeta(target),
     $vjsc: {
       kind: 'style',
@@ -537,10 +633,10 @@ function skinDocs(
   const mediaEntry = preset.endsWith('audio') ? 'hls-audio' : 'hlsjs-video';
 
   if (target.framework === 'html') {
-    return `Installs editable ${meta.title} source under \`${registryPaths.install}/${directory}\`. Requires \`@videojs/html@10.0.0-beta.32\`; import the matching Player and media registrations before using the installed light-DOM template.`;
+    return `Installs editable ${meta.title} source under \`${registryPaths.install}/${directory}\`. Requires \`${htmlRequirement}\`; import the matching Player and media registrations before using the installed light-DOM template.`;
   }
 
-  return `Requires \`@videojs/react@10.0.0-beta.32\`, which is installed with this item.
+  return `Requires \`${reactRequirement}\`, which is installed with this item.
 
 \`\`\`tsx
 import { ${media} } from '@videojs/react/media/${mediaEntry}';
@@ -577,12 +673,25 @@ function skinDirectory(skin: SkinName): string {
   return skin.startsWith('minimal-') ? `skins/${preset}/minimal` : `skins/${preset}`;
 }
 
-function isSkinName(value: string | undefined): value is SkinName {
-  return Boolean(value && value in skinStyles);
+function isStyleTarget(value: string | undefined): value is keyof typeof styleTargets {
+  return Boolean(value && value in styleTargets);
 }
 
 function presetForSkin(skin: SkinName): NonNullable<VideojsRegistryMeta['preset']> {
-  return skin.replace(/^(?:default|minimal)-/, '') as NonNullable<VideojsRegistryMeta['preset']>;
+  switch (skin) {
+    case 'default-audio':
+    case 'minimal-audio':
+      return 'audio';
+    case 'default-live-audio':
+    case 'minimal-live-audio':
+      return 'live-audio';
+    case 'default-live-video':
+    case 'minimal-live-video':
+      return 'live-video';
+    case 'default-video':
+    case 'minimal-video':
+      return 'video';
+  }
 }
 
 function reactHelperDependency(target: RegistryTarget): string[] {
