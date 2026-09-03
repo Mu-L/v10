@@ -33,7 +33,7 @@ describe('generated VJSC source', () => {
   afterEach(async () => {
     await server?.close();
     server = undefined;
-  }, 30_000);
+  }, 120_000);
 
   it('matches every transformed component and skin variant', async ({ expect }) => {
     const sources = await sourceModules();
@@ -93,23 +93,40 @@ describe('generated VJSC source', () => {
     expect(output).not.toContain('_jsxDEV');
     expect(output).not.toContain('/@fs/');
     expect(output).not.toMatch(/from ["']@videojs\/core\/vjsc["']/);
+    expect(output).not.toMatch(/media-(?:feedback-|thumbnail-|tooltip-)?surface/);
+    expect(output).not.toContain('media-popup-transition');
+    expect(output).not.toContain('media-popup-safe-area');
     expect(output).not.toMatch(/import ["']@videojs\/html\/icons\/element(?:\/minimal)?["']/);
     expect(output).not.toContain('from "@videojs/html/icons/element/register"');
     expect(output).toMatch(/import \{[^}]*registerIcons[^}]*\} from "@videojs\/html\/icons"/);
     expect(output).toContain('from "@videojs/html/icons"');
     expect(output).toContain('from "@videojs/html/icons/minimal"');
 
+    for (const target of targets) {
+      for (const style of styles) {
+        for (const filename of sources.filter((source) => sourceName(source).startsWith('components/'))) {
+          const name = sourceName(filename);
+
+          for (const [defaultSkin, minimalSkin] of [
+            ['default-video', 'minimal-video'],
+            ['default-live-video', 'minimal-live-video'],
+            ['default-audio', 'minimal-audio'],
+            ['default-live-audio', 'minimal-live-audio'],
+          ] as const) {
+            expect(
+              transformed.get(`${target}/${defaultSkin}/${style}/${name}`),
+              `${target}/${style}/${name} must be theme-invariant`
+            ).toBe(transformed.get(`${target}/${minimalSkin}/${style}/${name}`));
+          }
+        }
+      }
+    }
+
     const htmlPlayButton = generatedSection(output, 'html/default-video/css/components/buttons/play-button.tsx');
     const reactLiveButton = generatedSection(output, 'react/default-video/tailwind/components/buttons/live-button.tsx');
     const htmlLiveButton = generatedSection(output, 'html/minimal-video/css/components/buttons/live-button.tsx');
-    const reactAudioSettingsMenu = generatedSection(
-      output,
-      'react/default-audio/css/components/menus/audio-settings-menu.tsx'
-    );
-    const htmlAudioSettingsMenu = generatedSection(
-      output,
-      'html/default-audio/css/components/menus/audio-settings-menu.tsx'
-    );
+    const reactAudioSettingsMenu = generatedSection(output, 'react/default-audio/css/skins/audio/settings-menu.tsx');
+    const htmlAudioSettingsMenu = generatedSection(output, 'html/default-audio/css/skins/audio/settings-menu.tsx');
     const reactPlaybackRateSubmenu = generatedSection(
       output,
       'react/default-audio/css/components/menus/playback-rate-submenu.tsx'
@@ -165,7 +182,7 @@ describe('generated VJSC source', () => {
     expect(htmlPlaybackRateSubmenu).toContain('data-part="value"');
     expect(htmlPlaybackRateSubmenu).not.toContain('PlaybackRateRadioGroup.Root');
     expect(reactDefaultAudio).toContain('export interface DefaultAudioSkinProps');
-    expect(reactDefaultAudio).toContain('media-skin--default media-skin--audio');
+    expect(reactDefaultAudio).toContain('media-skin media-skin--audio');
     expect(htmlMinimalAudio).toContain('export interface MinimalAudioSkinProps');
     expect(htmlMinimalAudio).toContain('media-skin--minimal media-skin--audio');
     expect(reactCaptionsMenu).toContain('<Menu.Trigger render={<Button />}');
@@ -174,13 +191,13 @@ describe('generated VJSC source', () => {
     expect(htmlCaptionsMenu).toContain('<button commandfor="__vjsc-id-<module>');
     expect(htmlCaptionsMenu).not.toContain('menu-for');
     expect(reactDefaultLiveVideo).toContain('export interface DefaultLiveVideoSkinProps');
-    expect(reactDefaultLiveVideo).toContain('media-skin--default media-skin--live-video');
+    expect(reactDefaultLiveVideo).toContain('media-skin media-skin--live-video');
     expect(htmlMinimalLiveVideo).toContain('export interface MinimalLiveVideoSkinProps');
     expect(htmlMinimalLiveVideo).toContain('media-skin--minimal media-skin--live-video');
     expect(reactDefaultLiveVideo).not.toContain('TimeSlider');
     expect(htmlMinimalLiveVideo).not.toContain('media-time-slider');
     expect(reactDefaultLiveAudio).toContain('export interface DefaultLiveAudioSkinProps');
-    expect(reactDefaultLiveAudio).toContain('media-skin--default media-skin--live-audio');
+    expect(reactDefaultLiveAudio).toContain('media-skin media-skin--live-audio');
     expect(htmlMinimalLiveAudio).toContain('export interface MinimalLiveAudioSkinProps');
     expect(htmlMinimalLiveAudio).toContain('media-skin--minimal media-skin--live-audio');
     expect(reactDefaultLiveAudio).not.toContain('AudioTimeSlider');
@@ -224,8 +241,8 @@ function generatedModules(sources: readonly string[]): GeneratedModule[] {
       for (const style of styles) {
         for (const filename of sources) {
           const name = sourceName(filename);
-          const ownedSkin = /^skins\/([^/]+)\//.exec(name)?.[1];
-          if (ownedSkin && ownedSkin !== skin) continue;
+          const owner = /^skins\/([^/]+)\//.exec(name)?.[1];
+          if (owner && !supportsSkin(owner, skin)) continue;
 
           const parameters = new URLSearchParams({ target, skin, style });
           const key = `${target}/${skin}/${style}/${name}`;
@@ -237,6 +254,18 @@ function generatedModules(sources: readonly string[]): GeneratedModule[] {
   }
 
   return modules;
+}
+
+function supportsSkin(owner: string, skin: (typeof skins)[number]): boolean {
+  if ((skins as readonly string[]).includes(owner)) return owner === skin;
+
+  if (owner === 'audio') return skin.endsWith('audio');
+
+  if (owner === 'video') return skin === 'default-video' || skin === 'minimal-video';
+
+  if (owner === 'live-video') return skin === 'default-live-video' || skin === 'minimal-live-video';
+
+  return owner === 'shared';
 }
 
 function generatedKey(id: string, sourceNames: ReadonlyMap<string, string>): string | undefined {

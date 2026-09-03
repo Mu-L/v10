@@ -1,20 +1,24 @@
 import { styles } from 'vjsc/styles';
 
+import { popupSurface } from '../recipes/popup';
+import { sliderPreviewContent } from '../recipes/slider';
+import { themeRecipe } from '../recipes/theme';
+
 export default styles({
   file: 'sliders.css',
-  layer: 'videojs.components',
   rules: {
     root: {
       className: 'media-slider-thumbnail',
       utilities: [
+        ...sliderPreviewContent,
+        ...popupSurface,
         'group/thumbnail pointer-events-none overflow-hidden',
         'has-[[data-loading]]:aspect-video has-[[data-loading]]:w-(--media-slider-preview-max-width)',
+        ...themeRecipe(
+          'left-1/2 bottom-[calc(100%+--spacing(9))] rounded-xl bg-black/90',
+          '[left:var(--media-preview-left,var(--media-slider-pointer))] bottom-[calc(100%+--spacing(14))] rounded-lg bg-black/90'
+        ),
       ],
-      variants: {
-        default: 'left-1/2 bottom-[calc(100%+--spacing(9))] rounded-xl bg-black/90',
-        minimal:
-          '[left:var(--media-preview-left,var(--media-slider-pointer))] bottom-[calc(100%+--spacing(14))] rounded-lg bg-black/90',
-      },
     },
     image: {
       className: 'media-slider-thumbnail-image',

@@ -1,16 +1,16 @@
 import * as $ from '@videojs/core/vjsc';
 import { Box } from 'vjsc/components';
 
-import { AudioPlayButton } from '../../components/buttons/audio-play-button';
 import { LiveButton } from '../../components/buttons/live-button';
 import { VolumePopover } from '../../components/controls/volume-popover';
-import surfaceStyles from '../../styles/surfaces/surface.styles';
+import { AudioPlayButton } from '../audio/play-button';
+import volumePopoverStyles from '../audio/volume-popover.styles';
 import styles from './controls.styles';
 
 export function MinimalLiveAudioControls() {
   return (
     <$.Controls.Root visibility="always">
-      <$.Controls.Content className={['media-controls', surfaceStyles.root, styles.root]}>
+      <$.Controls.Content className={['media-controls', styles.root]}>
         <$.Tooltip.Provider>
           <$.Controls.Group className={styles.start}>
             <AudioPlayButton />
@@ -20,7 +20,12 @@ export function MinimalLiveAudioControls() {
           <Box aria-hidden="true" className={styles.spacer} />
 
           <$.Controls.Group className={styles.end}>
-            <VolumePopover showTooltip side="left" orientation="horizontal" />
+            <VolumePopover
+              popupClassName={volumePopoverStyles.popup}
+              showTooltip
+              side="left"
+              orientation="horizontal"
+            />
           </$.Controls.Group>
         </$.Tooltip.Provider>
       </$.Controls.Content>

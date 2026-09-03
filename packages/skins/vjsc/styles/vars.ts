@@ -44,13 +44,77 @@ export const vars = {
     kind: 'internal',
     description: 'Theme control radius.',
   },
-  '--media-audio-controls-background-color': {
+  '--media-control-size': {
     kind: 'internal',
-    description: 'Background color shared by audio controls and their compact buffering overlay.',
+    description: 'Theme control size.',
   },
-  '--media-audio-text-color': {
+  '--media-control-corner-shape': {
     kind: 'internal',
-    description: 'Foreground color used by audio controls and popups.',
+    description: 'Theme control corner treatment.',
+  },
+  '--media-background': {
+    kind: 'internal',
+    description: 'Scoped Skin background color.',
+  },
+  '--media-foreground': {
+    kind: 'internal',
+    description: 'Scoped Skin foreground color.',
+  },
+  '--media-controls': {
+    kind: 'internal',
+    description: 'Scoped controls surface color.',
+  },
+  '--media-controls-foreground': {
+    kind: 'internal',
+    description: 'Scoped controls foreground color.',
+  },
+  '--media-popover': {
+    kind: 'internal',
+    description: 'Scoped popup surface color.',
+  },
+  '--media-popover-foreground': {
+    kind: 'internal',
+    description: 'Scoped popup foreground color.',
+  },
+  '--media-primary': {
+    kind: 'internal',
+    description: 'Resolved primary color for active controls and slider fills.',
+  },
+  '--media-primary-foreground': {
+    kind: 'internal',
+    description: 'Resolved foreground color rendered on the primary color.',
+  },
+  '--media-accent': {
+    kind: 'internal',
+    description: 'Scoped hover and highlighted-item color.',
+  },
+  '--media-accent-foreground': {
+    kind: 'internal',
+    description: 'Scoped foreground color rendered on the accent color.',
+  },
+  '--media-muted': {
+    kind: 'internal',
+    description: 'Scoped muted surface color.',
+  },
+  '--media-muted-foreground': {
+    kind: 'internal',
+    description: 'Scoped muted foreground color.',
+  },
+  '--media-border': {
+    kind: 'internal',
+    description: 'Scoped border color.',
+  },
+  '--media-ring': {
+    kind: 'internal',
+    description: 'Scoped focus-ring color.',
+  },
+  '--media-shadow-sm': {
+    kind: 'internal',
+    description: 'Scoped small surface shadow.',
+  },
+  '--media-caption-controls-y': {
+    kind: 'internal',
+    description: 'Caption offset while controls are visible.',
   },
   '--media-default-accent-color': {
     kind: 'internal',
@@ -76,10 +140,6 @@ export const vars = {
     kind: 'internal',
     description: 'Anchor name used by the menu highlight.',
   },
-  '--media-menu-parent-translate': {
-    kind: 'internal',
-    description: 'Direction-aware offset used while a settings menu shows a submenu.',
-  },
   '--media-menu-transition-duration': {
     kind: 'internal',
     description: 'Duration shared by settings menu panel and size transitions.',
@@ -87,14 +147,6 @@ export const vars = {
   '--media-popup-translate-distance': {
     kind: 'internal',
     description: 'Entry translation distance shared by popup transitions.',
-  },
-  '--media-popup-translate-x-distance': {
-    kind: 'internal',
-    description: 'Direction-aware horizontal entry offset for popup transitions.',
-  },
-  '--media-popup-translate-y-distance': {
-    kind: 'internal',
-    description: 'Direction-aware vertical entry offset for popup transitions.',
   },
   '--media-preview-end-inset': {
     kind: 'internal',
@@ -135,14 +187,6 @@ export const vars = {
   '--media-spacing': {
     kind: 'internal',
     description: 'Scoped Tailwind spacing unit scaled for fullscreen UI.',
-  },
-  '--media-submenu-translate': {
-    kind: 'internal',
-    description: 'Direction-aware entry offset for nested menu panels.',
-  },
-  '--media-surface-radius': {
-    kind: 'internal',
-    description: 'Theme surface radius.',
   },
   '--media-caption-track-delay': {
     kind: 'runtime',

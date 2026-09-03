@@ -1,17 +1,16 @@
 import * as $ from '@videojs/core/vjsc';
 
-import { AudioPlayButton } from '../../components/buttons/audio-play-button';
 import { SeekButton } from '../../components/buttons/seek-button';
 import { VolumePopover } from '../../components/controls/volume-popover';
-import { AudioSettingsMenu } from '../../components/menus/audio-settings-menu';
-import { AudioTimeSlider } from '../../components/sliders/audio-time-slider';
-import surfaceStyles from '../../styles/surfaces/surface.styles';
+import { AudioPlayButton } from '../audio/play-button';
+import { AudioSettingsMenu } from '../audio/settings-menu';
+import { AudioTimeSlider } from '../audio/time-slider';
 import styles from './controls.styles';
 
 export function DefaultAudioControls() {
   return (
     <$.Controls.Root visibility="always">
-      <$.Controls.Content className={['media-controls', surfaceStyles.root, styles.root]}>
+      <$.Controls.Content className={['media-controls', styles.root]}>
         <$.Tooltip.Provider>
           <$.Controls.Group className={styles.start}>
             <AudioPlayButton />

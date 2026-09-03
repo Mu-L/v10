@@ -1,5 +1,7 @@
 import { styles } from 'vjsc/styles';
 
+import { popupSurface } from '../../styles/recipes/popup';
+
 const timeButton = [
   'cursor-pointer rounded-sm tabular-nums outline-2 -outline-offset-2 outline-transparent',
   'supports-[corner-shape:squircle]:rounded-2xl supports-[corner-shape:squircle]:[corner-shape:squircle]',
@@ -9,12 +11,12 @@ const timeButton = [
 
 export default styles({
   file: 'controls.css',
-  layer: 'videojs.components',
   rules: {
     root: {
       className: 'media-controls-content',
       utilities: [
-        'relative z-20 flex items-center gap-2 rounded-[--spacing(3.5)] p-1 [color:var(--media-audio-text-color)]',
+        ...popupSurface,
+        'relative z-20 flex items-center gap-2 rounded-[--spacing(3.5)] bg-media-controls p-1 text-media-controls-foreground',
         'text-shadow-[0_1px_0_var(--media-shadow-current-color)]',
         '[--media-popover-side-offset:--spacing(3)] [--media-tooltip-side-offset:var(--media-popover-side-offset)]',
         '[--media-popover-boundary-offset:--spacing(3)] [--media-tooltip-boundary-offset:var(--media-popover-boundary-offset)]',
