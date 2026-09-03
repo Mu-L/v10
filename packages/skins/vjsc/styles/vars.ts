@@ -120,6 +120,10 @@ export const vars = {
     kind: 'internal',
     description: 'Skin fallback used when the public accent color is not configured.',
   },
+  '--media-internal-accent-text-base': {
+    kind: 'internal',
+    description: 'Theme color used to derive legible accent text when no public accent is configured.',
+  },
   '--media-focus-ring-color': {
     kind: 'internal',
     description: 'Contrast-aware focus-ring color selected by the active Skin.',
@@ -147,6 +151,14 @@ export const vars = {
   '--media-popup-translate-distance': {
     kind: 'internal',
     description: 'Entry translation distance shared by popup transitions.',
+  },
+  '--media-popup-translate-x-distance': {
+    kind: 'internal',
+    description: 'Resolved horizontal entry translation for a positioned popup.',
+  },
+  '--media-popup-translate-y-distance': {
+    kind: 'internal',
+    description: 'Resolved vertical entry translation for a positioned popup.',
   },
   '--media-preview-end-inset': {
     kind: 'internal',
