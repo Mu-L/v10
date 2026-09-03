@@ -56,6 +56,10 @@ export const vars = {
     kind: 'internal',
     description: 'Theme control size.',
   },
+  '--media-controls-radius': {
+    kind: 'internal',
+    description: 'Theme corner radius of the controls surface.',
+  },
   '--media-control-corner-shape': {
     kind: 'internal',
     description: 'Theme control corner treatment.',
@@ -114,9 +118,9 @@ export const vars = {
   },
   '--media-ring': {
     kind: 'internal',
-    description: 'Scoped focus-ring color.',
+    description: 'Scoped focus-ring color, contrast-aware per preset and forced-colors mode.',
   },
-  '--media-shadow-sm': {
+  '--media-shadow-surface': {
     kind: 'internal',
     description: 'Scoped small surface shadow.',
   },
@@ -136,11 +140,7 @@ export const vars = {
     kind: 'internal',
     description: 'Theme color used to derive legible accent text when no public accent is configured.',
   },
-  '--media-focus-ring-color': {
-    kind: 'internal',
-    description: 'Contrast-aware focus-ring color selected by the active Skin.',
-  },
-  '--media-controls-transition-duration': {
+  '--media-duration-controls': {
     kind: 'internal',
     description: 'Controls visibility transition duration.',
   },
@@ -148,7 +148,7 @@ export const vars = {
     kind: 'internal',
     description: 'Shared control icon size.',
   },
-  '--media-menu-item-border-radius': {
+  '--media-menu-item-radius': {
     kind: 'internal',
     description: 'Corner radius shared by menu items and the moving highlight.',
   },
@@ -156,7 +156,7 @@ export const vars = {
     kind: 'internal',
     description: 'Anchor name used by the menu highlight.',
   },
-  '--media-menu-transition-duration': {
+  '--media-duration-menu': {
     kind: 'internal',
     description: 'Duration shared by settings menu panel and size transitions.',
   },
@@ -215,6 +215,162 @@ export const vars = {
   '--media-spacing': {
     kind: 'internal',
     description: 'Scoped Tailwind spacing unit scaled for fullscreen UI.',
+  },
+  '--media-scrim': {
+    kind: 'internal',
+    description: 'Opaque base color for translucent overlays such as backdrops, indicator pills, and thumbnails.',
+  },
+  '--media-frame-border': {
+    kind: 'internal',
+    description: 'Resolved hairline drawn around the player, derived from the public border color.',
+  },
+  '--media-controls-gradient': {
+    kind: 'internal',
+    description: 'Theme gradient painted behind the video controls.',
+  },
+  '--media-indicator-gradient': {
+    kind: 'internal',
+    description: 'Theme gradient painted behind Minimal status and volume indicators.',
+  },
+  '--media-backdrop-filter-surface': {
+    kind: 'internal',
+    description: 'Backdrop filter shared by translucent surfaces; preferences switch it off.',
+  },
+  '--media-backdrop-filter-scrim': {
+    kind: 'internal',
+    description: 'Backdrop filter behind buffering and playback status scrims; preferences switch it off.',
+  },
+  '--media-backdrop-filter-dialog': {
+    kind: 'internal',
+    description: 'Backdrop filter behind dialogs per theme; preferences switch it off.',
+  },
+  '--media-shadow-surface-inset': {
+    kind: 'internal',
+    description: 'Inner highlight shared by translucent surfaces; preferences switch its strength.',
+  },
+  '--media-popup-radius': {
+    kind: 'internal',
+    description: 'Theme corner radius shared by menu popups and slider thumbnails.',
+  },
+  '--media-dialog-radius': {
+    kind: 'internal',
+    description: 'Theme corner radius of dialog popups.',
+  },
+  '--media-dialog-width': {
+    kind: 'internal',
+    description: 'Dialog popup width per theme.',
+  },
+  '--media-dialog-max-width': {
+    kind: 'internal',
+    description: 'Maximum dialog popup width per theme.',
+  },
+  '--media-duration-instant': {
+    kind: 'internal',
+    description: 'Shortest transition duration, also the reduced-motion target for every longer duration.',
+  },
+  '--media-duration-fast': {
+    kind: 'internal',
+    description: 'Transition duration for hover, focus, and highlight changes.',
+  },
+  '--media-duration': {
+    kind: 'internal',
+    description: 'Transition duration for icon swaps and control state changes.',
+  },
+  '--media-duration-slow': {
+    kind: 'internal',
+    description: 'Transition duration for previews, fills, and status entrances.',
+  },
+  '--media-duration-slower': {
+    kind: 'internal',
+    description: 'Transition duration for posters, dialog exits, and the default indicator entrance.',
+  },
+  '--media-duration-indicator': {
+    kind: 'internal',
+    description: 'Indicator enter and leave duration per theme, reduced with motion preferences.',
+  },
+  '--media-duration-slider': {
+    kind: 'internal',
+    description: 'Slider fill and thumb tracking duration; zero under reduced motion.',
+  },
+  '--media-slider-preview-offset': {
+    kind: 'internal',
+    description: 'Distance between the time slider and its thumbnail preview.',
+  },
+  '--media-slider-preview-label-offset': {
+    kind: 'internal',
+    description: 'Distance between the time slider and its time or chapter label.',
+  },
+  '--media-live-color': {
+    kind: 'internal',
+    description: 'Color of the live-edge indicator dot.',
+  },
+  '--media-shadow-thumb': {
+    kind: 'internal',
+    description: 'Theme shadow beneath slider thumbs.',
+  },
+  '--media-text-shadow-dialog': {
+    kind: 'internal',
+    description: 'Theme text shadow inside dialog popups.',
+  },
+  '--media-shadow-tooltip': {
+    kind: 'internal',
+    description: 'Theme tooltip shadow.',
+  },
+  '--media-duration-dialog': {
+    kind: 'internal',
+    description: 'Dialog enter duration per theme, reduced with motion preferences.',
+  },
+  '--media-delay-dialog': {
+    kind: 'internal',
+    description: 'Dialog transition delay, removed with motion preferences.',
+  },
+  '--media-hidden-scale': {
+    kind: 'internal',
+    description: 'Scale applied to hidden controls; neutral under reduced motion.',
+  },
+  '--media-hidden-blur': {
+    kind: 'internal',
+    description: 'Blur applied to hidden controls and indicators on fine pointers; zero under reduced motion.',
+  },
+  '--media-hidden-offset': {
+    kind: 'internal',
+    description: 'Distance hidden controls slide per theme; zero under reduced motion.',
+  },
+  '--media-hidden-indicator-scale': {
+    kind: 'internal',
+    description: 'Scale applied to entering and leaving indicators; neutral under reduced motion.',
+  },
+  '--media-hidden-indicator-offset': {
+    kind: 'internal',
+    description: 'Distance leaving indicators slide per theme; zero under reduced motion.',
+  },
+  '--media-hidden-playback-scale': {
+    kind: 'internal',
+    description: 'Scale applied to the entering and leaving playback status; neutral under reduced motion.',
+  },
+  '--media-hidden-icon-scale': {
+    kind: 'internal',
+    description: 'Scale of an inactive swapped icon; neutral under reduced motion.',
+  },
+  '--media-hidden-popup-scale': {
+    kind: 'internal',
+    description: 'Scale applied to entering and leaving popups; neutral under reduced motion.',
+  },
+  '--media-hidden-popup-blur': {
+    kind: 'internal',
+    description: 'Blur applied to entering and leaving popups; zero under reduced motion.',
+  },
+  '--media-hidden-preview-scale': {
+    kind: 'internal',
+    description: 'Scale applied to hidden slider preview content; neutral under reduced motion.',
+  },
+  '--media-hidden-preview-offset': {
+    kind: 'internal',
+    description: 'Distance hidden slider preview content sits below its resting position; zero under reduced motion.',
+  },
+  '--media-hidden-seek-offset': {
+    kind: 'internal',
+    description: 'Distance the seek indicator icon slides in from; zero under reduced motion.',
   },
   '--media-caption-track-delay': {
     kind: 'runtime',

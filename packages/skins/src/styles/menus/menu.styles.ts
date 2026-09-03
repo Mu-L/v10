@@ -1,13 +1,13 @@
 import { styles } from 'vjsc/styles';
 
 const menuItem = [
-  'relative flex cursor-pointer select-none items-center gap-1.5 rounded-(--media-menu-item-border-radius) px-2 py-1.5 text-start whitespace-nowrap',
-  'outline-2 -outline-offset-2 outline-transparent',
-  'hover:bg-media-control-hover hover:text-media-accent-text data-highlighted:bg-media-control-hover data-highlighted:text-media-accent-text',
-  'focus-visible:outline-white focus-visible:outline-offset-2',
+  'relative flex cursor-pointer select-none items-center gap-1.5 rounded-media-menu-item px-2 py-1.5 text-start whitespace-nowrap',
+  'focus-ring-media',
+  'media-highlighted:highlight-media',
+  'focus-visible:outline-media-ring focus-visible:outline-offset-2',
   'text-shadow-media',
-  'transition-[background-color,color] duration-100 [transition-timing-function:ease-in-out] motion-reduce:duration-50',
-  'supports-[top:anchor(top)]:duration-50 supports-[top:anchor(top)]:hover:duration-200 supports-[top:anchor(top)]:data-highlighted:duration-200',
+  'transition-[background-color,color] duration-media-fast ease-in-out',
+  'media-anchored:duration-media-instant media-anchored:media-highlighted:duration-media-slow',
 ] as const;
 
 const menuItemOption = [
@@ -17,26 +17,21 @@ const menuItemOption = [
 ] as const;
 
 const menuItemHighlight = [
-  'supports-[top:anchor(top)]:data-highlighted:[anchor-name:--media-menu-item-highlight-anchor]',
-  'supports-[top:anchor(top)]:data-highlighted:bg-transparent',
+  'media-anchored:data-highlighted:[anchor-name:--media-menu-item-highlight-anchor]',
+  'media-anchored:data-highlighted:bg-transparent',
 ] as const;
 
 const menuHighlight = [
   '[anchor-scope:--media-menu-item-highlight-anchor]',
-  'supports-[top:anchor(top)]:before:absolute',
-  'supports-[top:anchor(top)]:before:[position-anchor:--media-menu-item-highlight-anchor]',
-  'supports-[top:anchor(top)]:before:[inset:anchor(inside)]',
-  'supports-[top:anchor(top)]:before:[overflow-anchor:none]',
-  'supports-[top:anchor(top)]:before:pointer-events-none',
-  'supports-[top:anchor(top)]:before:rounded-(--media-menu-item-border-radius)',
-  'supports-[top:anchor(top)]:before:bg-media-control-hover',
-  'supports-[top:anchor(top)]:before:transition-[inset] supports-[top:anchor(top)]:before:duration-100 supports-[top:anchor(top)]:before:[transition-timing-function:ease-in-out]',
-  'supports-[top:anchor(top)]:has-data-[highlighted=]:before:duration-0',
+  'media-anchored:before:anchor-media-highlight',
+  'media-anchored:has-data-[highlighted=]:before:duration-0',
 ] as const;
 
 const menuGroup = ['flex [max-height:inherit] flex-col gap-0.5', ...menuHighlight] as const;
 
-const menuIcon = ['size-media-icon shrink-0 drop-shadow-media-icon'] as const;
+const menuIcon = ['shrink-0 drop-shadow-media-icon text-media-muted-foreground'] as const;
+
+const menuChevron = [...menuIcon, 'size-media-icon-sm'] as const;
 
 export default styles({
   file: 'menus.css',
@@ -44,27 +39,15 @@ export default styles({
     popup: {
       className: 'media-menu-popup',
       utilities: [
-        'm-0 min-w-44 max-w-(--media-menu-available-width) overflow-hidden! border-0 p-1 [--media-popup-side-offset:var(--media-popover-side-offset)]',
+        'm-0 min-w-44 max-w-(--media-menu-available-width) overflow-hidden! rounded-media-popup border-0 p-1 [--media-popup-side-offset:var(--media-popover-side-offset)]',
         'max-h-[min(var(--media-menu-available-height,--spacing(56)),--spacing(56))] overscroll-none',
         'h-(--media-menu-height) w-(--media-menu-width)',
-        'motion-reduce:[--media-menu-transition-duration:0ms]',
-        '[transition-property:opacity,filter,transform,scale]',
-        '[transition-duration:100ms] ease-out',
-        'data-starting-style:[transition-duration:100ms] data-starting-style:[transition-property:opacity,filter,transform,scale]',
-        'data-ending-style:[transition-duration:100ms] data-ending-style:[transition-property:opacity,filter,transform,scale]',
-        'motion-reduce:[transition-duration:0ms]!',
+        'transition-media-popup media-transitioning:transition-media-popup',
       ],
-      variants: {
-        default: 'rounded-[--spacing(3)]',
-        minimal: 'rounded-[--spacing(2.5)]',
-      },
     },
     resizablePopup: {
       className: 'media-menu-resizable-popup',
-      utilities: [
-        '[transition-property:opacity,filter,transform,scale,width,height]',
-        '[transition-duration:100ms,100ms,100ms,100ms,var(--media-menu-transition-duration),var(--media-menu-transition-duration)]',
-      ],
+      utilities: 'transition-media-menu-resize',
     },
     content: {
       className: 'media-menu-content',
@@ -72,18 +55,16 @@ export default styles({
         ...menuHighlight,
         'absolute max-h-[inherit] overflow-auto overscroll-none outline-hidden',
         'not-data-submenu:flex not-data-submenu:flex-col not-data-submenu:gap-0.5',
-        'transition-[translate,filter] duration-(--media-menu-transition-duration) ease-out',
+        'transition-[translate,filter] duration-media-menu ease-out',
         'not-data-submenu:inset-x-1 not-data-submenu:top-1',
         'not-data-submenu:data-[child-open]:-translate-x-full',
         'not-data-submenu:data-[child-open]:[&:dir(rtl)]:translate-x-full',
-        'not-data-submenu:data-[child-open]:blur-sm',
+        'not-data-submenu:data-[child-open]:blur-media-hidden',
         'not-data-submenu:data-[child-open]:before:hidden',
         'data-submenu:inset-x-0 data-submenu:top-0 data-submenu:z-10 data-submenu:[max-height:inherit] data-submenu:p-1',
-        'data-submenu:data-starting-style:pointer-events-none data-submenu:data-ending-style:pointer-events-none',
-        'data-submenu:data-starting-style:overflow-hidden data-submenu:data-ending-style:overflow-hidden',
-        'data-submenu:data-starting-style:translate-x-full data-submenu:data-ending-style:translate-x-full',
-        'data-submenu:data-starting-style:[&:dir(rtl)]:-translate-x-full data-submenu:data-ending-style:[&:dir(rtl)]:-translate-x-full',
-        'data-submenu:data-starting-style:blur-sm data-submenu:data-ending-style:blur-sm',
+        'data-submenu:media-transitioning:pointer-events-none data-submenu:media-transitioning:overflow-hidden',
+        'data-submenu:media-transitioning:translate-x-full data-submenu:media-transitioning:[&:dir(rtl)]:-translate-x-full',
+        'data-submenu:media-transitioning:blur-media-hidden',
       ],
     },
     radioGroup: {
@@ -104,11 +85,7 @@ export default styles({
     },
     separator: {
       className: 'media-menu-separator',
-      utilities: [
-        'my-1 block border-b border-media-border',
-        'opaque:border-white/25',
-        'forced-colors:border-[CanvasText]',
-      ],
+      utilities: 'my-1 block border-b border-media-border media-opaque:border-media-foreground/25',
     },
     hint: {
       className: 'media-menu-hint',
@@ -116,7 +93,7 @@ export default styles({
     },
     hintLabel: {
       className: 'media-menu-hint-label',
-      utilities: 'max-w-24 overflow-hidden text-ellipsis whitespace-nowrap',
+      utilities: 'max-w-24 truncate',
     },
     tier: {
       className: 'media-menu-tier',
@@ -124,7 +101,7 @@ export default styles({
     },
     badge: {
       className: 'media-menu-badge',
-      utilities: 'rounded-media-control bg-media-control-hover px-1.5 text-media-xs font-semibold',
+      utilities: 'rounded-media-control bg-media-accent px-1.5 text-media-xs font-semibold',
     },
     itemIndicator: {
       className: 'media-menu-item-indicator',
@@ -132,34 +109,26 @@ export default styles({
     },
     triggerItemIcon: {
       className: 'media-menu-trigger-item-icon',
-      utilities: [
-        ...menuIcon,
-        'text-media-muted-foreground',
-        'group-hover/menu-trigger-item:text-inherit group-data-highlighted/menu-trigger-item:text-inherit',
-      ],
+      utilities: [...menuIcon, 'size-media-icon', 'group-media-highlighted/menu-trigger-item:text-inherit'],
     },
     radioItemIcon: {
       className: 'media-menu-radio-item-icon',
-      utilities: [
-        ...menuIcon,
-        'text-media-muted-foreground',
-        'group-hover/menu-radio-item:text-inherit group-data-highlighted/menu-radio-item:text-inherit',
-      ],
+      utilities: [...menuIcon, 'size-media-icon', 'group-media-highlighted/menu-radio-item:text-inherit'],
     },
     forwardChevron: {
       className: 'media-menu-forward-chevron',
       utilities: [
-        ...menuIcon,
-        'size-3.5 text-media-muted-foreground [&:dir(rtl)]:[scale:-1_1]',
-        'group-hover/menu-trigger-item:text-inherit group-data-highlighted/menu-trigger-item:text-inherit',
+        ...menuChevron,
+        '[&:dir(rtl)]:[scale:-1_1]',
+        'group-media-highlighted/menu-trigger-item:text-inherit',
       ],
     },
     backChevron: {
       className: 'media-menu-back-chevron',
       utilities: [
-        ...menuIcon,
-        'size-3.5 rotate-180 text-media-muted-foreground [&:dir(rtl)]:rotate-0 [&:dir(rtl)]:[scale:1_1]',
-        'group-hover/menu-back-item:text-inherit group-data-highlighted/menu-back-item:text-inherit',
+        ...menuChevron,
+        'rotate-180 [&:dir(rtl)]:rotate-0 [&:dir(rtl)]:[scale:1_1]',
+        'group-media-highlighted/menu-back-item:text-inherit',
       ],
     },
     settingsTrigger: {
@@ -169,7 +138,7 @@ export default styles({
     settingsTriggerIcon: {
       className: 'media-settings-menu-trigger-icon',
       utilities: [
-        'transition-transform duration-150 ease-in-out motion-reduce:transition-none! motion-reduce:duration-0!',
+        'transition-transform duration-media-base ease-in-out motion-reduce:transition-none!',
         'group-aria-expanded/settings:rotate-90',
       ],
     },

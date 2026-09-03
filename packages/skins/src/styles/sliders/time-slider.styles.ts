@@ -17,16 +17,14 @@ export default styles({
         'group/chapter absolute inset-0 flex min-h-0 min-w-0 items-center justify-center',
         '[--media-chapter-inset-start:0.5] [--media-chapter-inset-end:0.5]',
         'first:[--media-chapter-inset-start:0] last:[--media-chapter-inset-end:0]',
-        'data-[orientation=horizontal]:[clip-path:inset(0_calc(100%-var(--media-slider-chapter-end))_0_var(--media-slider-chapter-start))]',
-        'data-[orientation=vertical]:[clip-path:inset(calc(100%-var(--media-slider-chapter-end))_0_var(--media-slider-chapter-start)_0)]',
+        'data-[orientation=horizontal]:clip-media-chapter-x data-[orientation=vertical]:clip-media-chapter-y',
       ],
     },
     chapterTrack: {
       className: 'media-time-slider-chapter-track',
       utilities: [
-        'motion-safe:transition-[height,width] motion-safe:duration-200 motion-safe:ease-out',
-        'data-[orientation=horizontal]:[clip-path:inset(0_calc(100%-var(--media-slider-chapter-end)+var(--media-spacing)*var(--media-chapter-inset-end))_0_calc(var(--media-slider-chapter-start)+var(--media-spacing)*var(--media-chapter-inset-start))_round_var(--media-control-radius))]',
-        'data-[orientation=vertical]:[clip-path:inset(calc(100%-var(--media-slider-chapter-end)+var(--media-spacing)*var(--media-chapter-inset-end))_0_calc(var(--media-slider-chapter-start)+var(--media-spacing)*var(--media-chapter-inset-start))_0_round_var(--media-control-radius))]',
+        'transition-[height,width] duration-media-slow ease-out',
+        'data-[orientation=horizontal]:clip-media-chapter-track-x data-[orientation=vertical]:clip-media-chapter-track-y',
         'group-data-highlighted/chapter:data-[orientation=horizontal]:h-1.75',
         'group-data-highlighted/chapter:data-[orientation=vertical]:w-1.75',
       ],
@@ -41,17 +39,16 @@ export default styles({
     },
     previewContent: {
       className: 'media-time-slider-preview-content',
-      utilities: 'flex tabular-nums',
+      utilities: 'flex bottom-[calc(100%+var(--media-slider-preview-label-offset))] tabular-nums',
       variants: {
-        default: 'left-1/2 bottom-[calc(100%+--spacing(12.5))] flex-col items-center',
+        default: 'left-1/2 flex-col items-center',
         minimal:
-          '[left:var(--media-preview-left,var(--media-slider-pointer))] bottom-[calc(100%+--spacing(7))] flex-row-reverse justify-center gap-2 px-3',
+          '[left:var(--media-preview-left,var(--media-slider-pointer))] flex-row-reverse justify-center gap-2 px-3',
       },
     },
     chapterTitle: {
       className: 'media-time-slider-chapter-title',
-      utilities:
-        'max-w-(--media-slider-preview-max-width) min-w-0 overflow-hidden text-ellipsis whitespace-nowrap empty:hidden',
+      utilities: 'max-w-(--media-slider-preview-max-width) min-w-0 truncate empty:hidden',
       variants: { default: 'px-6' },
     },
     value: {

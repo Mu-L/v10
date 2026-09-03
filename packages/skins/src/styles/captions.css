@@ -1,7 +1,7 @@
 @layer components {
   @scope (.media-skin) {
     :scope {
-      --media-caption-track-duration: var(--media-controls-transition-duration);
+      --media-caption-track-duration: var(--media-duration-controls);
       --media-caption-track-delay: 25ms;
       --media-caption-track-y: calc(var(--media-spacing) * -2);
     }
@@ -19,8 +19,9 @@
       --media-caption-track-y: var(--media-caption-controls-y);
     }
 
-    @container media-root (width > 672px) {
-      :scope[data-theme="minimal"][data-controls-visible] {
+    /* Matches the `--container-media-wide` layout breakpoint. */
+    @container media-root (width >= 42rem) {
+      :scope[data-theme="minimal"][data-controls-visible] video {
         --media-caption-track-y: calc(var(--media-spacing) * -12);
       }
     }

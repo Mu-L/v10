@@ -42,6 +42,12 @@ export interface TransformOptions {
 export interface VjscPluginOptions {
   readonly entries?: EntriesOptions | undefined;
   readonly transform: TransformOptions;
+  /**
+   * Write every resolved style utility as a Tailwind `@source inline()` entry so scanning sees computed candidates
+   * instead of raw style modules. `true` writes the manifest to the Vite cache directory and aliases it as
+   * `vjsc:candidates` for Tailwind entries to import; a string sets an explicit path instead.
+   */
+  readonly candidates?: string | boolean | undefined;
 }
 
 /**
@@ -96,7 +102,7 @@ export function createPluginPipeline<Node extends ModuleMeta = ModuleMeta>(
     htmlRuntimePlugin(),
     componentMetaPlugin(),
     targetJsxPlugin({ targets }),
-    stylePlugin(styles, diagnostics, styleLifecycle),
+    stylePlugin(styles, diagnostics, styleLifecycle, options.candidates),
     targetTransformPlugin({ targets }),
     compilerDirectivePlugin({ targets }),
     targetTypePlugin({ targets }),

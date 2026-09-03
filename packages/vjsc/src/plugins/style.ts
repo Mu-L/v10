@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
-import { stat } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 
 import type { Expression, ImportDeclaration, Node, Program } from '@oxc-project/types';
-import { isFunction } from '@videojs/utils/predicate';
+import { isFunction, isString } from '@videojs/utils/predicate';
 import { walk } from 'oxc-walker';
 import type { Plugin, RolldownMagicString } from 'rolldown';
 
@@ -28,6 +29,7 @@ import {
   utilityGroupsForRule,
 } from '../styles/resolved';
 import { moduleFilename, parseModuleId, type TransformModule } from '../utils/module-id';
+import { toPosixPath } from '../utils/path';
 import { mergeModuleBuildMeta } from './component-meta';
 
 const SCRIPT_ID = /\.[cm]?[jt]sx?(?:\?|$)/;
@@ -66,26 +68,69 @@ export interface StylePluginLifecycle {
 
 export type StylePluginDiagnostics = StyleDiagnosticsOptions | false | (() => StyleDiagnosticsOptions | false);
 
+/** Import specifier Tailwind entries use for the generated candidate manifest. */
+export const CANDIDATES_ALIAS = 'vjsc:candidates';
+
+/** Vite configuration fields the style plugin reads while registering the candidate manifest alias. */
+interface ViteUserConfig {
+  readonly root?: string | undefined;
+  readonly cacheDir?: string | undefined;
+}
+
+/** Vite configuration that lets Tailwind entries import the candidate manifest and recompile when it changes. */
+interface CandidateManifestViteConfig {
+  readonly resolve: { readonly alias: Array<{ find: string; replacement: string }> };
+  readonly server: { readonly watch: { readonly ignored: string[] } };
+}
+
+type StylePluginHooks = Plugin & {
+  config?(config: ViteUserConfig): CandidateManifestViteConfig | null;
+};
+
 export function stylePlugin(
   config: StylePluginConfig,
   diagnostics: StylePluginDiagnostics = {},
-  lifecycle?: StylePluginLifecycle
+  lifecycle?: StylePluginLifecycle,
+  candidates?: string | boolean
 ): Plugin {
   const designs = new Map<string, Promise<CachedDesignSystem>>();
   const styleCache = new Map<string, Promise<CachedStyles>>();
   const cssById = new Map<string, VirtualCssModule>();
   const cssByOwner = new Map<string, ReadonlySet<string>>();
   const reportedWarnings = new Set<string>();
+  let manifest: CandidateManifest | undefined;
   let cwd = process.cwd();
 
-  return {
+  const useManifest = (root: string, cacheDir?: string): CandidateManifest | undefined => {
+    if (!candidates) return undefined;
+
+    manifest ??= createCandidateManifest(
+      isString(candidates) ? resolve(root, candidates) : resolveCandidateManifestPath(root, cacheDir)
+    );
+    return manifest;
+  };
+
+  const plugin: StylePluginHooks = {
     name: 'vjsc:styles',
+    config(userConfig) {
+      const current = useManifest(resolve(userConfig.root ?? process.cwd()), userConfig.cacheDir);
+      if (!current) return null;
+
+      // Vite's watcher skips node_modules and its cache directory, so re-include the manifest; otherwise Tailwind
+      // keeps the CSS it compiled before style modules recorded their utilities.
+      return {
+        resolve: { alias: [{ find: CANDIDATES_ALIAS, replacement: current.path }] },
+        server: { watch: { ignored: [`!${escapeGlobPath(toPosixPath(current.path))}`] } },
+      };
+    },
     options(options) {
       cwd = resolve(options.cwd ?? process.cwd());
+      useManifest(cwd);
       return null;
     },
-    buildStart() {
+    async buildStart() {
       reportedWarnings.clear();
+      await manifest?.ensure();
     },
     resolveId(id) {
       return cssById.has(id) ? `\0${id}` : null;
@@ -119,6 +164,7 @@ export function stylePlugin(
 
         const styles = options.resolvedStyles ?? (await cachedStyles(styleCache, files));
 
+        await manifest?.record(styles);
         lifecycle?.onOwnerTransform(id, styles.watchFiles);
 
         if (styles.rules.length === 0) {
@@ -213,6 +259,8 @@ export function stylePlugin(
       },
     },
   };
+
+  return plugin;
 }
 
 function mergeStyleDiagnostics(diagnostics: readonly StyleDiagnostic[]): readonly StyleDiagnostic[] {
@@ -507,6 +555,94 @@ async function cachedDesignSystem(
 
   cache.set(input, loading);
   return loading;
+}
+
+interface CandidateManifest {
+  readonly path: string;
+  /** Create the manifest when it does not exist so Tailwind entries can import it before any module resolves. */
+  ensure(): Promise<void>;
+  /** Merge one resolved style set and rewrite the manifest when its candidates change. */
+  record(styles: ResolvedStyles): Promise<void>;
+}
+
+/**
+ * Render every utility of the given rules, including variant utilities, as Tailwind `@source inline()` entries. Extra
+ * candidates carry over entries from an earlier session so a restart never shrinks the manifest.
+ */
+export function renderCandidateManifest(rules: Iterable<ResolvedStyleRule>, extra: Iterable<string> = []): string {
+  const candidates = new Set<string>(extra);
+
+  for (const rule of rules) {
+    for (const utility of rule.utilities) candidates.add(utility);
+
+    for (const utilities of Object.values(rule.variants)) {
+      for (const utility of utilities) candidates.add(utility);
+    }
+  }
+
+  const lines = [...candidates].sort().map((candidate) => `@source inline(${JSON.stringify(candidate)});`);
+
+  return ['/* Generated by vjsc. Style module utilities for Tailwind source scanning. */', ...lines, ''].join('\n');
+}
+
+/** Default manifest location: the Vite cache directory of the package that owns `root`. */
+export function resolveCandidateManifestPath(root: string, cacheDir?: string): string {
+  const cache = cacheDir ? resolve(root, cacheDir) : resolve(packageRoot(root), 'node_modules/.vite');
+
+  return resolve(cache, 'vjsc/candidates.css');
+}
+
+function packageRoot(root: string): string {
+  let directory = resolve(root);
+
+  while (!existsSync(resolve(directory, 'package.json'))) {
+    const parent = dirname(directory);
+    if (parent === directory) return resolve(root);
+
+    directory = parent;
+  }
+
+  return directory;
+}
+
+/** Read the candidates an existing manifest lists. */
+export function parseCandidateManifest(content: string): string[] {
+  return [...content.matchAll(/^@source inline\(("(?:[^"\\]|\\.)*")\);$/gm)].map(([, json]) => JSON.parse(json!));
+}
+
+function escapeGlobPath(path: string): string {
+  return path.replace(/[[\]{}()*?!]/g, '\\$&');
+}
+
+function createCandidateManifest(path: string): CandidateManifest {
+  const rulesByModule = new Map<string, readonly ResolvedStyleRule[]>();
+  const persisted = new Set<string>();
+  let written: string | undefined;
+
+  const write = async (content: string): Promise<void> => {
+    if (content === written) return;
+
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, content);
+    written = content;
+  };
+
+  return {
+    path,
+    async ensure() {
+      if (written !== undefined) return;
+
+      written = await readFile(path, 'utf8').catch(() => undefined);
+
+      if (written === undefined) await write(renderCandidateManifest([]));
+      else for (const candidate of parseCandidateManifest(written)) persisted.add(candidate);
+    },
+    async record(styles) {
+      for (const [modulePath, rules] of styles.modules) rulesByModule.set(modulePath, [...rules.values()]);
+
+      await write(renderCandidateManifest([...rulesByModule.values()].flat(), persisted));
+    },
+  };
 }
 
 function cssVirtualId(fileName: string, source: string): string {

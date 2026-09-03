@@ -36,15 +36,59 @@ const skins = [
   'minimal-audio',
 ] as const;
 const skinContracts = {
-  'default-video': { exportName: 'DefaultVideoSkin', theme: 'default', preset: 'video' },
-  'minimal-video': { exportName: 'MinimalVideoSkin', theme: 'minimal', preset: 'video' },
-  'default-live-video': { exportName: 'DefaultLiveVideoSkin', theme: 'default', preset: 'live-video' },
-  'minimal-live-video': { exportName: 'MinimalLiveVideoSkin', theme: 'minimal', preset: 'live-video' },
-  'default-live-audio': { exportName: 'DefaultLiveAudioSkin', theme: 'default', preset: 'live-audio' },
-  'minimal-live-audio': { exportName: 'MinimalLiveAudioSkin', theme: 'minimal', preset: 'live-audio' },
-  'default-audio': { exportName: 'DefaultAudioSkin', theme: 'default', preset: 'audio' },
-  'minimal-audio': { exportName: 'MinimalAudioSkin', theme: 'minimal', preset: 'audio' },
-} as const satisfies Record<(typeof skins)[number], { exportName: string; theme: string; preset: string }>;
+  'default-video': {
+    exportName: 'DefaultVideoSkin',
+    theme: 'default',
+    preset: 'video',
+    stylesheet: 'video/controls.css',
+  },
+  'minimal-video': {
+    exportName: 'MinimalVideoSkin',
+    theme: 'minimal',
+    preset: 'video',
+    stylesheet: 'video/controls.css',
+  },
+  'default-live-video': {
+    exportName: 'DefaultLiveVideoSkin',
+    theme: 'default',
+    preset: 'live-video',
+    stylesheet: 'live-video/controls.css',
+  },
+  'minimal-live-video': {
+    exportName: 'MinimalLiveVideoSkin',
+    theme: 'minimal',
+    preset: 'live-video',
+    stylesheet: 'live-video/controls.css',
+  },
+  // Live audio controls are fully shared with the audio controls module.
+  'default-live-audio': {
+    exportName: 'DefaultLiveAudioSkin',
+    theme: 'default',
+    preset: 'live-audio',
+    stylesheet: 'audio/controls.css',
+  },
+  'minimal-live-audio': {
+    exportName: 'MinimalLiveAudioSkin',
+    theme: 'minimal',
+    preset: 'live-audio',
+    stylesheet: 'audio/controls.css',
+  },
+  'default-audio': {
+    exportName: 'DefaultAudioSkin',
+    theme: 'default',
+    preset: 'audio',
+    stylesheet: 'audio/controls.css',
+  },
+  'minimal-audio': {
+    exportName: 'MinimalAudioSkin',
+    theme: 'minimal',
+    preset: 'audio',
+    stylesheet: 'audio/controls.css',
+  },
+} as const satisfies Record<
+  (typeof skins)[number],
+  { exportName: string; theme: string; preset: string; stylesheet: string }
+>;
 const styles = ['css', 'tailwind'] as const;
 const variants = frameworks.flatMap((framework) =>
   skins.flatMap((skin) => styles.map((style) => ({ framework, skin, style })))
@@ -94,7 +138,7 @@ describe('Skins Vite workflow', () => {
     for (const variant of variants) {
       const url = skinUrl(variant);
       const result = await server.transformRequest(url);
-      const { exportName: skinExport, theme, preset } = skinContracts[variant.skin];
+      const { exportName: skinExport, theme, preset, stylesheet } = skinContracts[variant.skin];
 
       expect(result?.code, url).toContain(skinExport);
       expect(result?.code, url).toContain('data-theme');
@@ -113,7 +157,7 @@ describe('Skins Vite workflow', () => {
 
       if (variant.style === 'css') {
         const code = controls?.code ?? '';
-        const controlsStyle = encodeURIComponent(`${preset}/controls.css`);
+        const controlsStyle = encodeURIComponent(stylesheet);
 
         expect(code, url).toContain('virtual:vjsc/css');
         expect(code, url).toContain('/base.css');
@@ -151,12 +195,13 @@ describe('Skins Vite workflow', () => {
     expect(code).not.toContain('media-menu-resizable-popup');
   }, 30_000);
 
-  it('uses the captions button itself as the menu trigger', async () => {
+  it('uses the captions button itself as the menu trigger and labels its tooltip from it', async () => {
     const react = await server.transformRequest(reactCaptionsMenuUrl);
     const html = await server.transformRequest(htmlCaptionsMenuUrl);
 
     expect(react?.code).toMatch(/_jsxDEV\(MenuPrimitive\.Trigger, \{\s+render: .*_jsxDEV\(CaptionsButton/);
-    expect(react?.code).not.toContain('ButtonTooltip');
+    expect(react?.code).toMatch(/_jsxDEV\(ButtonTooltip, \{[\s\S]*?_jsxDEV\(MenuPrimitive\.Trigger/);
+    expect(react?.code).not.toMatch(/_jsxDEV\(ButtonTooltip, \{\s+label:/);
     expect(html?.code).toMatch(/_jsxDEV\(CaptionsButton, \{\s+commandfor:[\s\S]*?className/);
     expect(html?.code).not.toContain('data-vjsc-render-captions-button');
   }, 30_000);
@@ -174,14 +219,16 @@ describe('Skins Vite workflow', () => {
     const css = isString(loaded) ? loaded : loaded?.code;
     if (isUndefined(css)) throw new Error(`Expected Vite to load \`${resolvedId}\`.`);
 
-    expect(css).toMatch(/\.media-play-button-restart-icon \{\s+opacity: 0;\s+scale: 0;/);
+    expect(css).toMatch(
+      /\.media-play-button-restart-icon \{\s+scale: var\(--media-hidden-icon-scale\) var\(--media-hidden-icon-scale\);\s+opacity: 0;/
+    );
   }, 30_000);
 
   it('includes Shadow DOM utilities only for HTML targets', async () => {
     const html = await server.transformRequest(htmlPosterUrl);
     const react = await server.transformRequest(reactPosterUrl);
 
-    expect(html?.code).toContain('[&>slot::slotted(img)]:absolute');
+    expect(html?.code).toContain('[&>slot::slotted(img)]:layer-media');
     expect(react?.code).not.toContain('::slotted');
   }, 30_000);
 

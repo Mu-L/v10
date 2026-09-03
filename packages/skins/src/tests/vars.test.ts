@@ -15,6 +15,7 @@ describe('vars', () => {
           entry.isFile() &&
           /\.(?:css|ts|tsx)$/.test(entry.name) &&
           entry.name !== 'vars.ts' &&
+          !entry.name.includes('.generated.') &&
           !entry.parentPath.includes('/src/tests')
       )
       .map((entry) => resolve(entry.parentPath, entry.name));
@@ -29,11 +30,39 @@ describe('vars', () => {
     expect([...referenced].sort()).toEqual(Object.keys(vars).sort());
   });
 
+  test('declares every internal token the shared theme keys alias', async () => {
+    const stylesRoot = resolve(import.meta.dirname, '../styles');
+    const source = await readFile(resolve(stylesRoot, 'tailwind.css'), 'utf8');
+    const themeBlock = /@theme inline \{([\s\S]*?)\n\}/.exec(source)?.[1] ?? '';
+    const themeFiles = (await readdir(resolve(stylesRoot, 'themes'))).filter((name) => name.endsWith('.css'));
+    const kinds = new Map(Object.entries(vars).map(([name, variable]) => [name, variable.kind]));
+    const declared = new Set<string>();
+
+    for (const name of themeFiles) {
+      const theme = await readFile(resolve(stylesRoot, 'themes', name), 'utf8');
+
+      for (const match of theme.matchAll(/(--media-[a-zA-Z0-9_-]+):/g)) declared.add(match[1]!);
+    }
+
+    // Aliases with a fallback stay valid without a declaration, so only bare `var()` references count.
+    const aliased = [...themeBlock.matchAll(/var\((--media-[a-zA-Z0-9_-]+)\)/g)].map(([, name]) => name!);
+    const missing = aliased.filter((name) => kinds.get(name) === 'internal' && !declared.has(name));
+
+    expect(aliased.length).toBeGreaterThan(20);
+    expect([...new Set(missing)]).toEqual([]);
+  });
+
   test('reserves the media prefix for classified contracts', async () => {
     const stylesRoot = resolve(import.meta.dirname, '../styles');
     const entries = await readdir(stylesRoot, { recursive: true, withFileTypes: true });
     const files = entries
-      .filter((entry) => entry.isFile() && /\.(?:css|ts)$/.test(entry.name) && entry.name !== 'vars.ts')
+      .filter(
+        (entry) =>
+          entry.isFile() &&
+          /\.(?:css|ts)$/.test(entry.name) &&
+          entry.name !== 'vars.ts' &&
+          !entry.name.includes('.generated.')
+      )
       .map((entry) => resolve(entry.parentPath, entry.name));
     const customProperties = new Set<string>();
 
@@ -47,7 +76,11 @@ describe('vars', () => {
       (property) =>
         !property.startsWith('--media-') &&
         property !== '--spacing' &&
-        !/^--(?:color|drop-shadow|ease|font|radius|shadow|spacing|text|text-shadow)-media(?:-|$)/.test(property)
+        // Tailwind functional utilities read their argument through `--value()`.
+        property !== '--value' &&
+        !/^--(?:backdrop-filter|blur|color|container|delay|drop-shadow|duration|ease|font|radius|scale|shadow|spacing|text|text-shadow)-media(?:-|$)/.test(
+          property
+        )
     );
 
     expect(unprefixed).toEqual([]);
