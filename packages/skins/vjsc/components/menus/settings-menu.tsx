@@ -4,12 +4,17 @@ import * as $ from '@videojs/core/vjsc';
 import { GearIcon } from '@videojs/icons/vjsc';
 import { type PropsWithChildren, Text } from 'vjsc/components';
 
+import type { SkinComponentMeta } from '../../meta';
 import buttonStyles from '../../styles/buttons/button.styles';
 import styles from '../../styles/menus/menu.styles';
 import { Button } from '../buttons/button';
 import { ButtonTooltip } from '../buttons/button-tooltip';
 
-export function SettingsMenu({ children, className, ...props }: PropsWithChildren<MenuProps>) {
+export function SettingsMenu({
+  children,
+  className,
+  ...props
+}: PropsWithChildren<MenuProps> & { className?: string | undefined }) {
   return (
     <$.Menu.Root side="top" align="center" {...props}>
       <ButtonTooltip label={<Text token={settingsText.key}>{settingsText.text}</Text>} side="top">
@@ -26,3 +31,10 @@ export function SettingsMenu({ children, className, ...props }: PropsWithChildre
     </$.Menu.Root>
   );
 }
+
+export const meta = {
+  name: 'settings-menu',
+  type: 'component',
+  title: 'Settings Menu',
+  description: 'A settings button and popup for composing playback option submenus.',
+} as const satisfies SkinComponentMeta;

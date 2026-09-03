@@ -1,213 +1,168 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, dirname, join } from 'node:path';
+import { dirname, join } from 'node:path';
 
-import { type RolldownOutput, rolldown } from 'rolldown';
+import { type Plugin, type RolldownOutput, rolldown } from 'rolldown';
 import { registryItemSchema, registrySchema } from 'shadcn/schema';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { shadcnPlugin, vjscPlugin } from '..';
+import { componentGraphPlugin, shadcnRegistryPlugin, vjscPlugin } from '..';
 import type { ComponentMeta } from '../../components';
-import type { ShadcnItem, ShadcnPluginOptions } from '../../shadcn';
+import type { ComponentGraphModule } from '../../graph';
+import type { ShadcnRegistryPluginOptions, VjscRegistryItem } from '../../shadcn';
 
 interface FixtureMeta extends ComponentMeta {
-  readonly type: 'block' | 'component';
+  readonly type: 'block' | 'component' | 'support';
   readonly title: string;
   readonly description: string;
 }
 
-describe('shadcnPlugin', () => {
-  it('auto-publishes metadata modules and derives graph dependencies', async () => {
+describe('shadcnRegistryPlugin', () => {
+  it('emits schema-valid items from the shared component graph', async () => {
     const root = setup({
-      'components/root.tsx': `import { Public } from './public'; import { Private } from './private'; import { cn } from '../utils'; import value from 'private-package/subpath'; export interface RootProps { label: string; } export function Root(props: RootProps) { return <main>{props.label}{Public}{Private}{cn(value)}</main>; } ${meta('root', 'block')}`,
+      'components/root.tsx': `import { Public } from './public'; import { Helper } from './helper'; import value from 'private-package/subpath'; export function Root() { return <main>{Public}{Helper}{value}</main>; } ${meta('root', 'block')}`,
       'components/public.tsx': `export function Public() { return <span/>; } ${meta('public')}`,
-      'components/private.tsx': `export function Private() { return <aside/>; }`,
-      'styles.css': `@import './theme.css';\n@import 'tailwindcss';`,
-      'theme.css': `.theme { color: red; }`,
-      'utils.ts': `export const cn = (...values: unknown[]) => values.filter(Boolean).join(' ');`,
+      'components/helper.tsx': `export function Helper() { return <aside/>; } ${meta('helper', 'support')}`,
     });
     const output = await build(root);
+    const registry = assetJson(output, 'registry.json');
+    const rootItem = registryItem(output, 'items', 'root');
 
-    expect(output.output.map((item) => item.fileName).sort()).toEqual([
-      'public.json',
-      'registry.json',
-      'root.json',
-      'styles.json',
-      'utils.json',
-    ]);
-    const manifest = assetJson(output, 'registry.json');
-    const rootItem = assetJson(output, 'root.json');
+    registrySchema.parse(registry);
+    registryItemSchema.parse(rootItem);
 
-    registrySchema.parse(manifest);
-
-    for (const outputItem of output.output) {
-      if (outputItem.type !== 'asset' || outputItem.fileName === 'registry.json') continue;
-
-      registryItemSchema.parse(JSON.parse(String(outputItem.source)));
-    }
-
+    expect(rootItem).not.toHaveProperty('$vjsc');
     expect(rootItem).toMatchObject({
       dependencies: ['private-package', 'react'],
-      registryDependencies: ['@example/public', '@example/styles', '@example/utils'],
+      registryDependencies: ['@example/helper', '@example/public'],
     });
     expect(rootItem.files.map((file: { target: string }) => file.target)).toEqual([
-      'components/example/root/private.tsx',
-      'components/example/root/root.tsx',
+      'components/example/skins/root.tsx',
     ]);
-    const rootSource = rootItem.files.find((file: { target: string }) => file.target.endsWith('/root.tsx')).content;
-
-    expect(rootSource).toContain('interface RootProps');
-    expect(rootSource).toContain('<main>');
-    expect(rootSource).toContain(`from '@/components/example/public/public'`);
-    expect(rootSource).toContain(`from '@/components/example/utils'`);
-    expect(rootSource).not.toContain('const meta');
-    expect(rootSource).not.toContain('jsx-runtime');
-    expect(assetJson(output, 'styles.json').files.map((file: { target: string }) => file.target)).toEqual([
-      'components/example/styles/tailwind.css',
-      'components/example/styles/theme.css',
-    ]);
+    expect(registryFile(output, 'items', rootItem, '/root.tsx')).toContain(`from '@/components/example/ui/public'`);
     expect(output.output.some((item) => item.type === 'chunk')).toBe(false);
   });
 
-  it('rewrites relative imports when private dependencies move at installation', async () => {
-    const root = setup({
-      'components/nested/root.tsx': `import { Private } from '../private'; export function Root() { return <main>{Private}</main>; } ${meta('root', 'block')}`,
-      'components/private.tsx': `export const Private = <aside/>;`,
-    });
-    const output = await build(root, { styles: undefined });
-    const item = assetJson(output, 'root.json');
-    const source = item.files.find((file: { target: string }) => file.target.endsWith('/root.tsx')).content;
-
-    expect(item.files.map((file: { target: string }) => file.target)).toEqual([
-      'components/example/root/internal/components/private.tsx',
-      'components/example/root/root.tsx',
-    ]);
-    expect(source).toContain(`from './internal/components/private'`);
-  });
-
-  it('owns type-only and dynamic relative imports without synthetic chunks', async () => {
-    const root = setup({
-      'components/root.tsx': `import type { Label } from './types'; export const load = () => import('./lazy'); export function Root({ label }: { label: Label }) { return <main>{label}</main>; } ${meta('root', 'block')}`,
-      'components/types.ts': `import type { Lazy } from './lazy'; export type Label = string | typeof Lazy;`,
-      'components/lazy.tsx': `export const Lazy = <aside/>;`,
-    });
-    const output = await build(root, { styles: undefined });
-    const item = assetJson(output, 'root.json');
-
-    expect(item.files.map((file: { target: string }) => file.target)).toEqual([
-      'components/example/root/lazy.tsx',
-      'components/example/root/root.tsx',
-      'components/example/root/types.ts',
-    ]);
-    expect(output.output.filter((entry) => entry.type === 'chunk')).toEqual([]);
-  });
-
-  it('preserves unrelated application output', async () => {
-    const root = setup({
-      'app.ts': `export const app = 'retained';`,
-      'components/root.tsx': `export function Root() { return <main/>; } ${meta('root', 'block')}`,
-    });
-    const output = await build(root, { styles: undefined }, ['vjsc', 'shadcn'], join(root, 'app.ts'));
-
-    expect(output.output.filter((entry) => entry.type === 'chunk').map((entry) => entry.fileName)).toEqual(['app.js']);
-    expect(output.output.find((entry) => entry.fileName === 'app.js')).toMatchObject({ type: 'chunk' });
-    expect(assetJson(output, 'root.json').files[0].content).toContain('<main/>');
-  });
-
-  it('keeps transformed module identities and dependencies transform-specific', async () => {
+  it('keeps transformed identities and dependencies selection-specific', async () => {
     const root = setup({
       'components/root.tsx': `import { Child } from './child'; export function Root() { return <main>{Child}</main>; } ${meta('root', 'block')}`,
       'components/child.tsx': `export const Child = <aside/>; ${meta('child')}`,
     });
-    const publishModules = () => [
-      { framework: 'react', skin: 'default' },
-      { framework: 'react', skin: 'minimal' },
-    ];
-    const output = await build(root, {
-      styles: undefined,
-      publish: { ...baseOptions().publish, modules: publishModules },
+    const transformations = () => [{ theme: 'default' }, { theme: 'minimal' }];
+    const output = await build(root, { transformations }, [
+      {
+        name: 'test:theme-source',
+        transform(code, id) {
+          const theme = new URLSearchParams(id.split('?')[1]).get('theme');
+
+          return theme ? code.replace('<main>', `<main data-theme="${theme}">`) : null;
+        },
+      },
+    ]);
+    const defaultItem = registryItem(output, 'items', 'root');
+    const minimalItem = registryItem(output, 'items', 'root-minimal');
+
+    expect(defaultItem.registryDependencies).toContain('@example/child');
+    expect(minimalItem.registryDependencies).toContain('@example/child-minimal');
+    expect(registryFile(output, 'items', minimalItem, '/root-minimal.tsx')).toContain('data-theme="minimal"');
+  });
+
+  it('rejects reachable modules without semantic ownership', async () => {
+    const root = setup({
+      'components/root.tsx': `import { Helper } from '../helper'; export function Root() { return <main>{Helper}</main>; } ${meta('root', 'block')}`,
+      'helper.tsx': `export const Helper = <aside/>;`,
     });
 
-    expect(assetJson(output, 'root.json').registryDependencies).toContain('@example/child');
-    expect(assetJson(output, 'root-minimal.json').registryDependencies).toContain('@example/child-minimal');
-    expect(assetJson(output, 'root-minimal.json').files[0].content).toContain(
-      `from '@/components/example/child-minimal/child'`
+    await expect(build(root)).rejects.toThrow(/cannot hide shared modules under compiler-shaped internal paths/);
+  });
+
+  it('captures finalized virtual style assets', async () => {
+    const virtualStyle = 'virtual:vjsc/css/root';
+    const root = setup({
+      'components/root.tsx': `import ${JSON.stringify(virtualStyle)}; export const Root = <main />; ${meta('root', 'block')}`,
+    });
+    const output = await build(
+      root,
+      {
+        items: (graph) =>
+          describeItems([...graph.modules.values()]).map((item) =>
+            item.name === 'root'
+              ? { ...item, $vjsc: { ...item.$vjsc, stylesheet: { target: 'styles/root.css', import: true } } }
+              : item
+          ),
+      },
+      [
+        {
+          name: 'test:late-style',
+          buildStart() {
+            this.emitFile({ type: 'chunk', id: virtualStyle });
+          },
+          resolveId(id) {
+            return id === virtualStyle ? `\0${virtualStyle}` : null;
+          },
+          load(id) {
+            return id === `\0${virtualStyle}` ? '.root { color: red; }' : null;
+          },
+          transform(_code, id) {
+            if (id === `\0${virtualStyle}`) return { code: 'export {};' };
+
+            if (!id.endsWith('/components/root.tsx')) return null;
+
+            return { meta: { componentStyles: [virtualStyle] } };
+          },
+        },
+      ]
     );
+    const item = registryItem(output, 'items', 'root');
+
+    expect(registryFile(output, 'items', item, '/root.css')).toMatch(/\.root\s*\{\s*color:\s*red;/);
+    expect(registryFile(output, 'items', item, '/root.tsx')).toContain(`import '../styles/root.css';`);
+    expect(registryFile(output, 'items', item, '/root.tsx')).not.toContain('virtual:vjsc/css');
   });
 
-  it('rejects type dependencies missing the requested transformation', async () => {
+  it('reuses one graph plugin safely across rebuilds', async () => {
     const root = setup({
-      'components/root.tsx': `import type { Label } from './types'; export function Root({ label }: { label: Label }) { return <main>{label}</main>; } ${meta('root', 'block')}`,
-      'components/types.ts': `export type Label = string;`,
+      'components/root.tsx': `export const Root = <main>first</main>; ${meta('root', 'block')}`,
     });
-    const publishModules: FixtureOptions['publish']['modules'] = (module) =>
-      basename(module.filename) === 'root.tsx' ? [{ framework: 'react', skin: 'minimal' }] : [];
-
-    await expect(
-      build(root, { styles: undefined, publish: { ...baseOptions().publish, modules: publishModules } })
-    ).rejects.toThrow(/source dependency was not captured/);
-  });
-
-  it('rejects unsafe paths and duplicate item names', async () => {
-    const root = setup({
-      'components/first.tsx': `${meta('root', 'block')} export const First = <main/>;`,
-      'components/second.tsx': `${meta('root', 'block')} export const Second = <main/>;`,
-    });
-
-    await expect(
-      build(root, { paths: { ...baseOptions().paths, output: '../registry' }, styles: undefined })
-    ).rejects.toThrow(/output path must be a non-empty relative path/);
-    await expect(build(root, { styles: undefined })).rejects.toThrow(/is described by both/);
-  });
-
-  it('reads VJSC metadata regardless of plugin declaration order', async () => {
-    const root = setup({
-      'components/root.tsx': `export function Root() { return <main/>; } ${meta('root', 'block')}`,
-    });
-    const output = await build(root, { styles: undefined }, ['shadcn', 'vjsc']);
-
-    expect(assetJson(output, 'root.json').files[0].content).toContain('<main/>');
-  });
-
-  it('clears discovered and captured source before a rebuild', async () => {
-    const root = setup({
-      'components/root.tsx': `${meta('root', 'block')} export const Root = <main>first</main>;`,
-    });
-    const plugin = shadcnPlugin({ root, ...baseOptions({ styles: undefined }) });
-    const first = await build(root, { styles: undefined }, ['vjsc', plugin]);
+    const graph = componentGraphPlugin<FixtureMeta>({ root, include: './components/**/*.{ts,tsx}' });
+    const first = await build(root, {}, [], graph);
 
     writeFileSync(
       join(root, 'components/root.tsx'),
-      `${meta('root', 'block')} export const Root = <main>second</main>;`
+      `export const Root = <main>second</main>; ${meta('root', 'block')}`
     );
-    const second = await build(root, { styles: undefined }, ['vjsc', plugin]);
+    const second = await build(root, {}, [], graph);
+    const firstItem = registryItem(first, 'items', 'root');
+    const secondItem = registryItem(second, 'items', 'root');
 
-    expect(JSON.stringify(assetJson(first, 'root.json'))).toContain('first');
-    expect(JSON.stringify(assetJson(second, 'root.json'))).toContain('second');
-    expect(JSON.stringify(assetJson(second, 'root.json'))).not.toContain('first');
+    expect(registryFile(first, 'items', firstItem, '/root.tsx')).toContain('first');
+    expect(registryFile(second, 'items', secondItem, '/root.tsx')).toContain('second');
   });
 });
 
-type FixtureOptions = Omit<ShadcnPluginOptions<FixtureMeta>, 'root'>;
-type PluginOrder = readonly ('vjsc' | 'shadcn' | ReturnType<typeof shadcnPlugin>)[];
+type FixtureOptions = ShadcnRegistryPluginOptions<FixtureMeta>;
 
 async function build(
   root: string,
-  overrides: Partial<FixtureOptions> = {},
-  order: PluginOrder = ['vjsc', 'shadcn'],
-  input: string | readonly string[] = []
+  overrides: Partial<FixtureOptions & { transformations: () => readonly Readonly<Record<string, string>>[] }> = {},
+  additions: readonly Plugin[] = [],
+  existingGraph?: ReturnType<typeof componentGraphPlugin<FixtureMeta>>
 ): Promise<RolldownOutput> {
-  const options = baseOptions(overrides);
-  const transform = vjscPlugin({
-    configure: ({ parameters }) => (parameters.has('framework') ? { targets: [] } : null),
-  });
-  const output = shadcnPlugin({ root, ...options });
-  const plugins = order.flatMap((plugin) => (plugin === 'vjsc' ? transform : plugin === 'shadcn' ? output : plugin));
+  const { transformations, ...registryOverrides } = overrides;
+  const graph =
+    existingGraph ??
+    componentGraphPlugin<FixtureMeta>({
+      root,
+      include: './components/**/*.{ts,tsx}',
+      ...(transformations ? { transformations } : {}),
+    });
+  const transform = vjscPlugin({ configure: () => ({ targets: [] }) });
+  const registry = shadcnRegistryPlugin(graph, baseOptions(registryOverrides));
   const bundle = await rolldown({
-    input: typeof input === 'string' ? input : [...input],
+    input: [],
     experimental: { nativeMagicString: true },
     external: (id) => !id.startsWith('.') && !id.startsWith('/') && !id.startsWith('\0'),
-    plugins,
+    plugins: [...transform, ...additions, graph, registry],
   });
 
   return bundle.generate({ format: 'es', entryFileNames: '[name].js' });
@@ -215,55 +170,41 @@ async function build(
 
 function baseOptions(overrides: Partial<FixtureOptions> = {}): FixtureOptions {
   return {
-    include: ['./components/**/*.{ts,tsx}', './utils.ts'],
     name: 'example',
     homepage: 'https://example.com',
     namespace: '@example',
-    paths: {
-      output: 'registry/source',
-      source: 'source',
-      install: 'components/example',
-      import: '@/components/example',
-    },
-    imports: { '@/source/utils': '@/components/example/utils' },
+    paths: { install: 'components/example', import: '@/components/example' },
     meta: { framework: 'react', style: 'tailwind' },
-    publish: {
-      items: (modules) =>
-        modules.flatMap<ShadcnItem<FixtureMeta>>((module) => {
-          const { filename, meta: itemMeta, transform } = module;
-
-          if (basename(filename) === 'utils.ts') {
-            return [
-              {
-                module,
-                name: 'utils',
-                type: 'registry:lib',
-                title: 'Utilities',
-                description: 'Shared utilities.',
-                filename: 'utils.ts',
-              },
-            ];
-          }
-
-          if (!itemMeta) return [];
-
-          const skin = transform.skin;
-          const name = skin && skin !== 'default' ? `${itemMeta.name}-${skin}` : itemMeta.name;
-
-          return [
-            {
-              module,
-              name,
-              type: itemMeta.type === 'block' ? 'registry:block' : 'registry:component',
-              title: itemMeta.title,
-              description: itemMeta.description,
-            },
-          ];
-        }),
-    },
-    styles: { input: './styles.css', filename: 'tailwind.css' },
+    items: (graph) => describeItems([...graph.modules.values()]),
     ...overrides,
   };
+}
+
+function describeItems(modules: readonly ComponentGraphModule<FixtureMeta>[]): VjscRegistryItem<FixtureMeta>[] {
+  return modules.flatMap((module) => {
+    const itemMeta = module.meta;
+    if (!itemMeta) return [];
+
+    const theme = module.transform.theme;
+    const name = theme === 'minimal' ? `${itemMeta.name}-minimal` : itemMeta.name;
+    const support = itemMeta.type === 'support';
+
+    return [
+      {
+        name,
+        type: support ? 'registry:lib' : itemMeta.type === 'block' ? 'registry:block' : 'registry:ui',
+        title: itemMeta.title,
+        description: itemMeta.description,
+        categories: support ? ['support'] : ['media'],
+        meta: { public: !support },
+        $vjsc: {
+          module,
+          group: 'items',
+          target: `${itemMeta.type === 'block' ? 'skins' : 'ui'}/${name}.tsx`,
+        },
+      },
+    ];
+  });
 }
 
 function meta(name: string, type: FixtureMeta['type'] = 'component'): string {
@@ -288,4 +229,24 @@ function assetJson(output: RolldownOutput, filename: string): any {
   if (asset?.type !== 'asset') throw new Error(`Missing asset: ${filename}`);
 
   return JSON.parse(String(asset.source));
+}
+
+function registryItem(output: RolldownOutput, group: string, name: string): any {
+  const registry = assetJson(output, `${group}/registry.json`);
+  const item = registry.items.find((candidate: { name: string }) => candidate.name === name);
+  if (!item) throw new Error(`Missing registry item: ${name}`);
+
+  return item;
+}
+
+function registryFile(output: RolldownOutput, group: string, item: any, target: string): string {
+  const file = item.files.find((candidate: { target?: string }) => candidate.target?.endsWith(target));
+  if (!file) throw new Error(`Missing registry file: ${item.name}${target}`);
+
+  const asset = output.output.find(
+    (candidate) => candidate.type === 'asset' && candidate.fileName === `${group}/${file.path}`
+  );
+  if (asset?.type !== 'asset') throw new Error(`Missing registry source: ${group}/${file.path}`);
+
+  return String(asset.source);
 }

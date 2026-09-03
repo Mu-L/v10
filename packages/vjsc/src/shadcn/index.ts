@@ -1,9 +1,9 @@
 export type {
-  ShadcnItem,
-  ShadcnModule,
-  ShadcnPluginOptions,
+  ComponentGraphProvider,
   ShadcnRegistry,
   ShadcnRegistryFile,
   ShadcnRegistryFileType,
-  ShadcnStyle,
+  ShadcnRegistryPluginOptions,
+  VjscRegistryItem,
+  VjscRegistryItemMeta,
 } from './types';
