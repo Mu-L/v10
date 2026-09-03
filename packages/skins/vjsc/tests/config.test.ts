@@ -19,9 +19,38 @@ describe('validateSkinConfig', () => {
   it('adds the Shadow DOM variant only to HTML targets', () => {
     expect(createStyleOptions({ target: 'react', skin: 'default-video', style: 'tailwind' }).variants).toEqual([
       'default',
+      'default-video',
     ]);
     expect(createStyleOptions({ target: 'html', skin: 'minimal-video', style: 'tailwind' }).variants).toEqual([
       'minimal',
+      'minimal-video',
+      'shadow-dom',
+    ]);
+    expect(createStyleOptions({ target: 'react', skin: 'default-audio', style: 'tailwind' }).variants).toEqual([
+      'default',
+      'default-audio',
+    ]);
+    expect(createStyleOptions({ target: 'html', skin: 'minimal-audio', style: 'tailwind' }).variants).toEqual([
+      'minimal',
+      'minimal-audio',
+      'shadow-dom',
+    ]);
+    expect(createStyleOptions({ target: 'react', skin: 'default-live-video', style: 'tailwind' }).variants).toEqual([
+      'default',
+      'default-live-video',
+    ]);
+    expect(createStyleOptions({ target: 'html', skin: 'minimal-live-video', style: 'tailwind' }).variants).toEqual([
+      'minimal',
+      'minimal-live-video',
+      'shadow-dom',
+    ]);
+    expect(createStyleOptions({ target: 'react', skin: 'default-live-audio', style: 'tailwind' }).variants).toEqual([
+      'default',
+      'default-live-audio',
+    ]);
+    expect(createStyleOptions({ target: 'html', skin: 'minimal-live-audio', style: 'tailwind' }).variants).toEqual([
+      'minimal',
+      'minimal-live-audio',
       'shadow-dom',
     ]);
   });

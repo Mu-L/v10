@@ -1,32 +1,32 @@
-import { speedText } from '@videojs/core/i18n/text/menu';
-import { SpeedIcon } from '@videojs/icons/vjsc';
+import { captionsText } from '@videojs/core/i18n/text/menu';
+import { CaptionsOffIcon } from '@videojs/icons/vjsc';
 import { type PropsOf, Template, Text } from 'vjsc/components';
 
 import styles from '../../styles/menus/menu.styles';
-import { PlaybackRateRadioGroup } from './radio-group';
+import { CaptionsRadioGroup } from './radio-group';
 import { RadioItem } from './radio-item';
 import { Submenu } from './submenu';
 
-export interface PlaybackRateMenuProps extends Omit<
+export interface CaptionsSubmenuProps extends Omit<
   PropsOf<typeof Submenu>,
   'children' | 'icon' | 'label' | 'selectedLabel'
 > {}
 
-export function PlaybackRateMenu(props: PlaybackRateMenuProps = {}) {
+export function CaptionsSubmenu(props: CaptionsSubmenuProps = {}) {
   return (
     <Submenu
-      icon={<SpeedIcon className={styles.triggerItemIcon} />}
-      label={<Text token={speedText.key}>{speedText.text}</Text>}
+      icon={<CaptionsOffIcon className={styles.triggerItemIcon} />}
+      label={<Text token={captionsText.key}>{captionsText.text}</Text>}
       selectedLabel={<Text className={styles.hintLabel} data-part="hint" />}
       {...props}
     >
-      <PlaybackRateRadioGroup>
-        <Template name="playback-rate-option">
+      <CaptionsRadioGroup>
+        <Template name="captions-option">
           <RadioItem>
             <Template.Part name="label" />
           </RadioItem>
         </Template>
-      </PlaybackRateRadioGroup>
+      </CaptionsRadioGroup>
     </Submenu>
   );
 }

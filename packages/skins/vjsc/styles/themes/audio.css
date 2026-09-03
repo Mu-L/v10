@@ -1,0 +1,24 @@
+@layer videojs.theme.variant {
+  :is(
+    .media-skin--default.media-skin--audio,
+    .media-skin--minimal.media-skin--audio,
+    .media-skin--default.media-skin--live-audio,
+    .media-skin--minimal.media-skin--live-audio
+  ) {
+    height: auto;
+    overflow: visible;
+    background: transparent;
+
+    --media-default-accent-color: light-dark(oklch(0 0 0), oklch(1 0 0));
+    --media-focus-ring-color: light-dark(oklch(0 0 0), oklch(1 0 0));
+    --media-audio-text-color: light-dark(oklch(0 0 0), oklch(1 0 0));
+  }
+
+  :is(.media-skin--default.media-skin--audio, .media-skin--default.media-skin--live-audio) {
+    --media-audio-controls-background-color: light-dark(oklch(1 0 0 / 0.5), oklch(0 0 0 / 0.4));
+  }
+
+  :is(.media-skin--minimal.media-skin--audio, .media-skin--minimal.media-skin--live-audio) {
+    --media-audio-controls-background-color: light-dark(oklch(1 0 0), oklch(0 0 0));
+  }
+}

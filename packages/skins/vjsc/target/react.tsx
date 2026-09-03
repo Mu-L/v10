@@ -5,6 +5,7 @@ import { type ComponentTarget, defineComponentTarget, type TemplateTargetDefinit
 import { Host } from 'vjsc/target/jsx-runtime';
 
 import { reactComponentTransform } from './react-transform.ts';
+import { createRenderTargetTransform } from './render-target.ts';
 
 type CoreSchema = typeof coreSchema;
 
@@ -14,6 +15,13 @@ export const reactComponentTarget: ComponentTarget<CoreSchema> = defineComponent
   element,
   imported,
 }) => {
+  const Button = element('button', {
+    props: {
+      from: 'react',
+      name: 'ComponentProps',
+      intrinsic: 'button',
+    },
+  });
   const Div = element('div', {
     props: {
       from: 'react',
@@ -52,10 +60,13 @@ export const reactComponentTarget: ComponentTarget<CoreSchema> = defineComponent
     },
     components: {
       Controls: {
-        Root: ({ children }) => <target.Controls.Root>{children}</target.Controls.Root>,
+        Root: ({ props, children }) => <target.Controls.Root {...props}>{children}</target.Controls.Root>,
       },
       ErrorDialog: {
         Root: ({ children }) => <target.ErrorDialog.Root>{children}</target.ErrorDialog.Root>,
+      },
+      Menu: {
+        Trigger: ({ props, children }) => <target.Menu.Trigger {...props}>{children}</target.Menu.Trigger>,
       },
       Popover: {
         Trigger: ({ props, children }) => <target.Popover.Trigger render={children} {...props} />,
@@ -119,7 +130,20 @@ export const reactComponentTarget: ComponentTarget<CoreSchema> = defineComponent
       VjscNode: { from: 'react', name: 'ReactNode' },
       VjscElement: { from: 'react', name: 'ReactElement' },
     },
-    transforms: [reactComponentTransform],
+    transforms: [
+      createRenderTargetTransform({
+        target: () => reactComponentTarget,
+        targets: {
+          Button: { element: Button },
+          PlaybackRateButton: { element: Button, kind: 'component' },
+          SliderBuffer: { element: Div },
+          SliderFill: { element: Div },
+          SliderThumb: { element: Div },
+          SliderTrack: { element: Div },
+        },
+      }),
+      reactComponentTransform,
+    ],
     jsx: { importSource: 'react', attributes: 'react' },
   };
 });

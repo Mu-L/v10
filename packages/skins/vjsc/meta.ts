@@ -30,6 +30,36 @@ export const skinStyles = {
     theme: 'minimal',
     variant: 'minimal',
   },
+  'default-live-video': {
+    scope: '.media-skin--default.media-skin--live-video',
+    theme: 'default',
+    variant: 'default-live-video',
+  },
+  'minimal-live-video': {
+    scope: '.media-skin--minimal.media-skin--live-video',
+    theme: 'minimal',
+    variant: 'minimal-live-video',
+  },
+  'default-live-audio': {
+    scope: '.media-skin--default.media-skin--live-audio',
+    theme: 'default',
+    variant: 'default-live-audio',
+  },
+  'minimal-live-audio': {
+    scope: '.media-skin--minimal.media-skin--live-audio',
+    theme: 'minimal',
+    variant: 'minimal-live-audio',
+  },
+  'default-audio': {
+    scope: '.media-skin--default.media-skin--audio',
+    theme: 'default',
+    variant: 'default-audio',
+  },
+  'minimal-audio': {
+    scope: '.media-skin--minimal.media-skin--audio',
+    theme: 'minimal',
+    variant: 'minimal-audio',
+  },
 } as const satisfies Record<string, SkinMeta['style']>;
 
 export type SkinName = keyof typeof skinStyles;

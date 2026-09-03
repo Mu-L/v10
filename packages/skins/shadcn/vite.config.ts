@@ -8,7 +8,7 @@ import { baseConfig } from '../../../build/pack.ts';
 import { shadcnPlugin, vjscPlugin } from '../../vjsc/src/plugins/index.ts';
 import type { ShadcnItem } from '../../vjsc/src/shadcn/index.ts';
 import { configureSkinModule } from '../vjsc/config';
-import { type SkinModuleMeta, skinStyles } from '../vjsc/meta';
+import type { SkinModuleMeta } from '../vjsc/meta';
 
 const packageDir = resolve(import.meta.dirname, '..');
 const vjscDir = resolve(packageDir, 'vjsc');
@@ -19,6 +19,17 @@ const registryPaths = {
   install: 'components/videojs',
   import: '@/components/videojs',
 } as const;
+const publishedSkins = ['default-video', 'minimal-video'] as const;
+const unpublishedItems = new Set([
+  'audio-play-button',
+  'audio-settings-menu',
+  'audio-time-slider',
+  'captions-menu',
+  'live-button',
+  'live-playback-hotkeys',
+  'live-video-gestures',
+  'live-video-hotkeys',
+]);
 
 export const shadcnPackConfig: PackUserConfig = {
   ...baseConfig,
@@ -57,9 +68,8 @@ export const shadcnPackConfig: PackUserConfig = {
         modules: (module) => {
           if (module.filename === registryUtils) return [{}];
 
-          const skins = Object.keys(skinStyles);
-          const ownedSkin = skins.find((name) => module.filename.includes(`/skins/${name}/skin.`));
-          const selected = ownedSkin ? [ownedSkin] : skins;
+          const ownedSkin = publishedSkins.find((name) => module.filename.includes(`/skins/${name}/skin.`));
+          const selected = ownedSkin ? [ownedSkin] : publishedSkins;
 
           return selected.map((skin) => ({
             target: 'react',
@@ -86,6 +96,10 @@ export const shadcnPackConfig: PackUserConfig = {
             }
 
             if (!meta) return [];
+
+            if (meta.type === 'skin' && !publishedSkins.some((skin) => skin === meta.name)) return [];
+
+            if (meta.type === 'component' && unpublishedItems.has(meta.name)) return [];
 
             const skinName = transform.skin;
             const skin = modules.find(

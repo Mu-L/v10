@@ -34,7 +34,7 @@ export default styles({
         '[--media-tooltip-side-offset:var(--media-popover-side-offset)]',
         '[--media-popover-boundary-offset:0.75rem] [--media-tooltip-boundary-offset:var(--media-popover-boundary-offset)]',
         '@lg/media-root:absolute @lg/media-root:inset-x-2 @lg/media-root:bottom-2 @lg/media-root:z-10',
-        '@lg/media-root:flex @lg/media-root:items-center @lg/media-root:rounded-media-control',
+        '@lg/media-root:flex @lg/media-root:items-center @lg/media-root:gap-px @lg/media-root:rounded-media-control',
         'text-shadow-[0_1px_0_var(--media-shadow-current-color)]',
         ...defaultSurfaceAtLarge,
         '@2xl/media-root:inset-x-3 @2xl/media-root:bottom-3',

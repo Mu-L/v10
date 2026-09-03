@@ -10,7 +10,16 @@ const configFile = resolve(packageDir, 'dev/vite.config.ts');
 const sourceDir = resolve(packageDir, 'vjsc');
 const snapshotFile = resolve(import.meta.dirname, '__snapshots__/generated.tsx.snap');
 const targets = ['react', 'html'] as const;
-const skins = ['default-video', 'minimal-video'] as const;
+const skins = [
+  'default-video',
+  'minimal-video',
+  'default-live-video',
+  'minimal-live-video',
+  'default-live-audio',
+  'minimal-live-audio',
+  'default-audio',
+  'minimal-audio',
+] as const;
 const styles = ['css', 'tailwind'] as const;
 
 interface GeneratedModule {
@@ -78,13 +87,96 @@ describe('generated VJSC source', () => {
     expect(output).not.toContain('_jsxDEV');
     expect(output).not.toContain('/@fs/');
     expect(output).not.toMatch(/from ["']@videojs\/core\/vjsc["']/);
+    expect(output).not.toMatch(/import ["']@videojs\/html\/icons\/element(?:\/minimal)?["']/);
+    expect(output).not.toContain('from "@videojs/html/icons/element/register"');
+    expect(output).toMatch(/import \{[^}]*registerIcons[^}]*\} from "@videojs\/html\/icons"/);
+    expect(output).toContain('from "@videojs/html/icons"');
+    expect(output).toContain('from "@videojs/html/icons/minimal"');
+
+    const htmlPlayButton = generatedSection(output, 'html/default-video/css/components/buttons/play-button.tsx');
+    const reactLiveButton = generatedSection(output, 'react/default-video/tailwind/components/buttons/live-button.tsx');
+    const htmlLiveButton = generatedSection(output, 'html/minimal-video/css/components/buttons/live-button.tsx');
+    const reactAudioSettingsMenu = generatedSection(
+      output,
+      'react/default-audio/css/components/menus/audio-settings-menu.tsx'
+    );
+    const htmlAudioSettingsMenu = generatedSection(
+      output,
+      'html/default-audio/css/components/menus/audio-settings-menu.tsx'
+    );
+    const reactSubmenu = generatedSection(output, 'react/default-audio/css/components/menus/submenu.tsx');
+    const htmlSubmenu = generatedSection(output, 'html/default-audio/css/components/menus/submenu.tsx');
+    const reactDefaultAudio = generatedSection(output, 'react/default-audio/css/skins/default-audio/skin.tsx');
+    const htmlMinimalAudio = generatedSection(output, 'html/minimal-audio/css/skins/minimal-audio/skin.tsx');
+    const reactCaptionsMenu = generatedSection(
+      output,
+      'react/default-live-video/css/components/menus/captions-menu.tsx'
+    );
+    const htmlCaptionsMenu = generatedSection(output, 'html/default-live-video/css/components/menus/captions-menu.tsx');
+    const reactDefaultLiveVideo = generatedSection(
+      output,
+      'react/default-live-video/css/skins/default-live-video/skin.tsx'
+    );
+    const htmlMinimalLiveVideo = generatedSection(
+      output,
+      'html/minimal-live-video/css/skins/minimal-live-video/skin.tsx'
+    );
+    const reactDefaultLiveAudio = generatedSection(
+      output,
+      'react/default-live-audio/css/skins/default-live-audio/skin.tsx'
+    );
+    const htmlMinimalLiveAudio = generatedSection(
+      output,
+      'html/minimal-live-audio/css/skins/minimal-live-audio/skin.tsx'
+    );
+
+    expect(htmlPlayButton).toContain('pauseIcon');
+    expect(htmlPlayButton).toContain('playIcon');
+    expect(htmlPlayButton).toContain('restartIcon');
+    expect(htmlPlayButton).not.toContain('seekIcon');
+    expect(reactAudioSettingsMenu).toContain('<Menu.Trigger render={<PlaybackRateButton />}');
+    expect(reactAudioSettingsMenu).not.toContain('keepMounted');
+    expect(reactLiveButton).toContain('LiveButton as LiveButtonPrimitive');
+    expect(reactLiveButton).toContain('render={<Button />}');
+    expect(reactLiveButton).toContain('data-live-edge:before:bg-[oklch(0.65_0.22_27)]');
+    expect(htmlLiveButton).toContain('import "@videojs/html/ui/live-button";');
+    expect(htmlLiveButton).toContain('<media-live-button');
+    expect(reactAudioSettingsMenu).not.toContain('usePlaybackRateOptions');
+    expect(htmlAudioSettingsMenu).toContain('<media-playback-rate-button');
+    expect(htmlAudioSettingsMenu).toContain('commandfor=');
+    expect(htmlAudioSettingsMenu).not.toContain('<button commandfor=');
+    expect(reactSubmenu).toContain('<Menu.Trigger className=');
+    expect(reactSubmenu).not.toContain('<Menu.Trigger render=');
+    expect(htmlSubmenu).toContain('<media-menu-item commandfor=');
+    expect(reactDefaultAudio).toContain('export interface DefaultAudioSkinProps');
+    expect(reactDefaultAudio).toContain('media-skin--default media-skin--audio');
+    expect(htmlMinimalAudio).toContain('export interface MinimalAudioSkinProps');
+    expect(htmlMinimalAudio).toContain('media-skin--minimal media-skin--audio');
+    expect(reactCaptionsMenu).toContain('<Menu.Trigger render={<Button />}');
+    expect(reactCaptionsMenu).not.toContain('keepMounted');
+    expect(reactCaptionsMenu).not.toContain('useCaptionsOptions');
+    expect(htmlCaptionsMenu).toContain('<button commandfor="__vjsc-id-<module>');
+    expect(htmlCaptionsMenu).not.toContain('menu-for');
+    expect(reactDefaultLiveVideo).toContain('export interface DefaultLiveVideoSkinProps');
+    expect(reactDefaultLiveVideo).toContain('media-skin--default media-skin--live-video');
+    expect(htmlMinimalLiveVideo).toContain('export interface MinimalLiveVideoSkinProps');
+    expect(htmlMinimalLiveVideo).toContain('media-skin--minimal media-skin--live-video');
+    expect(reactDefaultLiveVideo).not.toContain('TimeSlider');
+    expect(htmlMinimalLiveVideo).not.toContain('media-time-slider');
+    expect(reactDefaultLiveAudio).toContain('export interface DefaultLiveAudioSkinProps');
+    expect(reactDefaultLiveAudio).toContain('media-skin--default media-skin--live-audio');
+    expect(htmlMinimalLiveAudio).toContain('export interface MinimalLiveAudioSkinProps');
+    expect(htmlMinimalLiveAudio).toContain('media-skin--minimal media-skin--live-audio');
+    expect(reactDefaultLiveAudio).not.toContain('AudioTimeSlider');
+    expect(htmlMinimalLiveAudio).not.toContain('media-audio-time-slider');
+    expect(reactDefaultLiveAudio).not.toContain('PlaybackRateMenu');
 
     if (process.env.UPDATE_VJSC_SNAPSHOTS) await writeFile(snapshotFile, output);
 
     const snapshot = await readFile(snapshotFile, 'utf8');
 
     expect(output).toBe(snapshot);
-  }, 60_000);
+  }, 120_000);
 });
 
 async function sourceModules(): Promise<string[]> {
@@ -157,4 +249,14 @@ function normalizeGeneratedSource(code: string): string {
 
 function sourceName(filename: string): string {
   return relative(sourceDir, filename).split(sep).join('/');
+}
+
+function generatedSection(output: string, key: string): string {
+  const marker = `// ===== ${key} =====`;
+  const start = output.indexOf(marker);
+  if (start < 0) throw new Error(`Missing generated section: ${key}`);
+
+  const end = output.indexOf('// =====', start + marker.length);
+
+  return output.slice(start, end < 0 ? undefined : end);
 }

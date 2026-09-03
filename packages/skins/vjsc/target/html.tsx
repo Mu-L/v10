@@ -10,6 +10,8 @@ import {
 } from 'vjsc/target';
 import { Host } from 'vjsc/target/jsx-runtime';
 
+import { createRenderTargetTransform, renderTargetProps } from './render-target.ts';
+
 type CoreSchema = typeof coreSchema;
 
 const componentParts: Readonly<Record<string, Readonly<Record<string, string>>>> = {
@@ -142,11 +144,11 @@ export const htmlComponentTarget: ComponentTarget<CoreSchema> = defineComponentT
   const Span = element('span');
   const Sup = element('sup');
   const HtmlTemplate = element('template');
+  const PlaybackRateButton = htmlElementTarget('PlaybackRateButton', element);
 
   const I18nText = element('media-text', {
     import: { from: '@videojs/html/i18n', sideEffect: true },
   });
-
   const optionTemplate: TemplateTargetDefinition = {
     render: ({ children }) => <HtmlTemplate>{children}</HtmlTemplate>,
     parts: {
@@ -168,11 +170,17 @@ export const htmlComponentTarget: ComponentTarget<CoreSchema> = defineComponentT
         const controlledId = id(popup ? 'popup' : 'content');
 
         if (popup) {
+          const playbackRateButtonProps = renderTargetProps(trigger.props, 'PlaybackRateButton');
+
           return [
             trigger.replaceWith(
-              <Button commandfor={controlledId} {...trigger.props}>
-                {trigger.children}
-              </Button>
+              playbackRateButtonProps ? (
+                <PlaybackRateButton commandfor={controlledId} {...playbackRateButtonProps} />
+              ) : (
+                <Button commandfor={controlledId} {...trigger.props}>
+                  {trigger.children}
+                </Button>
+              )
             ),
             popup.replaceWith(
               <target.Menu.Popup id={controlledId} {...props.merge(popup.props)}>
@@ -265,6 +273,19 @@ export const htmlComponentTarget: ComponentTarget<CoreSchema> = defineComponentT
         'captions-option': optionTemplate,
       },
     },
+    transforms: [
+      createRenderTargetTransform({
+        target: () => htmlComponentTarget,
+        targets: {
+          Button: { element: Button },
+          PlaybackRateButton: { element: PlaybackRateButton, kind: 'component' },
+          SliderBuffer: { element: Div },
+          SliderFill: { element: Div },
+          SliderThumb: { element: Div },
+          SliderTrack: { element: Div },
+        },
+      }),
+    ],
     jsx: {
       importSource: 'vjsc/html-runtime',
       attributes: 'html',
