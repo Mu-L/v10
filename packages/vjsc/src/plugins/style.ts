@@ -3,6 +3,7 @@ import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import type { Expression, ImportDeclaration, Node, Program } from '@oxc-project/types';
+import { isFunction } from '@videojs/utils/predicate';
 import { walk } from 'oxc-walker';
 import type { Plugin, RolldownMagicString } from 'rolldown';
 
@@ -12,35 +13,33 @@ import { compileStyles } from '../styles/compile';
 import { type DesignSystem, loadDesignSystem } from '../styles/design-system';
 import {
   diagnoseCompiledStyles,
-  diagnoseStyleManifest,
+  diagnoseStyles,
   formatStyleDiagnostic,
   type StyleDiagnostic,
   type VjscDiagnosticsOptions,
 } from '../styles/diagnostics';
+import { isStyleModulePath, resolveStyleModule, resolveStyleModuleFile } from '../styles/modules';
+import type { StyleTransformOptions } from '../styles/options';
 import {
-  loadStyleManifest,
+  resolveStyles,
   ruleForToken,
-  type StyleManifest,
-  type StyleManifestRule,
+  type ResolvedStyles,
+  type ResolvedStyleRule,
   utilityGroupsForRule,
-} from '../styles/manifest';
-import { isStyleModulePath, resolveManifestStyleModule, resolveStyleModuleFile } from '../styles/modules';
-import type { StylePluginOptions } from '../styles/options';
-import { moduleFilename, type ParsedModuleId, parseModuleId } from '../utils/module-id';
-import { mergeComponentModuleMeta } from './component-meta';
+} from '../styles/resolved';
+import { moduleFilename, parseModuleId, type VjscModule } from '../utils/module-id';
+import { mergeVjscModuleMeta } from './component-meta';
 
 const SCRIPT_ID = /\.[cm]?[jt]sx?(?:\?|$)/;
 
-export interface StyleModule extends ParsedModuleId {
-  readonly id: string;
-}
+type InternalStyleTransformOptions = StyleTransformOptions & { readonly resolvedStyles?: ResolvedStyles | undefined };
 
 export type StylePluginConfig =
-  | StylePluginOptions
-  | ((module: StyleModule) => StylePluginOptions | null | Promise<StylePluginOptions | null>);
+  | InternalStyleTransformOptions
+  | ((module: VjscModule) => StyleTransformOptions | null | Promise<StyleTransformOptions | null>);
 
-interface CachedManifest {
-  readonly manifest: StyleManifest;
+interface CachedStyles {
+  readonly styles: ResolvedStyles;
   readonly versions: ReadonlyMap<string, number>;
 }
 
@@ -65,13 +64,15 @@ export interface StylePluginLifecycle {
   onOwnerTransform(id: string, watchFiles: readonly string[]): void;
 }
 
+export type StylePluginDiagnostics = VjscDiagnosticsOptions | false | (() => VjscDiagnosticsOptions | false);
+
 export function stylePlugin(
   config: StylePluginConfig,
-  diagnostics: VjscDiagnosticsOptions = {},
+  diagnostics: StylePluginDiagnostics = {},
   lifecycle?: StylePluginLifecycle
 ): Plugin {
   const designs = new Map<string, Promise<CachedDesignSystem>>();
-  const manifests = new Map<string, CachedManifest>();
+  const styleCache = new Map<string, CachedStyles>();
   const cssById = new Map<string, VirtualCssModule>();
   const cssByOwner = new Map<string, ReadonlySet<string>>();
   const reportedWarnings = new Set<string>();
@@ -97,7 +98,9 @@ export function stylePlugin(
     transform: {
       filter: { id: SCRIPT_ID, code: '.styles' },
       async handler(_code, id, transform) {
-        const options = typeof config === 'function' ? await config({ id, ...parseModuleId(id) }) : config;
+        const options: InternalStyleTransformOptions | null = isFunction(config)
+          ? await config(parseModuleId(id))
+          : config;
 
         if (!options || !transform.ast || !transform.magicString) {
           replaceVirtualCss(cssById, cssByOwner, id, [], lifecycle);
@@ -114,25 +117,28 @@ export function stylePlugin(
           return null;
         }
 
-        const manifest = options.manifest ?? (await cachedManifest(manifests, files));
+        const styles = options.resolvedStyles ?? (await cachedStyles(styleCache, files));
 
-        lifecycle?.onOwnerTransform(id, manifest.watchFiles);
+        lifecycle?.onOwnerTransform(id, styles.watchFiles);
 
-        if (manifest.rules.length === 0) {
+        if (styles.rules.length === 0) {
           replaceVirtualCss(cssById, cssByOwner, id, [], lifecycle);
           return null;
         }
 
-        for (const file of manifest.watchFiles) this.addWatchFile(file);
+        for (const file of styles.watchFiles) this.addWatchFile(file);
 
-        const styleDiagnostics = [...diagnoseStyleManifest(manifest, options.variants)];
+        const diagnosticOptions = isFunction(diagnostics) ? diagnostics() : diagnostics;
+        const styleDiagnostics = diagnosticOptions ? [...diagnoseStyles(styles, options.variants)] : [];
         const report = () => {
+          if (!diagnosticOptions) return;
+
           for (const diagnostic of mergeStyleDiagnostics(styleDiagnostics)) {
-            reportStyleDiagnostic(diagnostic, diagnostics, reportedWarnings, (message) => this.warn(message));
+            reportStyleDiagnostic(diagnostic, diagnosticOptions, reportedWarnings, (message) => this.warn(message));
           }
         };
 
-        const referencedRules = transformStyles(filename, transform.ast, transform.magicString, manifest, options);
+        const referencedRules = transformStyles(filename, transform.ast, transform.magicString, styles, options);
 
         if (referencedRules.size === 0) {
           report();
@@ -140,20 +146,26 @@ export function stylePlugin(
           return null;
         }
 
-        let componentStyles: readonly string[] = [];
+        const styleFiles = [
+          ...new Set(styles.rules.filter((rule) => referencedRules.has(rule.className)).map((rule) => rule.file)),
+        ].sort();
+        let styleAssets: readonly string[] = [];
 
         if (options.mode === 'css' && options.stylesheet) {
           const input = resolve(cwd, options.stylesheet.input);
           const base = options.stylesheet.base ? resolve(cwd, options.stylesheet.base) : undefined;
           const cachedDesign = await cachedDesignSystem(designs, input);
 
-          styleDiagnostics.push(
-            ...diagnoseCompiledStyles(manifest, cachedDesign.design, referencedRules, options.variants)
-          );
+          if (diagnosticOptions) {
+            styleDiagnostics.push(
+              ...diagnoseCompiledStyles(styles, cachedDesign.design, referencedRules, options.variants)
+            );
+          }
+
           report();
           const assets = await compileStyles({
             design: cachedDesign.design,
-            manifest,
+            styles,
             ...(options.stylesheet.scope ? { scope: options.stylesheet.scope } : {}),
             ...(options.variants ? { variants: options.variants } : {}),
             ruleClassNames: referencedRules,
@@ -161,7 +173,7 @@ export function stylePlugin(
 
           cachedDesign.versions = await fileVersions(cachedDesign.design.watchFiles);
 
-          lifecycle?.onOwnerTransform(id, [...new Set([...manifest.watchFiles, ...cachedDesign.design.watchFiles])]);
+          lifecycle?.onOwnerTransform(id, [...new Set([...styles.watchFiles, ...cachedDesign.design.watchFiles])]);
 
           for (const file of cachedDesign.design.watchFiles) this.addWatchFile(file);
 
@@ -186,7 +198,7 @@ export function stylePlugin(
 
           replaceVirtualCss(cssById, cssByOwner, id, modules, lifecycle);
           insertModuleImports(transform.ast, transform.magicString, imports);
-          componentStyles = modules.map(([moduleId]) => moduleId);
+          styleAssets = modules.map(([moduleId]) => moduleId);
         } else {
           report();
           replaceVirtualCss(cssById, cssByOwner, id, [], lifecycle);
@@ -194,7 +206,9 @@ export function stylePlugin(
 
         return {
           code: transform.magicString,
-          meta: mergeComponentModuleMeta(this.getModuleInfo(id)?.meta, { componentStyles }),
+          meta: mergeVjscModuleMeta(this.getModuleInfo(id)?.meta, {
+            moduleStyles: { files: styleFiles, assets: styleAssets },
+          }),
         };
       },
     },
@@ -290,10 +304,10 @@ function transformStyles(
   filename: string,
   ast: Program,
   magicString: RolldownMagicString,
-  manifest: StyleManifest,
-  options: StylePluginOptions
+  styles: ResolvedStyles,
+  options: StyleTransformOptions
 ): ReadonlySet<string> {
-  const bindings = styleBindings(filename, ast, manifest);
+  const bindings = styleBindings(filename, ast, styles);
   if (bindings.size === 0) return new Set();
 
   const edits: SourceEdit[] = [];
@@ -307,7 +321,7 @@ function transformStyles(
       const path = readAccessPath(node);
       const [root, ...tokenPath] = path ?? [];
       const binding = root ? bindings.get(root) : undefined;
-      const rule = binding ? ruleForToken(manifest, binding.modulePath, tokenPath) : undefined;
+      const rule = binding ? ruleForToken(styles, binding.modulePath, tokenPath) : undefined;
       if (!rule) return;
 
       edits.push({
@@ -332,13 +346,13 @@ function transformStyles(
   return referencedRules;
 }
 
-function styleBindings(filename: string, ast: Program, manifest: StyleManifest): ReadonlyMap<string, StyleBinding> {
+function styleBindings(filename: string, ast: Program, styles: ResolvedStyles): ReadonlyMap<string, StyleBinding> {
   const bindings = new Map<string, StyleBinding>();
 
   for (const statement of ast.body) {
     if (statement.type !== 'ImportDeclaration' || !statement.source.value.startsWith('.')) continue;
 
-    const modulePath = resolveManifestStyleModule(filename, statement.source.value, manifest);
+    const modulePath = resolveStyleModule(filename, statement.source.value, styles);
     if (!modulePath) continue;
 
     const defaults = statement.specifiers.filter((specifier) => specifier.type === 'ImportDefaultSpecifier');
@@ -391,7 +405,7 @@ function readAccessPath(expression: Expression): string[] | undefined {
   return undefined;
 }
 
-function renderStyleRule(rule: StyleManifestRule, options: StylePluginOptions, listItem: boolean): string {
+function renderStyleRule(rule: ResolvedStyleRule, options: StyleTransformOptions, listItem: boolean): string {
   const groups = options.mode === 'css' ? [rule.className] : utilityGroupsForRule(rule, options.variants);
   const values = groups.filter(Boolean);
 
@@ -445,15 +459,15 @@ function sourceError(message: string, pos: number): Error {
   return Object.assign(new Error(message), { pos });
 }
 
-async function cachedManifest(cache: Map<string, CachedManifest>, files: readonly string[]): Promise<StyleManifest> {
+async function cachedStyles(cache: Map<string, CachedStyles>, files: readonly string[]): Promise<ResolvedStyles> {
   const key = [...files].sort().join('\0');
   const cached = cache.get(key);
-  if (cached && (await versionsMatch(cached.versions))) return cached.manifest;
+  if (cached && (await versionsMatch(cached.versions))) return cached.styles;
 
-  const manifest = await loadStyleManifest(files);
+  const styles = await resolveStyles(files);
 
-  cache.set(key, { manifest, versions: await fileVersions(manifest.watchFiles) });
-  return manifest;
+  cache.set(key, { styles, versions: await fileVersions(styles.watchFiles) });
+  return styles;
 }
 
 async function fileVersions(files: Iterable<string>): Promise<ReadonlyMap<string, number>> {

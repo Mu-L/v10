@@ -1,9 +1,8 @@
+export type { Registry, RegistryItem } from 'shadcn/schema';
+
 export type {
-  ComponentGraphProvider,
-  ShadcnRegistry,
-  ShadcnRegistryFile,
-  ShadcnRegistryFileType,
-  ShadcnRegistryPluginOptions,
-  VjscRegistryItem,
-  VjscRegistryItemMeta,
+  VjscRegistryCreatedItem,
+  VjscRegistryOptions,
+  VjscRegistryResolvedItem,
+  VjscRegistryStylesOptions,
 } from './types';

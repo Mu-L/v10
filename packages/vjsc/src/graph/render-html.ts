@@ -1,26 +1,25 @@
 import { rolldown } from 'rolldown';
 
-import type { ComponentMeta } from '../components/meta';
+import type { ModuleMeta } from '../components/meta';
 import { HTML_RUNTIME } from '../plugins/html-runtime';
-import type { ComponentGraph } from './types';
-import { validateComponentGraph } from './validate';
+import type { VjscGraph } from './types';
 
-const entryId = '\0vjsc:component-graph-html-entry';
-const emptyId = '\0vjsc:component-graph-html-empty';
-const runtimeId = '\0vjsc:component-graph-html-runtime';
+const entryId = '\0vjsc:module-graph-html-entry';
+const emptyId = '\0vjsc:module-graph-html-empty';
+const runtimeId = '\0vjsc:module-graph-html-runtime';
 
-type ComponentGraphHtmlRenderProps = Readonly<Record<never, never>>;
+type HtmlRenderProps = Readonly<Record<never, never>>;
 
-export interface ComponentGraphHtmlEntry {
+export interface HtmlEntry {
   /** Stable key used for the rendered result. */
   readonly name: string;
-  /** Component graph module containing the renderer export. */
+  /** VJSC graph module containing the renderer export. */
   readonly moduleId: string;
   /** Named component export to render. */
   readonly exportName: string;
 }
 
-export interface RenderComponentGraphHtmlOptions {
+export interface RenderHtmlOptions {
   /** Redirect an external import to a concrete source module. */
   readonly aliases?: ReadonlyMap<string, string> | undefined;
   /** Replace imports that have no effect while rendering static markup. */
@@ -29,13 +28,13 @@ export interface RenderComponentGraphHtmlOptions {
   readonly modules?: ReadonlyMap<string, string> | undefined;
 }
 
-/** Render named HTML component exports directly from one finalized component graph. */
-export async function renderComponentGraphHtml<Item extends ComponentMeta>(
-  graph: ComponentGraph<Item>,
-  entries: readonly ComponentGraphHtmlEntry[],
-  options: RenderComponentGraphHtmlOptions = {}
+/** Render named HTML component exports directly from one finalized module graph. */
+export async function renderHtml<Node extends ModuleMeta>(
+  graph: VjscGraph<Node>,
+  entries: readonly HtmlEntry[],
+  options: RenderHtmlOptions = {}
 ): Promise<ReadonlyMap<string, string>> {
-  const modules = validateComponentGraph(graph);
+  const modules = graph.modules;
   const importResolutions = new Map<string, string>();
   const virtualModules = new Map<string, string>();
 
@@ -52,18 +51,19 @@ export async function renderComponentGraphHtml<Item extends ComponentMeta>(
   const entrySource = entries
     .map((entry, index) => {
       if (!modules.has(entry.moduleId)) {
-        throw new Error(`HTML component graph entry is missing: \`${entry.moduleId}\`.`);
+        throw new Error(`HTML module graph entry is missing: \`${entry.moduleId}\`.`);
       }
 
       return `export { ${entry.exportName} as render${index} } from ${JSON.stringify(entry.moduleId)};`;
     })
     .join('\n');
+
   const build = await rolldown({
     input: entryId,
     treeshake: true,
     plugins: [
       {
-        name: 'vjsc:render-component-graph-html',
+        name: 'vjsc:render-module-graph-html',
         resolveId(id, importer) {
           if (id === entryId || id === emptyId || id === runtimeId || modules.has(id) || virtualModules.has(id)) {
             return id;
@@ -109,19 +109,20 @@ export async function renderComponentGraphHtml<Item extends ComponentMeta>(
     const chunks = output.output.filter((value) => value.type === 'chunk');
 
     if (chunks.length !== 1 || chunks[0]!.imports.length > 0) {
-      throw new Error('HTML component graph renderer did not produce one self-contained module.');
+      throw new Error('HTML module graph renderer did not produce one self-contained module.');
     }
 
     const url = `data:text/javascript;base64,${Buffer.from(chunks[0]!.code).toString('base64')}`;
-    // SAFETY: The module is assembled from the finalized component graph and explicit render-only dependencies above.
+
+    // SAFETY: The module is assembled from the finalized module graph and explicit render-only dependencies above.
     const rendered = (await import(url)) as Readonly<
-      Record<string, (props?: ComponentGraphHtmlRenderProps) => { toString(): string }>
+      Record<string, (props?: HtmlRenderProps) => { toString(): string }>
     >;
 
     return new Map(
       entries.map((entry, index) => {
         const render = rendered[`render${index}`];
-        if (!render) throw new Error(`HTML component graph entry \`${entry.name}\` has no renderer export.`);
+        if (!render) throw new Error(`HTML module graph entry \`${entry.name}\` has no renderer export.`);
 
         return [entry.name, formatHtml(String(render({})))] as const;
       })
@@ -136,7 +137,7 @@ function importKey(importer: string, specifier: string): string {
 }
 
 function virtualId(specifier: string): string {
-  return `\0vjsc:component-graph-html-module:${specifier}`;
+  return `\0vjsc:module-graph-html-module:${specifier}`;
 }
 
 function moduleType(filename: string): 'js' | 'jsx' | 'ts' | 'tsx' {

@@ -1,75 +1,73 @@
-import type { Registry, RegistryItem } from 'shadcn/schema';
+import type { RegistryItem } from 'shadcn/schema';
 
-import type { ComponentMeta } from '../components/meta';
-import type { ComponentGraph, ComponentGraphModule } from '../graph';
-export type { ComponentGraphProvider } from '../graph';
+import type { ModuleMeta } from '../components/meta';
+import type { GraphModule, VjscGraph } from '../graph';
 
-export type ShadcnRegistry = Registry;
-export type ShadcnRegistryFile = NonNullable<RegistryItem['files']>[number];
-export type ShadcnRegistryFileType = ShadcnRegistryFile['type'];
+type DistributiveOmit<Value, Key extends PropertyKey> = Value extends unknown ? Omit<Value, Key> : never;
 
-export interface VjscRegistrySourceItemMeta<Item extends ComponentMeta = ComponentMeta> {
-  readonly kind?: 'source' | undefined;
-  readonly module: ComponentGraphModule<Item>;
-  /** Included registry path, such as `components` or `skins`. */
+export type RegistryModuleTarget<Meta extends ModuleMeta = ModuleMeta> =
+  | string
+  | ((module: GraphModule<Meta>, root: GraphModule<Meta>) => string);
+
+export interface RegistryStylesheetOutput {
+  /** Installed path of the stylesheet bundled from this item's module closure. */
+  readonly target: string;
+  /** Additional authored CSS files relative to the VJSC graph root. */
+  readonly include?: readonly string[] | undefined;
+}
+
+/** Public Shadcn fields and installation policy for one transformed graph module. */
+export type VjscRegistryResolvedItem<Meta extends ModuleMeta = ModuleMeta> = DistributiveOmit<RegistryItem, 'files'> & {
+  /** Included registry path, such as `components` or `blocks`. */
   readonly group: string;
   /** Root-module target relative to the configured installation directory. */
-  readonly target: string | ((module: ComponentGraphModule<Item>, root: ComponentGraphModule<Item>) => string);
-  /** Installed filename for the item's root module. Defaults to its source filename. */
+  readonly target: RegistryModuleTarget<Meta>;
+  /** Installed filename for the root module. Defaults to its source filename. */
   readonly filename?: string | undefined;
   /** Import replacements applied while packaging this item. */
   readonly imports?: Readonly<Record<string, string>> | undefined;
-  /** Installed stylesheets imported from the item's root module. */
-  readonly styleImports?: readonly string[] | undefined;
-  /** Include transformed style assets used by this item's module closure. */
-  readonly stylesheet?:
-    | {
-        readonly target: string;
-        readonly files?: readonly string[] | undefined;
-        /** Import the installed stylesheet from the item's root source. */
-        readonly import?: boolean | undefined;
-      }
-    | undefined;
-}
-
-export interface VjscRegistryStyleItemMeta<Item extends ComponentMeta = ComponentMeta> {
-  readonly kind: 'style';
-  /** Included registry path, such as `support` or `styles`. */
-  readonly group: string;
-  /** Modules whose finalized style assets are aggregated into this item. */
-  readonly modules: readonly ComponentGraphModule<Item>[];
-  /** Compiled VJSC style output filename, such as `buttons.css`. */
-  readonly asset?: string | undefined;
-  /** Stable stylesheet target relative to the configured installation directory. */
-  readonly target: string;
-  /** Additional authored CSS files, relative to the graph root. */
-  readonly files?: readonly string[] | undefined;
-}
-
-export interface VjscRegistryManifestItemMeta {
-  readonly kind: 'manifest';
-  /** Included registry path, such as `support`. */
-  readonly group: string;
-}
-
-export interface VjscRegistryFilesItemMeta {
-  readonly kind: 'files';
-  /** Included registry path, such as `skins`. */
-  readonly group: string;
-}
-
-export type VjscRegistryItemMeta<Item extends ComponentMeta = ComponentMeta> =
-  | VjscRegistrySourceItemMeta<Item>
-  | VjscRegistryStyleItemMeta<Item>
-  | VjscRegistryFilesItemMeta
-  | VjscRegistryManifestItemMeta;
-
-/** Official Shadcn item fields plus compiler-only VJSC build metadata. */
-export type VjscRegistryItem<Item extends ComponentMeta = ComponentMeta> = RegistryItem & {
-  readonly $vjsc: VjscRegistryItemMeta<Item>;
+  /** Bundle the module closure's generated CSS into one installed stylesheet. */
+  readonly stylesheet?: RegistryStylesheetOutput | undefined;
 };
 
-export interface ShadcnRegistryPluginOptions<Item extends ComponentMeta = ComponentMeta> {
+/** A file-backed Shadcn item which is not owned by one transformed graph module. */
+export type VjscRegistryCreatedItem = RegistryItem & {
+  /** Included registry path, such as `components` or `blocks`. */
+  readonly group: string;
+};
+
+export interface VjscRegistryItemContext<Meta extends ModuleMeta = ModuleMeta> {
+  readonly graph: VjscGraph<Meta>;
+  readonly module: GraphModule<Meta>;
+}
+
+export interface VjscRegistryCreateContext<Meta extends ModuleMeta = ModuleMeta> {
+  readonly graph: VjscGraph<Meta>;
+}
+
+export interface VjscRegistryItemsOptions<Meta extends ModuleMeta = ModuleMeta> {
+  resolve(
+    context: VjscRegistryItemContext<Meta>
+  ): VjscRegistryResolvedItem<Meta> | null | Promise<VjscRegistryResolvedItem<Meta> | null>;
+  create?(
+    context: VjscRegistryCreateContext<Meta>
+  ): readonly VjscRegistryCreatedItem[] | Promise<readonly VjscRegistryCreatedItem[]>;
+}
+
+export type VjscRegistryThemeOptions = DistributiveOmit<RegistryItem, 'files' | 'name' | 'type'> & {
+  /** Installed path of the shared theme stylesheet. */
+  readonly target: string;
+  /** Authored CSS files relative to the VJSC graph root. */
+  readonly include?: readonly string[] | undefined;
+};
+
+export interface VjscRegistryStylesOptions {
+  readonly theme?: VjscRegistryThemeOptions | undefined;
+  /** Compiled VJSC style file to stable installed stylesheet path. */
+  readonly files?: Readonly<Record<string, string>> | undefined;
+}
+
+export interface VjscRegistryOptions<Meta extends ModuleMeta = ModuleMeta> {
   readonly name: string;
   readonly homepage: string;
   readonly namespace: string;
@@ -79,13 +77,15 @@ export interface ShadcnRegistryPluginOptions<Item extends ComponentMeta = Compon
   };
   /** Directory below the Rolldown output root where this catalog is emitted. */
   readonly output?: string | undefined;
+  /** Format each editable source before it is emitted. */
+  readonly format?:
+    | ((source: { readonly path: string; readonly content: string }) => string | Promise<string>)
+    | undefined;
   /** Editable-source import strings whose installation specifier is exceptional. */
   readonly imports?: Readonly<Record<string, string>> | undefined;
   /** Exact package requirements used instead of bare discovered dependency names. */
   readonly packages?: Readonly<Record<string, string>> | undefined;
-  /** Describe registry ownership after every requested graph transformation is complete. */
-  readonly items: (
-    graph: ComponentGraph<Item>
-  ) => readonly VjscRegistryItem<Item>[] | Promise<readonly VjscRegistryItem<Item>[]>;
+  readonly items: VjscRegistryItemsOptions<Meta>;
+  readonly styles?: VjscRegistryStylesOptions | undefined;
   readonly meta?: RegistryItem['meta'];
 }

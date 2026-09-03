@@ -1,82 +1,102 @@
 import type { Plugin } from 'rolldown';
 
-import type { VjscDiagnosticsOptions } from '../styles/diagnostics';
-import type { StylePluginOptions } from '../styles/options';
+import type { ModuleMeta } from '../components/meta';
+import type { VjscGraph } from '../graph/types';
+import type { StyleTransformOptions } from '../styles/options';
 import type { ComponentTarget } from '../target/definition';
-import type { ParsedModuleId } from '../utils/module-id';
+import type { VjscModule } from '../utils/module-id';
 import { compilerDirectivePlugin } from './compiler-directive';
 import { componentMetaPlugin } from './component-meta';
 import { componentModulesPlugin } from './component-modules';
 import { type ComponentTargetSelection, componentTargetPlugin, primitiveTargetPlugin } from './component-target';
+import { createVjscGraphCapability, vjscGraphPlugin } from './graph';
 import { htmlRuntimePlugin } from './html-runtime';
 import { reactTargetPropsPlugin } from './react-target-props';
-import { stylePlugin, type StylePluginLifecycle } from './style';
+import { stylePlugin, type StylePluginDiagnostics, type StylePluginLifecycle } from './style';
 import { targetImportCleanupPlugin } from './target-import-cleanup';
 import { targetJsxPlugin } from './target-jsx';
 import { targetTransformPlugin } from './target-transform';
 import { targetTypePlugin } from './target-type';
 import { templateTargetPlugin } from './template-target';
 
-export interface VjscModule extends ParsedModuleId {
-  readonly id: string;
+export interface VjscEntry {
+  readonly filename: string;
 }
 
-export interface VjscModuleConfig {
-  readonly targets: readonly ComponentTarget[];
-  readonly styles?: StylePluginOptions | undefined;
+export interface VjscEntriesOptions {
+  readonly root: string;
+  readonly include: string | readonly string[];
+  readonly exclude?: string | readonly string[] | undefined;
+  readonly resolve?:
+    | {
+        params(entry: VjscEntry): readonly Readonly<Record<string, string>>[];
+      }
+    | undefined;
+}
+
+export interface VjscTransformOptions {
+  components(module: VjscModule): readonly ComponentTarget[] | null;
+  styles(module: VjscModule): StyleTransformOptions | null | Promise<StyleTransformOptions | null>;
 }
 
 export interface VjscPluginOptions {
-  /** Controls compiler warnings. Unsafe isolated-transform relationships always throw. */
-  readonly diagnostics?: VjscDiagnosticsOptions | undefined;
-  configure(module: VjscModule): VjscModuleConfig | null;
+  readonly entries?: VjscEntriesOptions | undefined;
+  readonly transform: VjscTransformOptions;
 }
 
 /**
  * Create the ordered compiler passes for query-selected component modules. Use this as the default VJSC integration for
  * Rolldown-compatible builds.
  *
- * @example
- *   Promote suspicious structural selectors to build errors.
- *   ```ts
- *   vjscPlugin({
- *   diagnostics: { complexSelectors: 'error' },
- *   configure,
- *   });
- *   ```
- *
  * @param options - Resolves targets and styles once for each module identity.
  */
-export function vjscPlugin(options: VjscPluginOptions): Plugin[] {
-  return createVjscPluginPipeline(options);
+export function vjscPlugin<Node extends ModuleMeta = ModuleMeta>(options: VjscPluginOptions): Plugin[] {
+  return createVjscPluginPipeline<Node>(options);
 }
 
-export function createVjscPluginPipeline(options: VjscPluginOptions, styleLifecycle?: StylePluginLifecycle): Plugin[] {
-  const configurations = new Map<string, VjscModuleConfig | null>();
-  const configure = (module: VjscModule): VjscModuleConfig | null => {
-    if (configurations.has(module.id)) return configurations.get(module.id) ?? null;
+export function createVjscPluginPipeline<Node extends ModuleMeta = ModuleMeta>(
+  options: VjscPluginOptions,
+  styleLifecycle?: StylePluginLifecycle,
+  diagnostics: StylePluginDiagnostics = false
+): Plugin[] {
+  const graph = createVjscGraphCapability<Node>();
+  const componentTransforms = new Map<string, readonly ComponentTarget[] | null>();
+  const styleTransforms = new Map<string, Promise<StyleTransformOptions | null>>();
+  const components = (module: VjscModule): readonly ComponentTarget[] | null => {
+    if (componentTransforms.has(module.id)) return componentTransforms.get(module.id) ?? null;
 
-    const config = options.configure(module);
+    const transform = options.transform.components(module);
 
-    configurations.set(module.id, config);
-    return config;
+    componentTransforms.set(module.id, transform);
+    return transform;
   };
-  const targets: ComponentTargetSelection = (module) => configure(module)?.targets;
+  const styles = (module: VjscModule): Promise<StyleTransformOptions | null> => {
+    const cached = styleTransforms.get(module.id);
+    if (cached) return cached;
+
+    const transform = Promise.resolve(options.transform.styles(module));
+
+    styleTransforms.set(module.id, transform);
+    return transform;
+  };
+  const targets: ComponentTargetSelection = components;
 
   return [
     {
-      name: 'vjsc:config',
+      name: 'vjsc',
+      api: graph.api as VjscGraph,
       buildStart() {
-        configurations.clear();
+        componentTransforms.clear();
+        styleTransforms.clear();
       },
     },
     componentModulesPlugin({
-      ignore: (module) => configure(module) === null,
+      select: async (module) => components(module) !== null || (await styles(module)) !== null,
     }),
     htmlRuntimePlugin(),
     componentMetaPlugin(),
     targetJsxPlugin({ targets }),
-    stylePlugin((module) => configure(module)?.styles ?? null, options.diagnostics, styleLifecycle),
+    stylePlugin(styles, diagnostics, styleLifecycle),
     targetTransformPlugin({ targets }),
     compilerDirectivePlugin({ targets }),
     targetTypePlugin({ targets }),
@@ -85,5 +105,6 @@ export function createVjscPluginPipeline(options: VjscPluginOptions, styleLifecy
     reactTargetPropsPlugin({ targets }),
     templateTargetPlugin({ targets }),
     targetImportCleanupPlugin({ targets }),
+    vjscGraphPlugin(options.entries, graph),
   ];
 }

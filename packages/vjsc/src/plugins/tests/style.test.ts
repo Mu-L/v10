@@ -6,8 +6,8 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import { compileStyles } from '../../styles/compile';
 import { loadDesignSystem } from '../../styles/design-system';
-import type { StyleManifest, StyleManifestRule } from '../../styles/manifest';
-import { readComponentSource, readComponentStyles } from '../component-meta';
+import type { ResolvedStyles, ResolvedStyleRule } from '../../styles/resolved';
+import { readComponentSource, readModuleStyles } from '../component-meta';
 import { componentSourcePlugin } from '../component-source';
 import { type StylePluginConfig, stylePlugin } from '../style';
 
@@ -19,7 +19,7 @@ const designDependency = resolve(import.meta.dirname, 'fixtures/theme.css');
 
 const rules = [rule(['button'], 'media-button', ['grid', 'p-0']), rule(['icon'], 'media-icon', ['size-4', 'shrink-0'])];
 
-const manifest: StyleManifest = {
+const resolvedStyles: ResolvedStyles = {
   modules: new Map([[modulePath, new Map(rules.map((item) => [item.tokenPath.join('.'), item]))]]),
   rules,
   watchFiles: [],
@@ -104,14 +104,14 @@ describe('stylePlugin', () => {
   it('tracks imported design-system files and preserves directives', async () => {
     const design = await loadDesignSystem(designPath);
 
-    await compileStyles({ design, manifest });
+    await compileStyles({ design, styles: resolvedStyles });
     const { source } = await transform(
       `
         'use client';
         import styles from './fixtures/button.styles';
         export const button = <button className={styles.button} />;
       `,
-      { manifest, mode: 'css', stylesheet: { input: designPath } }
+      { resolvedStyles, mode: 'css', stylesheet: { input: designPath } }
     );
 
     expect(design.watchFiles).toContain(designDependency);
@@ -125,7 +125,7 @@ describe('stylePlugin', () => {
         export const button = <button className={styles.button} />;
       `,
       {
-        manifest,
+        resolvedStyles,
         mode: 'css',
         stylesheet: { input: designPath, base: designDependency },
       }
@@ -141,7 +141,7 @@ describe('stylePlugin', () => {
   it('releases stale hashed CSS modules when an owner is recompiled', async () => {
     let scope = '.first';
     const styles = stylePlugin(() => ({
-      manifest,
+      resolvedStyles,
       mode: 'css',
       stylesheet: { input: designPath, scope },
     }));
@@ -165,9 +165,9 @@ describe('stylePlugin', () => {
   });
 
   it('warns once when authored and compiled checks find the same complex selector', async () => {
-    const complexManifest = createManifest([rule(['root'], 'media-root', ['[&_img]:block', '[&_video]:block'])]);
+    const complexStyles = createResolvedStyles([rule(['root'], 'media-root', ['[&_img]:block', '[&_video]:block'])]);
     const styles = stylePlugin({
-      manifest: complexManifest,
+      resolvedStyles: complexStyles,
       mode: 'css',
       stylesheet: { input: designPath },
     });
@@ -185,35 +185,35 @@ describe('stylePlugin', () => {
   });
 
   it('promotes or silences complex-selector warnings', async () => {
-    const complexManifest = createManifest([rule(['root'], 'media-root', ['[&_img]:block'])]);
+    const complexStyles = createResolvedStyles([rule(['root'], 'media-root', ['[&_img]:block'])]);
     const input = `import styles from './fixtures/button.styles'; export const root = <div className={styles.root} />;`;
 
     await expect(
       transform(
         input,
         undefined,
-        stylePlugin({ manifest: complexManifest, mode: 'tailwind' }, { complexSelectors: 'error' })
+        stylePlugin({ resolvedStyles: complexStyles, mode: 'tailwind' }, { complexSelectors: 'error' })
       )
     ).rejects.toThrow('[VJSC_STYLE_COMPLEX_SELECTOR]');
 
     const { warnings } = await transform(
       input,
       undefined,
-      stylePlugin({ manifest: complexManifest, mode: 'tailwind' }, { complexSelectors: 'off' })
+      stylePlugin({ resolvedStyles: complexStyles, mode: 'tailwind' }, { complexSelectors: 'off' })
     );
 
     expect(warnings).toEqual([]);
   });
 
   it('keeps isolation errors active when complex-selector warnings are off', async () => {
-    const peerManifest = createManifest([rule(['root'], 'media-root', ['peer/dialog'])]);
+    const peerStyles = createResolvedStyles([rule(['root'], 'media-root', ['peer/dialog'])]);
     const input = `import styles from './fixtures/button.styles'; export const root = <div className={styles.root} />;`;
 
     await expect(
       transform(
         input,
         undefined,
-        stylePlugin({ manifest: peerManifest, mode: 'tailwind' }, { complexSelectors: 'off' })
+        stylePlugin({ resolvedStyles: peerStyles, mode: 'tailwind' }, { complexSelectors: 'off' })
       )
     ).rejects.toThrow('[VJSC_STYLE_PEER_RELATIONSHIP]');
   });
@@ -221,7 +221,7 @@ describe('stylePlugin', () => {
 
 async function transform(
   source: string,
-  config: StylePluginConfig = { manifest, mode: 'tailwind' },
+  config: StylePluginConfig = { resolvedStyles, mode: 'tailwind' },
   styles: Plugin = stylePlugin(config)
 ): Promise<{ readonly source: string; readonly styleIds: readonly string[]; readonly warnings: readonly string[] }> {
   let meta: unknown;
@@ -248,7 +248,7 @@ async function transform(
   const output = readComponentSource(meta);
   if (output === undefined) throw new Error('Fixture build did not retain editable source.');
 
-  return { source: output, styleIds: readComponentStyles(meta), warnings };
+  return { source: output, styleIds: readModuleStyles(meta)?.assets ?? [], warnings };
 }
 
 function virtualCssIds(source: string): string[] {
@@ -290,7 +290,7 @@ function fixturePlugin(source: string): Plugin {
   };
 }
 
-function rule(tokenPath: readonly string[], className: string, utilities: readonly string[]): StyleManifestRule {
+function rule(tokenPath: readonly string[], className: string, utilities: readonly string[]): ResolvedStyleRule {
   return {
     modulePath,
     tokenPath,
@@ -305,7 +305,7 @@ function rule(tokenPath: readonly string[], className: string, utilities: readon
   };
 }
 
-function createManifest(items: readonly StyleManifestRule[]): StyleManifest {
+function createResolvedStyles(items: readonly ResolvedStyleRule[]): ResolvedStyles {
   return {
     modules: new Map([[modulePath, new Map(items.map((item) => [item.tokenPath.join('.'), item]))]]),
     rules: items,

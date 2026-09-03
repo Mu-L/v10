@@ -1,5 +1,10 @@
-export type { ComplexSelectorDiagnosticLevel, VjscDiagnosticsOptions } from '../styles/diagnostics';
-export { type ComponentGraphPluginOptions, componentGraphPlugin } from './component-graph';
-export { type ComponentSchemaPluginOptions, componentSchemaPlugin } from './component-schema';
-export { type ShadcnRegistryPluginOptions, shadcnRegistryPlugin } from './shadcn';
-export { type VjscModule, type VjscModuleConfig, type VjscPluginOptions, vjscPlugin } from './vjsc';
+export { type VjscComponentSchemaOptions, vjscComponentSchemaPlugin } from './component-schema';
+export { type VjscRegistryOptions, vjscRegistryPlugin } from './registry';
+export {
+  type VjscEntriesOptions,
+  type VjscEntry,
+  type VjscPluginOptions,
+  vjscPlugin,
+  type VjscTransformOptions,
+} from './vjsc';
+export type { VjscModule } from '../utils/module-id';
