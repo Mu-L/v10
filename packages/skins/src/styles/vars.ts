@@ -216,7 +216,7 @@ export const vars = {
     kind: 'internal',
     description: 'Scoped Tailwind spacing unit scaled for fullscreen UI.',
   },
-  '--media-scrim': {
+  '--media-backdrop': {
     kind: 'internal',
     description: 'Opaque base color for translucent overlays such as backdrops, indicator pills, and thumbnails.',
   },
@@ -228,6 +228,10 @@ export const vars = {
     kind: 'internal',
     description: 'Theme gradient painted behind the video controls.',
   },
+  '--media-thumbnail-gradient': {
+    kind: 'internal',
+    description: 'Theme backdrop over the default thumbnail preview that keeps the time label legible.',
+  },
   '--media-indicator-gradient': {
     kind: 'internal',
     description: 'Theme gradient painted behind Minimal status and volume indicators.',
@@ -236,9 +240,9 @@ export const vars = {
     kind: 'internal',
     description: 'Backdrop filter shared by translucent surfaces; preferences switch it off.',
   },
-  '--media-backdrop-filter-scrim': {
+  '--media-backdrop-filter-indicator': {
     kind: 'internal',
-    description: 'Backdrop filter behind buffering and playback status scrims; preferences switch it off.',
+    description: 'Backdrop filter behind the buffering and playback status indicators; preferences switch it off.',
   },
   '--media-backdrop-filter-dialog': {
     kind: 'internal',
@@ -303,6 +307,10 @@ export const vars = {
   '--media-live-color': {
     kind: 'internal',
     description: 'Color of the live-edge indicator dot.',
+  },
+  '--media-shadow-separator': {
+    kind: 'internal',
+    description: 'Highlight drawn under default menu separators.',
   },
   '--media-shadow-thumb': {
     kind: 'internal',

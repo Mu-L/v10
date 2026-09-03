@@ -18,7 +18,7 @@ const menuItemOption = [
 
 const menuItemHighlight = [
   'media-anchored:data-highlighted:[anchor-name:--media-menu-item-highlight-anchor]',
-  'media-anchored:data-highlighted:bg-transparent',
+  'media-anchored:media-highlighted:bg-transparent',
 ] as const;
 
 const menuHighlight = [
@@ -79,6 +79,7 @@ export default styles({
     },
     separator: {
       utilities: 'my-1 block border-b border-media-border media-opaque:border-media-foreground/25',
+      variants: { default: 'shadow-media-separator' },
     },
     hint: {
       utilities: 'ms-auto inline-flex min-w-0 items-center gap-1 ps-2 text-current/65',

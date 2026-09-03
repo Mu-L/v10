@@ -11,9 +11,9 @@
     "types": ["node"],
     "declarationDir": "types"
   },
-  "include": ["build", "dev", "src/*.ts", "src/styles/utilities.ts", "src/styles/vars.ts"],
+  "include": ["build", "src/*.ts", "src/styles/utilities.ts", "src/styles/vars.ts"],
   "references": [
-    { "path": "../../apps/sandbox/app/shared" },
+    { "path": "../../apps/sandbox/tsconfig.shared.json" },
     { "path": "../core" },
     { "path": "../html" },
     { "path": "../icons" },

@@ -16,7 +16,7 @@
   --color-media-primary: var(--media-primary);
   --color-media-primary-foreground: var(--media-primary-foreground);
   --color-media-ring: var(--media-ring);
-  --color-media-scrim: var(--media-scrim);
+  --color-media-backdrop: var(--media-backdrop);
 
   /* Player layout breakpoints, measured against the `media-root` container. */
   --container-media-compact: 32rem;
@@ -49,11 +49,12 @@
   /* Shadows and backdrop filters. Contrast-aware ones read the current color; the rest alias theme tokens. */
   --drop-shadow-media-icon: 0 1px 0 var(--media-shadow-current-color);
   --shadow-media-hairline: 0 0 0 1px var(--media-border);
+  --shadow-media-separator: var(--media-shadow-separator);
   --shadow-media-thumb: var(--media-shadow-thumb);
   --shadow-media-tooltip: var(--media-shadow-tooltip);
   --text-shadow-media: 0 1px 0 var(--media-shadow-current-color);
   --text-shadow-media-dialog: var(--media-text-shadow-dialog);
-  --backdrop-filter-media-scrim: var(--media-backdrop-filter-scrim);
+  --backdrop-filter-media-indicator: var(--media-backdrop-filter-indicator);
   --backdrop-filter-media-dialog: var(--media-backdrop-filter-dialog);
 
   /* Motion. Utilities such as `duration-media-fast` and `scale-media-hidden` follow reduced-motion preferences through the tokens. */
@@ -93,7 +94,7 @@
   transition-delay: --value(--delay-media-*);
 }
 
-/* Backdrop filters from the theme, for example `backdrop-filter-media-scrim`. */
+/* Backdrop filters from the theme, for example `backdrop-filter-media-indicator`. */
 @utility backdrop-filter-media-* {
   backdrop-filter: --value(--backdrop-filter-media-*);
 }
@@ -138,13 +139,15 @@
   }
 }
 
-/* Hovered, focused, expanded, or highlighted control or menu item that is not disabled. Hover needs a hover-capable pointer. */
+/* Hovered, focused, expanded, or highlighted control or menu item that is not disabled. Hover needs a hover-capable pointer.
+   The disabled check sits in :where() so the variant adds no specificity beyond the state itself, which lets a later
+   media-highlighted rule override an earlier one. */
 @custom-variant media-highlighted {
-  &:where(:focus-visible, [aria-expanded="true"], [data-highlighted]):not([aria-disabled="true"]) {
+  &:where(:focus-visible, [aria-expanded="true"], [data-highlighted]):where(:not([aria-disabled="true"])) {
     @slot;
   }
   @media (hover: hover) {
-    &:hover:not([aria-disabled="true"]) {
+    &:hover:where(:not([aria-disabled="true"])) {
       @slot;
     }
   }

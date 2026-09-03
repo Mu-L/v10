@@ -22,7 +22,7 @@
     --media-muted-foreground: oklch(1 0 0 / 0.65);
     --media-border: oklch(0 0 0 / 0.1);
     --media-ring: oklch(1 0 0);
-    --media-scrim: oklch(0 0 0);
+    --media-backdrop: oklch(0 0 0);
     --media-live-color: oklch(0.65 0.22 27);
 
     /* Shadows and surfaces. Preferences switch the backdrop filters off and strengthen the inset highlight. */
@@ -30,11 +30,12 @@
     --media-shadow-surface-inset: inset 0 1px 0 0 rgb(255 255 255 / 0.1), inset 0 0 0 1px rgb(255 255 255 / 0.05);
     --media-shadow-thumb: 0 0 0 1px rgb(0 0 0 / 0.1), 0 1px 3px 0 rgb(0 0 0 / 0.35), 0 1px 2px -1px rgb(0 0 0 / 0.35);
     --media-shadow-tooltip: 0 0 0 1px var(--media-border), var(--media-shadow-surface);
+    --media-shadow-separator: 0 1px 0 0 oklch(1 0 0 / 0.075);
     --media-shadow-current-color: oklch(from currentColor 0 0 0 / clamp(0, calc((l - 0.5) * 0.5), 0.15));
     --media-shadow-subtle-current-color: oklch(from var(--media-shadow-current-color) l c h / calc(alpha * 0.4));
     --media-text-shadow-dialog: 0 1px 0 rgb(0 0 0 / 0.25);
     --media-backdrop-filter-surface: blur(16px) saturate(150%);
-    --media-backdrop-filter-scrim: blur(8px);
+    --media-backdrop-filter-indicator: blur(8px);
     --media-backdrop-filter-dialog: blur(16px) saturate(150%);
 
     /* Controls. */
@@ -84,7 +85,7 @@
     --media-dialog-max-width: calc(var(--media-spacing) * 72);
 
     /* Sliders. */
-    --media-slider-preview-label-offset: calc(var(--media-spacing) * 12.5);
+    --media-slider-preview-label-offset: calc(var(--media-spacing) * 10.5);
 
     /* Player frame and scale. */
     --media-video-border-radius: var(--media-border-radius, 28px);

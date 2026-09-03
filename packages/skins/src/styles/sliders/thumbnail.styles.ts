@@ -6,7 +6,7 @@ export default styles({
   rules: {
     root: {
       utilities: [
-        'group/thumbnail pointer-events-none overflow-hidden rounded-media-popup bg-media-scrim/90',
+        'group/thumbnail pointer-events-none overflow-hidden rounded-media-popup bg-media-backdrop/90',
         'bottom-[calc(100%+var(--media-slider-preview-offset))]',
         'has-[[data-loading]]:aspect-video has-[[data-loading]]:w-(--media-slider-preview-max-width)',
       ],
@@ -21,6 +21,10 @@ export default styles({
         'transition-opacity duration-media-base ease-out',
         'data-loading:opacity-0',
       ],
+      variants: {
+        default:
+          'after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:bg-(image:--media-thumbnail-gradient)',
+      },
     },
     spinnerIcon: {
       utilities: [
