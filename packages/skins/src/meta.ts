@@ -10,14 +10,22 @@ export interface SkinMeta extends ComponentMeta {
   readonly type: 'skin';
   readonly title: string;
   readonly description: string;
-  readonly style: {
-    readonly scope: string;
-    readonly theme: 'default' | 'minimal';
-    readonly preset: 'video' | 'audio' | 'live-video' | 'live-audio';
-  };
+}
+
+/** Build-time styling identity of one skin: its CSS scope, theme, and preset. Keyed by skin name in `skinStyles`. */
+export interface SkinStyle {
+  readonly scope: string;
+  readonly theme: 'default' | 'minimal';
+  readonly preset: 'video' | 'audio' | 'live-video' | 'live-audio';
 }
 
 export type SkinModuleMeta = SkinComponentMeta | SkinMeta;
+
+/** What a component module authors: `name` and `type` come from its path at build time. */
+export type SkinComponentDescription = Pick<SkinComponentMeta, 'title' | 'description'>;
+
+/** What a skin module authors: `name` and `type` come from its path at build time. */
+export type SkinDescription = Pick<SkinMeta, 'title' | 'description'>;
 
 export const skinStyles = {
   'default-video': {
@@ -60,7 +68,7 @@ export const skinStyles = {
     theme: 'minimal',
     preset: 'audio',
   },
-} as const satisfies Record<string, SkinMeta['style']>;
+} as const satisfies Record<string, SkinStyle>;
 
 export type SkinName = keyof typeof skinStyles;
 

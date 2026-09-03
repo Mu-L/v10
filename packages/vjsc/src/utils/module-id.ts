@@ -1,6 +1,9 @@
 import { realpathSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
 
+/** Matches script module ids, with or without a transform query, for plugin transform filters. */
+export const SCRIPT_MODULE_ID = /\.[cm]?[jt]sx?(?:\?|$)/;
+
 export interface TransformModule {
   readonly id: string;
   readonly filename: string;
@@ -56,4 +59,16 @@ function resolveModuleFilename(filename: string): string {
   } catch {
     return resolve(filename);
   }
+}
+
+/** The Rolldown module type for a script filename. */
+export function scriptModuleType(filename: string): 'js' | 'jsx' | 'ts' | 'tsx' {
+  const name = moduleFilename(filename);
+  if (name.endsWith('.tsx')) return 'tsx';
+
+  if (name.endsWith('.jsx')) return 'jsx';
+
+  if (/\.[cm]?ts$/.test(name)) return 'ts';
+
+  return 'js';
 }

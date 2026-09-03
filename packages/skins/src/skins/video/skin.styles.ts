@@ -2,9 +2,11 @@ import { styles } from 'vjsc/styles';
 
 export default styles({
   file: 'video/skin.css',
+  prefix: 'video-skin',
   rules: {
     root: {
-      className: 'video-skin',
+      // The skin root shares the container's scope root, so its rules must also match `:scope`.
+      scopeRoot: true,
       utilities: 'pointer-fine:not-data-controls-visible:cursor-none',
     },
   },

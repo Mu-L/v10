@@ -9,7 +9,7 @@ export type {
   VariableDeclarator,
 } from '@oxc-project/types';
 export { walk } from 'oxc-walker';
-export { type BlockBody, prependBlockBody } from './edit';
+export { type SourceError, sourceError } from './errors';
 export {
   collectIdentifierNames,
   insertModuleImports,
@@ -25,4 +25,4 @@ export {
   type SourceText,
   sliceSource,
 } from './source';
-export { collectFunctionDeclarations, findJsxAttribute, findJsxElement, jsxNamePath } from './traverse';
+export { findJsxAttribute, jsxNamePath } from './traverse';

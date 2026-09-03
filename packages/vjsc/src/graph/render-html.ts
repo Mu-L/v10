@@ -1,12 +1,12 @@
 import { rolldown } from 'rolldown';
 
 import type { ModuleMeta } from '../components/meta';
-import { HTML_RUNTIME } from '../plugins/html-runtime';
+import { resolveHtmlRuntime } from '../plugins/html-runtime';
+import { scriptModuleType } from '../utils/module-id';
 import type { Graph } from './types';
 
 const entryId = '\0vjsc:module-graph-html-entry';
 const emptyId = '\0vjsc:module-graph-html-empty';
-const runtimeId = '\0vjsc:module-graph-html-runtime';
 
 type HtmlRenderProps = Readonly<Record<never, never>>;
 
@@ -65,13 +65,10 @@ export async function renderHtml<Node extends ModuleMeta>(
       {
         name: 'vjsc:render-module-graph-html',
         resolveId(id, importer) {
-          if (id === entryId || id === emptyId || id === runtimeId || modules.has(id) || virtualModules.has(id)) {
-            return id;
-          }
+          if (id === entryId || id === emptyId || modules.has(id) || virtualModules.has(id)) return id;
 
-          if (id === 'vjsc/html-runtime/jsx-runtime' || id === 'vjsc/html-runtime/jsx-dev-runtime') {
-            return runtimeId;
-          }
+          const runtime = resolveHtmlRuntime(id);
+          if (runtime) return runtime;
 
           if (options.empty?.(id)) return emptyId;
 
@@ -90,15 +87,13 @@ export async function renderHtml<Node extends ModuleMeta>(
 
           if (id === emptyId) return { code: 'export {};', moduleType: 'js' };
 
-          if (id === runtimeId) return { code: HTML_RUNTIME, moduleType: 'js' };
-
           const virtual = virtualModules.get(id);
           if (virtual !== undefined) return { code: virtual, moduleType: 'js' };
 
           const module = modules.get(id);
           if (!module) return null;
 
-          return { code: module.source, moduleType: moduleType(module.filename) };
+          return { code: module.source, moduleType: scriptModuleType(module.filename) };
         },
       },
     ],
@@ -138,16 +133,6 @@ function importKey(importer: string, specifier: string): string {
 
 function virtualId(specifier: string): string {
   return `\0vjsc:module-graph-html-module:${specifier}`;
-}
-
-function moduleType(filename: string): 'js' | 'jsx' | 'ts' | 'tsx' {
-  if (filename.endsWith('.tsx')) return 'tsx';
-
-  if (filename.endsWith('.ts')) return 'ts';
-
-  if (filename.endsWith('.jsx')) return 'jsx';
-
-  return 'js';
 }
 
 function formatHtml(html: string): string {

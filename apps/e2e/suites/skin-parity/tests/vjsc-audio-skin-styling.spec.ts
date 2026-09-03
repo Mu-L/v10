@@ -2,67 +2,75 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import {
   buttonInteractionContract,
+  captureRendering,
   collectPageErrors,
   emulatePreference,
+  expectRenderingParity,
+  expectSameRendering,
+  freezeSliderState,
   normalizeErrorDialogCopy,
+  openComparison,
+  openSourceComparison,
   popupAncestor,
   popupContract,
+  releaseSliderState,
+  type SkinCase,
+  skinCases,
+  type SkinComparison,
+  type SkinPanel,
+  type SourceComparison,
   surfaceContract,
   waitForStableText,
-  type SkinStyle,
 } from './vjsc-skin-parity';
 
-const CASES = [
-  { framework: 'react', skin: 'default-audio' },
-  { framework: 'react', skin: 'minimal-audio' },
-  { framework: 'html', skin: 'default-audio' },
-  { framework: 'html', skin: 'minimal-audio' },
-] as const;
-const STYLES = ['css', 'tailwind'] as const;
+const CASES = skinCases('audio');
 const WIDTHS = [384, 672] as const;
 
-type Style = SkinStyle;
-type Variant = (typeof CASES)[number];
-
-test.describe.configure({ mode: 'serial' });
-
 for (const variant of CASES) {
-  test(`${variant.framework} ${variant.skin} keeps CSS and Tailwind rendering in sync`, async ({ page }) => {
+  test(`${variant.framework} ${variant.skin} keeps CSS and Tailwind rendering in sync`, async ({ page }, testInfo) => {
     const pageErrors = collectPageErrors(page);
 
     for (const width of WIDTHS) {
-      const name = `${variant.framework}-${variant.skin}-${width}.png`;
-      const css = await openVariant(page, variant, 'css', width);
-      const cssContract = await layoutContract(css);
-
-      await expect(css).toHaveScreenshot(name);
-
-      const tailwind = await openVariant(page, variant, 'tailwind', width);
-      const tailwindContract = await layoutContract(tailwind);
+      const comparison = await openVariants(page, variant, width);
+      const cssContract = await layoutContract(comparison.css.root);
+      const tailwindContract = await layoutContract(comparison.tailwind.root);
 
       expect(tailwindContract).toEqual(cssContract);
-      await expect(tailwind).toHaveScreenshot(name);
+      await expectRenderingParity(testInfo, comparison, `${variant.framework}-${variant.skin}-${width}.png`);
     }
 
     expect(pageErrors).toEqual([]);
   });
 
+  test(`${variant.framework} ${variant.skin} keeps the packaged skin in sync with the authored skin`, async ({
+    page,
+  }, testInfo) => {
+    const { authored, generated } = await openPackagedVariants(page, variant, 672);
+    const authoredContract = await layoutContract(authored.root);
+    const generatedContract = await layoutContract(generated.root);
+
+    expect(generatedContract).toEqual(authoredContract);
+
+    const reference = await captureRendering(authored.root, `${variant.framework}-${variant.skin}-packaged.png`);
+
+    await expectSameRendering(testInfo, reference, generated.root);
+  });
+
   test(`${variant.framework} ${variant.skin} preserves audio interactions and popup styling`, async ({ page }) => {
-    const contracts = [];
+    const comparison = await openVariants(page, variant, 672);
+    const contracts: Awaited<ReturnType<typeof interactionContract>>[] = [];
 
-    for (const style of STYLES) {
-      await test.step(style, async () => {
-        const root = await openVariant(page, variant, style, 672);
-
-        contracts.push(await interactionContract(page, root));
+    for (const panel of comparison.panels) {
+      await test.step(panel.style, async () => {
+        contracts.push(await interactionContract(panel.root));
       });
     }
 
     for (const key of ['button', 'hover', 'menu', 'popover', 'tooltip'] as const) {
-      expect(contracts[1][key], `${key}: Tailwind matches CSS`).toEqual(contracts[0][key]);
+      expect(contracts[1]![key], `${key}: Tailwind matches CSS`).toEqual(contracts[0]![key]);
     }
 
-    expect(contracts[0]).toMatchObject({
+    expect(contracts[0]!).toMatchObject({
       nestedButtons: 0,
       playbackRateChanged: true,
       tooltip: { visible: true },
@@ -70,12 +78,12 @@ for (const variant of CASES) {
   });
 
   test(`${variant.framework} ${variant.skin} keeps error-dialog styling in sync`, async ({ page }) => {
-    const contracts = [];
+    const comparison = await openVariants(page, variant, 672, { media: 'error', expectPlay: false });
+    const contracts: Awaited<ReturnType<typeof popupContract>>[] = [];
 
-    for (const style of STYLES) {
-      await test.step(style, async () => {
-        const root = await openVariant(page, variant, style, 672, 'error', false);
-        const dialog = root.getByRole('alertdialog');
+    for (const panel of comparison.panels) {
+      await test.step(panel.style, async () => {
+        const dialog = panel.root.getByRole('alertdialog');
 
         await expect(dialog).toBeVisible({ timeout: 20_000 });
         await waitForStableText(dialog);
@@ -84,51 +92,53 @@ for (const variant of CASES) {
       });
     }
 
-    expect(contracts[1]).toEqual(contracts[0]);
+    expect(contracts[1]!).toEqual(contracts[0]!);
   });
 
   test(`${variant.framework} ${variant.skin} keeps seek preview and dragging in sync`, async ({ page }) => {
-    const contracts = [];
+    const comparison = await openVariants(page, variant, 672);
+    const contracts: Awaited<ReturnType<typeof audioSeekContract>>[] = [];
 
-    for (const style of STYLES) {
-      await test.step(style, async () => {
-        await openVariant(page, variant, style, 672);
-        contracts.push(await audioSeekContract(page));
+    for (const panel of comparison.panels) {
+      await test.step(panel.style, async () => {
+        contracts.push(await audioSeekContract(panel.root));
       });
     }
 
-    expect(contracts[1]).toEqual(contracts[0]);
-    expect(contracts[0]).toMatchObject({
+    expect(contracts[1]!).toEqual(contracts[0]!);
+    expect(contracts[0]!).toMatchObject({
       dragging: { fillIsImmediate: true, lag: 0, thumbPositionIsImmediate: true },
       restingFillTransitions: true,
     });
-    expect(contracts[0].previewOffsets.every((offset) => Math.abs(offset) <= 1)).toBe(true);
+    expect(contracts[0]!.previewOffsets.every((offset) => Math.abs(offset) <= 1)).toBe(true);
   });
 
   test(`${variant.framework} ${variant.skin} removes movement under reduced motion`, async ({ page }) => {
-    for (const style of STYLES) {
-      const root = await openVariant(page, variant, style, 672);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
 
-      await page.emulateMedia({ reducedMotion: 'reduce' });
-      await expect.poll(() => page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);
+    const comparison = await openVariants(page, variant, 672);
 
-      const button = root.getByRole('button', { name: /Playback rate/i });
+    await expect.poll(() => page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);
+
+    for (const panel of comparison.panels) {
+      const button = panel.root.getByRole('button', { name: /Playback rate/i });
 
       await button.click();
       await expect(button).toHaveAttribute('aria-expanded', 'true');
 
-      const popup = visibleMenuPopup(page);
+      const popup = visibleMenuPopup(panel.root);
       const motion = await popup.evaluate((element) => {
         const style = getComputedStyle(element);
 
         return {
           animation: style.animationName,
           duration: style.transitionDuration,
-          scale: style.scale,
+          scale: style.scale === '1' ? 'none' : style.scale,
         };
       });
 
-      expect(motion).toEqual({ animation: 'none', duration: '0s', scale: 'none' });
+      // Reduced motion collapses popup durations to the instant token and neutralizes the hidden scale.
+      expect(motion).toEqual({ animation: 'none', duration: '0.05s', scale: 'none' });
     }
   });
 
@@ -136,40 +146,40 @@ for (const variant of CASES) {
     test(`${variant.framework} ${variant.skin} keeps ${preference} surfaces in sync`, async ({ page }) => {
       await emulatePreference(page, preference);
 
+      const comparison = await openVariants(page, variant, 672);
       const contracts = [];
 
-      for (const style of STYLES) {
-        const root = await openVariant(page, variant, style, 672);
-        const rate = root.getByRole('button', { name: /Playback rate/i });
+      for (const panel of comparison.panels) {
+        const rate = panel.root.getByRole('button', { name: /Playback rate/i });
 
         await rate.click();
         await expect(rate).toHaveAttribute('aria-expanded', 'true');
 
         contracts.push({
-          controls: await surfaceContract(root.locator('.audio-controls').first()),
-          popup: await surfaceContract(visibleMenuPopup(page)),
+          controls: await surfaceContract(panel.root.locator('.audio-controls').first()),
+          popup: await surfaceContract(visibleMenuPopup(panel.root)),
         });
       }
 
-      expect(contracts[1]).toEqual(contracts[0]);
+      expect(contracts[1]!).toEqual(contracts[0]!);
     });
   }
 }
 
-async function openVariant(
+async function openVariants(
   page: Page,
-  variant: Variant,
-  style: Style,
+  variant: SkinCase,
   width: number,
-  media = 'mp4-1',
-  expectPlay = true
-): Promise<Locator> {
-  const query = new URLSearchParams({ ...variant, style, media, width: String(width) });
+  { media = 'mp4-1', expectPlay = true } = {}
+): Promise<SkinComparison> {
+  return openComparison(page, { ...variant, media, width }, (panel) => preparePanel(panel, width, expectPlay));
+}
 
-  await page.goto(`/?${query}`, { waitUntil: 'domcontentloaded' });
+async function openPackagedVariants(page: Page, variant: SkinCase, width: number): Promise<SourceComparison> {
+  return openSourceComparison(page, { ...variant, media: 'mp4-1', width }, (panel) => preparePanel(panel, width, true));
+}
 
-  const root = page.getByRole('group', { name: 'Media player' });
-
+async function preparePanel({ root, section }: SkinPanel, width: number, expectPlay: boolean) {
   await expect(root).toBeVisible();
 
   if (expectPlay) {
@@ -178,34 +188,14 @@ async function openVariant(
   }
 
   await expect.poll(() => root.evaluate((element) => Math.round(element.getBoundingClientRect().width))).toBe(width);
-  await root.evaluate((element) => {
-    if (!(element instanceof HTMLElement)) return;
-
-    const { top } = element.getBoundingClientRect();
-
-    element.style.translate = `0 ${Math.round(top) - top}px`;
-  });
-  await root.locator('audio').evaluateAll((elements) => {
+  await section.locator('audio').evaluateAll((elements: HTMLMediaElement[]) => {
     for (const element of elements) {
       element.pause();
       element.currentTime = 0;
     }
   });
-  await root
-    .getByRole('slider', { name: 'Seek' })
-    .locator('..')
-    .evaluateAll((elements) => {
-      for (const element of elements) {
-        if (!(element instanceof HTMLElement)) continue;
-
-        element.style.setProperty('--media-slider-fill', '0%', 'important');
-        element.style.setProperty('--media-slider-buffer', '0%', 'important');
-        element.style.setProperty('--media-slider-pointer', '0%', 'important');
-      }
-    });
-  await page.evaluate(() => document.fonts.ready.then(() => undefined));
-
-  return root;
+  await freezeSliderState(root.getByRole('slider', { name: 'Seek' }));
+  await root.page().evaluate(() => document.fonts.ready.then(() => undefined));
 }
 
 async function layoutContract(root: Locator) {
@@ -309,7 +299,8 @@ async function layoutContract(root: Locator) {
   };
 }
 
-async function interactionContract(page: Page, root: Locator) {
+async function interactionContract(root: Locator) {
+  const page = root.page();
   const play = root.getByRole('button', { name: /^(?:Play|Pause)$/ });
 
   await play.hover();
@@ -324,7 +315,7 @@ async function interactionContract(page: Page, root: Locator) {
     };
   });
 
-  const tooltip = page.locator('[popover]:visible').filter({ hasText: 'Play' }).first();
+  const tooltip = root.locator('[popover]:visible').filter({ hasText: 'Play' }).first();
 
   await expect(tooltip).toBeVisible();
 
@@ -352,7 +343,7 @@ async function interactionContract(page: Page, root: Locator) {
   await expect(rate).toHaveAttribute('aria-expanded', 'true');
 
   const menu = root.getByRole('menu');
-  const menuPopup = visibleMenuPopup(page);
+  const menuPopup = visibleMenuPopup(root);
   const alternative = menu.locator('[role="menuitemradio"]:not([aria-checked="true"])').last();
 
   await expect(menu).toBeVisible();
@@ -392,15 +383,13 @@ async function interactionContract(page: Page, root: Locator) {
   };
 }
 
-async function audioSeekContract(page: Page) {
-  const thumb = page.getByRole('slider', { name: 'Seek' });
+async function audioSeekContract(root: Locator) {
+  const page = root.page();
+  const thumb = root.getByRole('slider', { name: 'Seek' });
   const slider = thumb.locator('..');
 
-  await slider.evaluate((element) => {
-    for (const name of ['--media-slider-fill', '--media-slider-buffer', '--media-slider-pointer']) {
-      if (element instanceof HTMLElement) element.style.removeProperty(name);
-    }
-  });
+  await releaseSliderState(thumb);
+  await slider.scrollIntoViewIfNeeded();
 
   const previewOffsets: number[] = [];
 
@@ -485,8 +474,8 @@ async function audioSeekContract(page: Page) {
   return { dragging, previewOffsets, restingFillTransitions };
 }
 
-function visibleMenuPopup(page: Page): Locator {
-  return page
+function visibleMenuPopup(root: Locator): Locator {
+  return root
     .locator(
       '.media-menu:visible, .media-menu-popup:visible, [popover]:has(> [role="menu"]):visible, media-menu:has(> media-menu-content):visible, [role="menu"]:visible'
     )

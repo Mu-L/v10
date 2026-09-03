@@ -12,6 +12,7 @@ import type {
   InferProps,
 } from '../components/definition';
 import type { BoxProps, SlotProps, TemplatePartProps, TemplateProps, TextProps } from '../components/jsx-runtime';
+import type { GraphModule } from '../graph/types';
 import { createTargetCode } from './expression';
 
 export const TARGET_ELEMENT = Symbol.for('vjsc/target-element');
@@ -241,6 +242,22 @@ export type ComponentResolver<Schema extends ComponentSchema> = (
   path: ComponentPath<Schema>
 ) => TargetElement | ComponentRewrite<unknown> | undefined;
 
+/** A local import binding as seen on a JSX element the target lowers. */
+export interface JsxImportBinding {
+  readonly source: string;
+  readonly imported: string;
+}
+
+/** How a target merges authored `className` arrays into its runtime's class-name contract. */
+export interface JsxClassNameOptions {
+  /** Runtime that merges class-name values into one string. */
+  readonly merge: TargetImport;
+  /** Runtime that resolves a state-aware class-name value before merging. Required when `stateAware` matches. */
+  readonly resolve?: TargetImport | undefined;
+  /** Whether an element rendered by this import accepts a state callback for `className`. */
+  stateAware?(binding: JsxImportBinding): boolean;
+}
+
 export interface JsxOptions {
   readonly importSource: string;
   readonly attributes: 'html' | 'react';
@@ -248,6 +265,33 @@ export interface JsxOptions {
   readonly host?: TargetImport | undefined;
   /** Runtime boundary used to resolve component-scoped identifier placeholders. */
   readonly scope?: TargetImport | undefined;
+  /** Lower `className={[...]}` arrays through the target's class-name runtime. Arrays are left as-is when unset. */
+  readonly className?: JsxClassNameOptions | undefined;
+}
+
+/** A `$render` binding declared with `defineRenderTarget`: the target picks the element that carries its classes. */
+export interface RenderTargetHost {
+  readonly element: TargetElement;
+  readonly component?: false | undefined;
+}
+
+/** A `$render` binding that is an authored component: the canonical host delegates to it, so no element is needed. */
+export interface RenderTargetComponent {
+  readonly component: true;
+}
+
+export type RenderTargetRule = RenderTargetHost | RenderTargetComponent;
+
+export type RenderTargetRules = Readonly<Record<string, RenderTargetRule>>;
+
+/** How modules compiled for this target render statically outside a browser. */
+export interface TargetRenderOptions {
+  /** Redirect an external import to a concrete module file while rendering. */
+  readonly aliases?: ReadonlyMap<string, string> | undefined;
+  /** Imports that have no effect while rendering static markup, such as element registrations. */
+  readonly empty?: ((specifier: string) => boolean) | undefined;
+  /** Source for external modules needed only while rendering, given the graph modules being rendered. */
+  readonly modules?: ((modules: readonly GraphModule[]) => ReadonlyMap<string, string>) | undefined;
 }
 
 export interface TypeMappings {
@@ -277,7 +321,11 @@ export interface ComponentTargetOptions<Schema extends ComponentSchema> {
   readonly primitives?: PrimitiveRules | undefined;
   readonly types?: TypeMappings | undefined;
   readonly transforms?: readonly TargetTransform[] | undefined;
+  /** Elements for shared components declared with `defineRenderTarget`, keyed by their exported name. */
+  readonly renderTargets?: RenderTargetRules | undefined;
   readonly jsx: JsxOptions;
+  /** Static rendering policy for modules compiled with this target. */
+  readonly render?: TargetRenderOptions | undefined;
 }
 
 export interface ComponentTarget<Schema extends ComponentSchema = ComponentSchema> {
@@ -289,7 +337,9 @@ export interface ComponentTarget<Schema extends ComponentSchema = ComponentSchem
   readonly primitives: PrimitiveRules;
   readonly types: TypeMappings;
   readonly transforms: readonly TargetTransform[];
+  readonly renderTargets: RenderTargetRules;
   readonly jsx: JsxOptions;
+  readonly render?: TargetRenderOptions | undefined;
 }
 
 export interface TargetElementOptions {
@@ -334,7 +384,9 @@ export function defineComponentTarget<const Schema extends ComponentSchema>(): (
       primitives: definition.primitives ?? {},
       types: definition.types ?? {},
       transforms: definition.transforms ?? [],
+      renderTargets: definition.renderTargets ?? {},
       jsx: definition.jsx,
+      ...(definition.render ? { render: definition.render } : {}),
     };
   };
 }
@@ -374,6 +426,11 @@ export function createTargetElement<Props extends object = Record<string, unknow
   };
 
   return Object.assign(element, { [TARGET_ELEMENT]: reference });
+}
+
+/** Read the reference a target element was created from. */
+export function readTargetReference(element: TargetElement): TargetReference {
+  return element[TARGET_ELEMENT];
 }
 
 export function isTargetElement(value: unknown): value is TargetElement {

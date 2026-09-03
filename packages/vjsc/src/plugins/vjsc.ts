@@ -12,6 +12,7 @@ import { type ComponentTargetSelection, componentTargetPlugin, primitiveTargetPl
 import { createGraphCapability, graphPlugin } from './graph';
 import { htmlRuntimePlugin } from './html-runtime';
 import { reactTargetPropsPlugin } from './react-target-props';
+import { renderTargetPlugin } from './render-target';
 import { stylePlugin, type StylePluginDiagnostics, type StylePluginLifecycle } from './style';
 import { targetImportCleanupPlugin } from './target-import-cleanup';
 import { targetJsxPlugin } from './target-jsx';
@@ -39,9 +40,15 @@ export interface TransformOptions {
   styles(module: TransformModule): StyleTransformOptions | null | Promise<StyleTransformOptions | null>;
 }
 
+export interface MetaOptions {
+  /** Metadata fields derived from a module's path, which its authored `meta` export may override. */
+  defaults(module: TransformModule): Readonly<Record<string, unknown>>;
+}
+
 export interface VjscPluginOptions {
   readonly entries?: EntriesOptions | undefined;
   readonly transform: TransformOptions;
+  readonly meta?: MetaOptions | undefined;
   /**
    * Write every resolved style utility as a Tailwind `@source inline()` entry so scanning sees computed candidates
    * instead of raw style modules. `true` writes the manifest to the Vite cache directory and aliases it as
@@ -100,10 +107,11 @@ export function createPluginPipeline<Node extends ModuleMeta = ModuleMeta>(
       select: async (module) => components(module) !== null || (await styles(module)) !== null,
     }),
     htmlRuntimePlugin(),
-    componentMetaPlugin(),
+    componentMetaPlugin({ defaults: options.meta?.defaults }),
     targetJsxPlugin({ targets }),
     stylePlugin(styles, diagnostics, styleLifecycle, options.candidates),
     targetTransformPlugin({ targets }),
+    renderTargetPlugin({ targets }),
     compilerDirectivePlugin({ targets }),
     targetTypePlugin({ targets }),
     primitiveTargetPlugin({ targets }),

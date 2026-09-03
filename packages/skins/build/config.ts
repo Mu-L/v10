@@ -1,15 +1,13 @@
 import { relative, resolve } from 'node:path';
 
-import type { EntriesOptions, TransformModule } from '../../vjsc/src/plugins/index.ts';
-import { isSkinName, skinStyles } from '../src/meta.ts';
-import { registryTargets } from './registry/targets.ts';
+import type { EntriesOptions, TransformModule } from 'vjsc/plugins';
+
 import { resolveSkinComponents, resolveSkinStyles } from './transform.ts';
+import { variantParams, variantsFor } from './variants.ts';
 
 export const packageDir = resolve(import.meta.dirname, '..');
 export const sourceDir = resolve(packageDir, 'src');
 export const skinUtils = resolve(sourceDir, 'utils.ts');
-
-const publishedSkins = Object.keys(skinStyles).filter(isSkinName);
 
 export const skinEntries: EntriesOptions = {
   root: sourceDir,
@@ -18,21 +16,7 @@ export const skinEntries: EntriesOptions = {
     params(entry) {
       if (entry.filename === skinUtils) return [{}];
 
-      const ownedSkin = publishedSkins.find((name) => entry.filename.includes(`/skins/${name}/`));
-
-      if (ownedSkin) {
-        return registryTargets.map(({ framework, styling }) => ({
-          target: framework,
-          skin: ownedSkin,
-          style: styling,
-        }));
-      }
-
-      return registryTargets.map(({ framework, styling }) =>
-        framework === 'html'
-          ? { target: framework, skin: 'default-video', style: styling }
-          : { target: framework, style: styling }
-      );
+      return variantsFor(entry.filename).map(variantParams);
     },
   },
 };
@@ -47,4 +31,16 @@ export function resolveBuildStyles(module: TransformModule) {
 
 export function skinModuleSourcePath(filename: string): string {
   return relative(sourceDir, filename).replaceAll('\\', '/');
+}
+
+/** Metadata every skin module gets from its path: components are named by file, skins by directory. */
+export function skinMetaDefaults(module: TransformModule): Readonly<Record<string, unknown>> {
+  const path = skinModuleSourcePath(module.filename);
+  const skin = /^skins\/([^/]+)\/skin\.tsx$/.exec(path);
+  if (skin) return { name: skin[1], type: 'skin' };
+
+  const component = /^components\/.*\/([^/]+)\.tsx$/.exec(path);
+  if (component) return { name: component[1], type: 'component' };
+
+  return {};
 }

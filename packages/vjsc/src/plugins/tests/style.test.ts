@@ -11,15 +11,16 @@ import { loadDesignSystem } from '../../styles/design-system';
 import type { ResolvedStyles, ResolvedStyleRule } from '../../styles/resolved';
 import { toPosixPath } from '../../utils/path';
 import { readComponentSource, readModuleStyles } from '../component-meta';
-import { componentSourcePlugin } from '../component-source';
 import {
   CANDIDATES_ALIAS,
+  createCandidateManifest,
   parseCandidateManifest,
   renderCandidateManifest,
   resolveCandidateManifestPath,
   type StylePluginConfig,
   stylePlugin,
 } from '../style';
+import { componentSourcePlugin } from './helpers/component-source';
 
 const filename = resolve(import.meta.dirname, 'component.tsx');
 const modulePath = resolve(import.meta.dirname, 'fixtures/button.styles.ts');
@@ -48,6 +49,35 @@ describe('renderCandidateManifest', () => {
         '',
       ].join('\n')
     );
+  });
+});
+
+describe('createCandidateManifest', () => {
+  it('lands parallel records as one well-formed manifest', async () => {
+    const path = join(await mkdtemp(join(tmpdir(), 'vjsc-manifest-')), 'vjsc/candidates.css');
+    const manifest = createCandidateManifest(path);
+    const utilities = Array.from({ length: 24 }, (_, index) => `p-${index}`);
+
+    await manifest.ensure();
+    await Promise.all(
+      utilities.map((utility, index) =>
+        manifest.record({
+          modules: new Map([
+            [`module-${index}`, new Map([['root', rule(['root'], `media-${index}`, [utility, 'grid'])]])],
+          ]),
+          rules: [],
+          watchFiles: [],
+        })
+      )
+    );
+
+    const content = await readFile(path, 'utf8');
+    const stray = content
+      .split('\n')
+      .filter((line) => line && !line.startsWith('/*') && !/^@source inline\(".*"\);$/.test(line));
+
+    expect(stray).toEqual([]);
+    expect(parseCandidateManifest(content)).toEqual(expect.arrayContaining([...utilities, 'grid']));
   });
 });
 

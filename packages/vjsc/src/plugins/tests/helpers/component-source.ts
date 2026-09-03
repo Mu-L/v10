@@ -1,16 +1,15 @@
 import type { Plugin } from 'rolldown';
 
-import { mergeModuleBuildMeta } from './component-meta';
+import { SCRIPT_MODULE_ID } from '../../../utils/module-id';
+import { mergeModuleBuildMeta } from '../../component-meta';
 
-const SCRIPT_ID = /\.[cm]?[jt]sx?(?:\?|$)/;
-
-/** Capture final transformed component source in module metadata. */
+/** Capture final transformed component source in module metadata for assertions. */
 export function componentSourcePlugin(capture?: (id: string, source: string, meta: unknown) => void): Plugin {
   return {
     name: 'vjsc:component-source',
     transform: {
       order: 'post',
-      filter: { id: SCRIPT_ID },
+      filter: { id: SCRIPT_MODULE_ID },
       handler(code, id, transform) {
         const meta = this.getModuleInfo(id)?.meta;
         const source = transform.magicString?.toString() ?? code;

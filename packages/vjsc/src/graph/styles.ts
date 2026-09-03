@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { type ReturnedRule, transform as transformCss } from 'lightningcss';
 
 import type { ModuleMeta } from '../components/meta';
+import { setUnique } from '../utils/map';
 import { isInsideRoot } from '../utils/path';
 import type { GraphModule, Graph } from './types';
 
@@ -27,12 +28,15 @@ export async function bundleStyles<Node extends ModuleMeta>(
   options: BundleStylesOptions
 ): Promise<string> {
   const styles = new Map<string, string>();
+  const owners = new Map<string, string>();
 
   for (const path of options.files ?? []) {
     const filename = resolve(graph.root, path);
 
     assertInsideRoot(graph.root, filename, path);
-    addUnique(styles, path, await inlineLocalCssImports(filename, graph.root, new Set()), options.label);
+    setUnique(styles, path, await inlineLocalCssImports(filename, graph.root, new Set()), () =>
+      conflictingStyle(options.label, path)
+    );
   }
 
   if (options.includeAssets !== false) {
@@ -48,17 +52,34 @@ export async function bundleStyles<Node extends ModuleMeta>(
           throw new Error(`VJSC graph style \`${options.label}\` has no captured asset: \`${id}\`.`);
         }
 
-        addUnique(styles, id, source, options.label);
+        setUnique(styles, id, source, () => conflictingStyle(options.label, id));
+        owners.set(id, [owners.get(id), module.sourcePath].filter(Boolean).join(', '));
       }
     }
   }
 
-  const source = `${[...styles.values()]
-    .map((content) => content.trim())
-    .filter(Boolean)
-    .join('\n\n')}\n`;
+  const pieces: StylePiece[] = [];
+  let source = '';
 
-  return mergeStyles(source, `${options.label}.css`);
+  for (const [id, content] of styles) {
+    const trimmed = content.trim();
+    if (!trimmed) continue;
+
+    const owner = owners.get(id);
+
+    pieces.push({ startLine: source.split('\n').length - 1, owner: owner ?? id, checked: owner !== undefined });
+    source += `${trimmed}\n\n`;
+  }
+
+  return mergeStyles(source.trimEnd() + '\n', `${options.label}.css`, options.label, pieces);
+}
+
+/** One authored file or generated asset within a bundle, located by the line where its CSS starts. */
+interface StylePiece {
+  readonly startLine: number;
+  readonly owner: string;
+  /** Generated assets must agree on every semantic class; authored files may layer freely. */
+  readonly checked: boolean;
 }
 
 /** Order modules so dependencies precede their importers and composed styles override the primitives they extend. */
@@ -86,9 +107,11 @@ function orderByDependencies<Node extends ModuleMeta>(modules: readonly GraphMod
   return ordered;
 }
 
-function mergeStyles(source: string, filename: string): string {
+function mergeStyles(source: string, filename: string, label: string, pieces: readonly StylePiece[]): string {
   const context: string[] = [];
   const rules = new Set<string>();
+  const declarationsBySelector = new Map<string, { readonly declarations: string; readonly owner: string }>();
+  let styleDepth = 0;
 
   const result = transformCss({
     filename,
@@ -98,6 +121,24 @@ function mergeStyles(source: string, filename: string): string {
       Rule(rule) {
         const nested = hasNestedRules(rule);
 
+        if (rule.type === 'style' && styleDepth === 0) {
+          const piece = pieceAtLine(pieces, rule.value.loc.line);
+
+          if (piece?.checked) {
+            const selector = JSON.stringify([context, rule.value.selectors], omitRuleDetails);
+            const declarations = JSON.stringify(rule.value.declarations, omitRuleDetails);
+            const previous = declarationsBySelector.get(selector);
+
+            if (previous && previous.declarations !== declarations) {
+              throw new Error(
+                `VJSC graph style \`${label}\` defines \`${describeSelectors(rule.value.selectors)}\` with different declarations in \`${previous.owner}\` and \`${piece.owner}\`.`
+              );
+            }
+
+            declarationsBySelector.set(selector, { declarations, owner: piece.owner });
+          }
+        }
+
         if (rule.type === 'style' || !nested) {
           const key = JSON.stringify([context, rule], omitRuleDetails);
           if (rules.has(key)) return [];
@@ -105,17 +146,37 @@ function mergeStyles(source: string, filename: string): string {
           rules.add(key);
         }
 
-        if (rule.type !== 'style' && nested) context.push(JSON.stringify(rule, omitRuleDetails));
+        if (rule.type === 'style') styleDepth += 1;
+        else if (nested) context.push(JSON.stringify(rule, omitRuleDetails));
 
         return undefined;
       },
       RuleExit(rule) {
-        if (rule.type !== 'style' && hasNestedRules(rule)) context.pop();
+        if (rule.type === 'style') styleDepth -= 1;
+        else if (hasNestedRules(rule)) context.pop();
       },
     },
   });
 
   return new TextDecoder().decode(result.code);
+}
+
+function pieceAtLine(pieces: readonly StylePiece[], line: number): StylePiece | undefined {
+  let match: StylePiece | undefined;
+
+  for (const piece of pieces) {
+    if (piece.startLine > line) break;
+
+    match = piece;
+  }
+
+  return match;
+}
+
+function describeSelectors(selectors: readonly (readonly { type: string; name?: string }[])[]): string {
+  return selectors
+    .map((selector) => selector.map((component) => (component.type === 'class' ? `.${component.name}` : '')).join(''))
+    .join(', ');
 }
 
 function hasNestedRules(rule: ReturnedRule): boolean {
@@ -167,12 +228,6 @@ function assertInsideRoot(root: string, filename: string, source: string): void 
   if (!isInsideRoot(root, filename)) throw new Error(`VJSC graph style is outside its root: \`${source}\`.`);
 }
 
-function addUnique(files: Map<string, string>, path: string, content: string, label: string): void {
-  const previous = files.get(path);
-
-  if (previous !== undefined && previous !== content) {
-    throw new Error(`VJSC graph style \`${label}\` has conflicting contents for \`${path}\`.`);
-  }
-
-  files.set(path, content);
+function conflictingStyle(label: string, path: string): string {
+  return `VJSC graph style \`${label}\` has conflicting contents for \`${path}\`.`;
 }

@@ -2,9 +2,17 @@ import { resolve } from 'node:path';
 
 import { defineConfig } from 'vite-plus';
 import type { UserConfig as PackUserConfig } from 'vite-plus/pack';
+import { vjscPlugin, vjscRegistryPlugin } from 'vjsc/plugins';
 
-import { vjscPlugin, vjscRegistryPlugin } from '../../vjsc/src/plugins/index.ts';
-import { packageDir, resolveBuildComponents, resolveBuildStyles, skinEntries, skinUtils } from './config.ts';
+import { skinCatalog } from './catalog.ts';
+import {
+  packageDir,
+  resolveBuildComponents,
+  resolveBuildStyles,
+  skinEntries,
+  skinMetaDefaults,
+  skinUtils,
+} from './config.ts';
 import { packageSkinsPlugin } from './packages/plugin.ts';
 import { formatSource } from './registry/format.ts';
 import { registryItems } from './registry/items/index.ts';
@@ -39,6 +47,7 @@ export const skinBuildConfig: PackUserConfig = {
         components: resolveBuildComponents,
         styles: resolveBuildStyles,
       },
+      meta: { defaults: skinMetaDefaults },
     }),
     ...registryTargets.map((target) =>
       vjscRegistryPlugin({
@@ -60,6 +69,18 @@ export const skinBuildConfig: PackUserConfig = {
         styles: registryStyles(target),
       })
     ),
+    {
+      name: 'skins:catalog',
+      generateBundle() {
+        for (const target of registryTargets) {
+          this.emitFile({
+            type: 'asset',
+            fileName: `${target.output}/catalog.json`,
+            source: `${JSON.stringify(skinCatalog, null, 2)}\n`,
+          });
+        }
+      },
+    },
     packageSkinsPlugin({
       workspaceDir: resolve(packageDir, '../..'),
       format: formatSource,

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 import type { Expression, ImportDeclaration, Node, Program } from '@oxc-project/types';
@@ -8,7 +8,7 @@ import { isFunction, isString } from '@videojs/utils/predicate';
 import { walk } from 'oxc-walker';
 import type { Plugin, RolldownMagicString } from 'rolldown';
 
-import type { SourceEdit } from '../ast';
+import { type SourceEdit, sourceError } from '../ast';
 import { insertModuleImports } from '../ast/imports';
 import { compileStyles } from '../styles/compile';
 import { type DesignSystem, loadDesignSystem } from '../styles/design-system';
@@ -22,17 +22,17 @@ import {
 import { isStyleModulePath, resolveStyleModule, resolveStyleModuleFile } from '../styles/modules';
 import type { StyleTransformOptions } from '../styles/options';
 import {
-  resolveStyles,
+  createResolvedStyles,
+  type LoadedStyleModule,
+  loadStyleModule,
   ruleForToken,
   type ResolvedStyles,
   type ResolvedStyleRule,
   utilityGroupsForRule,
 } from '../styles/resolved';
-import { moduleFilename, parseModuleId, type TransformModule } from '../utils/module-id';
+import { moduleFilename, parseModuleId, type TransformModule, SCRIPT_MODULE_ID } from '../utils/module-id';
 import { toPosixPath } from '../utils/path';
 import { mergeModuleBuildMeta } from './component-meta';
-
-const SCRIPT_ID = /\.[cm]?[jt]sx?(?:\?|$)/;
 
 type InternalStyleTransformOptions = StyleTransformOptions & { readonly resolvedStyles?: ResolvedStyles | undefined };
 
@@ -40,8 +40,8 @@ export type StylePluginConfig =
   | InternalStyleTransformOptions
   | ((module: TransformModule) => StyleTransformOptions | null | Promise<StyleTransformOptions | null>);
 
-interface CachedStyles {
-  readonly styles: ResolvedStyles;
+interface CachedStyleModule {
+  readonly module: LoadedStyleModule;
   readonly versions: ReadonlyMap<string, number>;
 }
 
@@ -94,7 +94,7 @@ export function stylePlugin(
   candidates?: string | boolean
 ): Plugin {
   const designs = new Map<string, Promise<CachedDesignSystem>>();
-  const styleCache = new Map<string, Promise<CachedStyles>>();
+  const styleCache = new Map<string, Promise<CachedStyleModule>>();
   const cssById = new Map<string, VirtualCssModule>();
   const cssByOwner = new Map<string, ReadonlySet<string>>();
   const reportedWarnings = new Set<string>();
@@ -141,7 +141,7 @@ export function stylePlugin(
       return cssById.get(publicId)?.source ?? null;
     },
     transform: {
-      filter: { id: SCRIPT_ID, code: '.styles' },
+      filter: { id: SCRIPT_MODULE_ID, code: '.styles' },
       async handler(_code, id, transform) {
         const options: InternalStyleTransformOptions | null = isFunction(config)
           ? await config(parseModuleId(id))
@@ -504,25 +504,30 @@ function assertNoUntransformedReferences(
   }
 }
 
-function sourceError(message: string, pos: number): Error {
-  return Object.assign(new Error(message), { pos });
-}
-
+/** Merge the requested modules from a per-file cache so a shared style module is evaluated once per build. */
 async function cachedStyles(
-  cache: Map<string, Promise<CachedStyles>>,
+  cache: Map<string, Promise<CachedStyleModule>>,
   files: readonly string[]
 ): Promise<ResolvedStyles> {
-  const key = [...files].sort().join('\0');
-  const cached = await cache.get(key);
-  if (cached && (await versionsMatch(cached.versions))) return cached.styles;
+  const moduleFiles = [...new Set(files.map((file) => resolve(file)))].sort();
 
-  const loading = resolveStyles(files).then(async (styles) => ({
-    styles,
-    versions: await fileVersions(styles.watchFiles),
+  return createResolvedStyles(await Promise.all(moduleFiles.map((file) => cachedStyleModule(cache, file))));
+}
+
+async function cachedStyleModule(
+  cache: Map<string, Promise<CachedStyleModule>>,
+  file: string
+): Promise<LoadedStyleModule> {
+  const cached = await cache.get(file);
+  if (cached && (await versionsMatch(cached.versions))) return cached.module;
+
+  const loading = loadStyleModule(file).then(async (module) => ({
+    module,
+    versions: await fileVersions(module.watchFiles),
   }));
 
-  cache.set(key, loading);
-  return (await loading).styles;
+  cache.set(file, loading);
+  return (await loading).module;
 }
 
 async function fileVersions(files: Iterable<string>): Promise<ReadonlyMap<string, number>> {
@@ -614,17 +619,27 @@ function escapeGlobPath(path: string): string {
   return path.replace(/[[\]{}()*?!]/g, '\\$&');
 }
 
-function createCandidateManifest(path: string): CandidateManifest {
-  const rulesByModule = new Map<string, readonly ResolvedStyleRule[]>();
+export function createCandidateManifest(path: string): CandidateManifest {
+  const rulesByModule = new Map<string, ReadonlyMap<string, ResolvedStyleRule>>();
   const persisted = new Set<string>();
   let written: string | undefined;
+  let queue = Promise.resolve();
 
-  const write = async (content: string): Promise<void> => {
-    if (content === written) return;
+  // Modules compile in parallel, so writes queue up and land through a rename: two overlapping writes would interleave
+  // their bytes, and Tailwind must never read a half-written manifest.
+  const write = (content: string): Promise<void> => {
+    queue = queue.then(async () => {
+      if (content === written) return;
 
-    await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, content);
-    written = content;
+      const staging = `${path}.${process.pid}.tmp`;
+
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(staging, content);
+      await rename(staging, path);
+      written = content;
+    });
+
+    return queue;
   };
 
   return {
@@ -638,9 +653,20 @@ function createCandidateManifest(path: string): CandidateManifest {
       else for (const candidate of parseCandidateManifest(written)) persisted.add(candidate);
     },
     async record(styles) {
-      for (const [modulePath, rules] of styles.modules) rulesByModule.set(modulePath, [...rules.values()]);
+      let changed = written === undefined;
 
-      await write(renderCandidateManifest([...rulesByModule.values()].flat(), persisted));
+      for (const [modulePath, rules] of styles.modules) {
+        if (rulesByModule.get(modulePath) === rules) continue;
+
+        rulesByModule.set(modulePath, rules);
+        changed = true;
+      }
+
+      if (!changed) return;
+
+      const rules = [...rulesByModule.values()].flatMap((moduleRules) => [...moduleRules.values()]);
+
+      await write(renderCandidateManifest(rules, persisted));
     },
   };
 }

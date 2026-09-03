@@ -1,4 +1,5 @@
 import { SOURCES } from '../../../apps/sandbox/app/shared/sources';
+import { skinCatalog } from '../build/catalog.ts';
 import { errorSource, mediaIds, previewWidth, type PreviewOptions } from './options';
 import { buildReport, createPreferenceBadges, formatRem } from './report';
 
@@ -27,16 +28,12 @@ function createOptions(preview: PreviewOptions): HTMLFormElement {
       ['react', 'React'],
       ['html', 'HTML'],
     ]),
-    createSelect('skin', 'Skin', preview.skin, [
-      ['default-video', 'Default Video'],
-      ['minimal-video', 'Minimal Video'],
-      ['default-live-video', 'Default Live Video'],
-      ['minimal-live-video', 'Minimal Live Video'],
-      ['default-live-audio', 'Default Live Audio'],
-      ['minimal-live-audio', 'Minimal Live Audio'],
-      ['default-audio', 'Default Audio'],
-      ['minimal-audio', 'Minimal Audio'],
-    ]),
+    createSelect(
+      'skin',
+      'Skin',
+      preview.skin,
+      skinCatalog.map((entry) => [entry.name, entry.label])
+    ),
     createSelect('style', 'Styling', preview.styleMode, [
       ['css', 'CSS'],
       ['tailwind', 'Tailwind'],
@@ -59,9 +56,10 @@ function createOptions(preview: PreviewOptions): HTMLFormElement {
       ['ltr', 'Left to right'],
       ['rtl', 'Right to left'],
     ]),
-    createSelect('compare', 'Compare', preview.compare ? 'styles' : 'off', [
+    createSelect('compare', 'Compare', preview.compare, [
       ['off', 'Off'],
       ['styles', 'CSS vs Tailwind'],
+      ['source', 'Authored vs packaged'],
     ]),
     createReportControls(preview),
     createPreferenceBadges()

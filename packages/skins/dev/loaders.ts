@@ -1,4 +1,5 @@
-import type { PreviewOptions } from './options';
+import { skinCatalog, skinCatalogEntry } from '../build/catalog.ts';
+import type { Framework, PreviewOptions, SkinName, StyleMode } from './options';
 
 export type HtmlPreviewSkin = (props?: { className?: string }) => { toString(): string };
 export type ReactPreviewSkin = React.ComponentType<React.PropsWithChildren<{ className?: string }>>;
@@ -69,31 +70,96 @@ const modules = {
     import('../src/skins/minimal-audio/skin.tsx?style=css&target=html&skin=minimal-audio'),
   'html/minimal-audio/tailwind': () =>
     import('../src/skins/minimal-audio/skin.tsx?style=tailwind&target=html&skin=minimal-audio'),
-} as const;
+} as const satisfies Record<`${Framework}/${SkinName}/${StyleMode}`, () => Promise<object>>;
 
 type ModuleKey = keyof typeof modules;
 
-const skinExports = {
-  'default-video': 'DefaultVideoSkin',
-  'minimal-video': 'MinimalVideoSkin',
-  'default-live-video': 'DefaultLiveVideoSkin',
-  'minimal-live-video': 'MinimalLiveVideoSkin',
-  'default-live-audio': 'DefaultLiveAudioSkin',
-  'minimal-live-audio': 'MinimalLiveAudioSkin',
-  'default-audio': 'DefaultAudioSkin',
-  'minimal-audio': 'MinimalAudioSkin',
-} as const satisfies Record<PreviewOptions['skin'], string>;
+/** Generated package entry points, so the playground can hold each packaged skin against its authored source. */
+const packaged = {
+  'default-video': {
+    html: () => import('../../html/src/define/video/skin.ts'),
+    react: () => import('../../react/src/presets/video/skin.tsx'),
+    reactStyles: () => import('../../react/src/presets/video/skin.css'),
+  },
+  'minimal-video': {
+    html: () => import('../../html/src/define/video/minimal-skin.ts'),
+    react: () => import('../../react/src/presets/video/minimal-skin.tsx'),
+    reactStyles: () => import('../../react/src/presets/video/minimal-skin.css'),
+  },
+  'default-live-video': {
+    html: () => import('../../html/src/define/live-video/skin.ts'),
+    react: () => import('../../react/src/presets/live-video/skin.tsx'),
+    reactStyles: () => import('../../react/src/presets/live-video/skin.css'),
+  },
+  'minimal-live-video': {
+    html: () => import('../../html/src/define/live-video/minimal-skin.ts'),
+    react: () => import('../../react/src/presets/live-video/minimal-skin.tsx'),
+    reactStyles: () => import('../../react/src/presets/live-video/minimal-skin.css'),
+  },
+  'default-live-audio': {
+    html: () => import('../../html/src/define/live-audio/skin.ts'),
+    react: () => import('../../react/src/presets/live-audio/skin.tsx'),
+    reactStyles: () => import('../../react/src/presets/live-audio/skin.css'),
+  },
+  'minimal-live-audio': {
+    html: () => import('../../html/src/define/live-audio/minimal-skin.ts'),
+    react: () => import('../../react/src/presets/live-audio/minimal-skin.tsx'),
+    reactStyles: () => import('../../react/src/presets/live-audio/minimal-skin.css'),
+  },
+  'default-audio': {
+    html: () => import('../../html/src/define/audio/skin.ts'),
+    react: () => import('../../react/src/presets/audio/skin.tsx'),
+    reactStyles: () => import('../../react/src/presets/audio/skin.css'),
+  },
+  'minimal-audio': {
+    html: () => import('../../html/src/define/audio/minimal-skin.ts'),
+    react: () => import('../../react/src/presets/audio/minimal-skin.tsx'),
+    reactStyles: () => import('../../react/src/presets/audio/minimal-skin.css'),
+  },
+} as const satisfies Record<
+  SkinName,
+  { html: () => Promise<object>; react: () => Promise<object>; reactStyles: () => Promise<object> }
+>;
 
-type SkinExport = (typeof skinExports)[keyof typeof skinExports];
-type SkinModule = Partial<Record<SkinExport, PreviewSkin>>;
+// SAFETY: the catalog lists every skin name exactly once, so the entries cover the full `SkinName` key set.
+const skinExports = Object.fromEntries(skinCatalog.map((entry) => [entry.name, entry.exportName])) as Record<
+  SkinName,
+  string
+>;
 
-/** Load one statically discoverable authored Skin transform. */
+/** Load one statically discoverable authored Skin transform, or the packaged skin the framework package ships. */
 export async function loadSkin(options: PreviewOptions): Promise<PreviewSkin> {
-  const key: ModuleKey = `${options.framework}/${options.skin}/${options.styleMode}`;
-  // SAFETY: every static module is transformed to the framework-specific Skin export selected below.
-  const loaded = (await modules[key]()) as SkinModule;
-  const Skin = loaded[skinExports[options.skin]];
-  if (!Skin) throw new Error(`Skin module \`${key}\` did not export \`${skinExports[options.skin]}\`.`);
+  if (options.source === 'generated') return loadPackagedSkin(options);
 
-  return Skin;
+  const key: ModuleKey = `${options.framework}/${options.skin}/${options.styleMode}`;
+
+  return skinExport(await modules[key](), skinExports[options.skin], key);
+}
+
+/** Read the Skin export from a loaded module; every transform exports its Skin as a component or render function. */
+function skinExport(loaded: object, name: string, key: string): PreviewSkin {
+  // SAFETY: a module namespace is a plain object keyed by export name; the value is validated below.
+  const exported = (loaded as Record<string, unknown>)[name];
+  if (typeof exported !== 'function') throw new Error(`Skin module \`${key}\` did not export \`${name}\`.`);
+
+  // SAFETY: React components and HTML render functions are the only functions a Skin module exports under its name.
+  return exported as PreviewSkin;
+}
+
+async function loadPackagedSkin(options: PreviewOptions): Promise<PreviewSkin> {
+  const entry = skinCatalogEntry(options.skin);
+  const modules = packaged[options.skin];
+
+  if (options.framework === 'html') {
+    await modules.html();
+
+    // The packaged custom element stamps its own template, so the preview only needs the host and the media slot.
+    return ({ className = '' } = {}) => ({
+      toString: () => `<${entry.tags.css} class="${className}"><slot></slot></${entry.tags.css}>`,
+    });
+  }
+
+  const [loaded] = await Promise.all([modules.react(), modules.reactStyles()]);
+
+  return skinExport(loaded, entry.component, `packaged/${options.skin}`);
 }

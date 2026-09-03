@@ -5,13 +5,14 @@ import type coreSchema from '@videojs/core/vjsc';
 import {
   type ComponentRules,
   type ComponentTarget,
+  consumeRenderTarget,
   type TargetHelpers,
   defineComponentTarget,
   type TemplateTargetDefinition,
 } from 'vjsc/target';
 import { Host } from 'vjsc/target/jsx-runtime';
 
-import { createRenderTargetTransform, renderTargetProps } from './render-target.ts';
+import { htmlIconModule, htmlRenderAliases } from './html-render.ts';
 
 type CoreSchema = typeof coreSchema;
 
@@ -151,8 +152,6 @@ export const htmlComponentTarget: ComponentTarget<CoreSchema> = defineComponentT
   const Span = element('span');
   const Sup = element('sup');
   const HtmlTemplate = element('template');
-  const PlaybackRateButton = htmlElementTarget('PlaybackRateButton', element);
-
   const I18nText = element('media-text', {
     import: { from: '@videojs/html/i18n', sideEffect: true },
   });
@@ -190,9 +189,7 @@ export const htmlComponentTarget: ComponentTarget<CoreSchema> = defineComponentT
           const controlledId = id(popup ? 'popup' : 'content');
 
           if (popup) {
-            const componentProps =
-              renderTargetProps(trigger.props, 'CaptionsButton') ??
-              renderTargetProps(trigger.props, 'PlaybackRateButton');
+            const componentProps = consumeRenderTarget(trigger.props);
 
             return [
               trigger.replaceWith(
@@ -306,25 +303,37 @@ export const htmlComponentTarget: ComponentTarget<CoreSchema> = defineComponentT
         'captions-option': optionTemplate,
       },
     },
-    transforms: [
-      createRenderTargetTransform({
-        target: () => htmlComponentTarget,
-        targets: {
-          Button: { element: Button },
-          CaptionsButton: { element: htmlElementTarget('CaptionsButton', element), kind: 'component' },
-          PlaybackRateButton: { element: PlaybackRateButton, kind: 'component' },
-          SliderBuffer: { element: Div },
-          SliderFill: { element: Div },
-          SliderThumb: { element: Div },
-          SliderTrack: { element: Div },
-        },
-      }),
-    ],
+    renderTargets: {
+      Button: { element: Button },
+      CaptionsButton: { component: true },
+      PlaybackRateButton: { component: true },
+      SliderBuffer: { element: Div },
+      SliderFill: { element: Div },
+      SliderThumb: { element: Div },
+      SliderTrack: { element: Div },
+    },
     jsx: {
       importSource: 'vjsc/html-runtime',
       attributes: 'html',
       host: { from: 'vjsc/html-runtime/jsx-runtime', name: 'Host' },
       scope: { from: 'vjsc/html-runtime/jsx-runtime', name: 'Scope' },
+    },
+    render: {
+      aliases: htmlRenderAliases,
+      // Element registrations, the authoring runtime, and generated stylesheets have no effect on static markup.
+      empty: (specifier) =>
+        specifier.startsWith('@videojs/html/ui/') ||
+        specifier === '@videojs/html/i18n' ||
+        specifier === 'vjsc/components' ||
+        specifier.startsWith('virtual:vjsc/css/'),
+      modules: (modules) => {
+        const icons = htmlIconModule(modules);
+
+        return new Map([
+          ['@videojs/html/icons', icons],
+          ['@videojs/html/icons/minimal', icons],
+        ]);
+      },
     },
   };
 });
