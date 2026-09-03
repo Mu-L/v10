@@ -1,27 +1,13 @@
 import { isString } from '@videojs/utils/predicate';
-import { format } from 'oxfmt';
 import type { Plugin } from 'vite';
+
+import { type FormattedSource, formatGeneratedSource } from '../build/format.ts';
 
 const sourceFile = /\.(?:css|[cm]?[jt]sx?)$/;
 
-interface FormattedRegistrySource {
-  readonly code: string;
-  readonly errors: readonly { readonly message: string }[];
-}
-
-/** Format one editable registry source file with the settings used by the hosted catalog. */
-export function formatRegistrySource(filename: string, source: string): Promise<FormattedRegistrySource> {
-  return format(filename, source, {
-    arrowParens: 'always',
-    bracketSpacing: true,
-    jsdoc: true,
-    printWidth: 120,
-    semi: true,
-    singleQuote: !filename.endsWith('.css'),
-    sortImports: true,
-    tabWidth: 2,
-    trailingComma: 'es5',
-  });
+/** Format one editable registry source file with the shared generated-source settings. */
+export function formatRegistrySource(filename: string, source: string): Promise<FormattedSource> {
+  return formatGeneratedSource(filename, source);
 }
 
 /** Format editable registry source before Shadcn embeds it in installable item JSON. */
