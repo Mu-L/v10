@@ -11,9 +11,9 @@
  * Each selector uses a CSS `,` (or) to match either renderer.
  */
 
-/** Toolbar: HTML renders `<media-controls-content>`, React renders `<div class="media-controls">`. */
+/** Toolbar: HTML renders `<media-controls>`, while source skins expose an audio or video controls hook. */
 function withinControls(selector: string): string {
-  return `media-controls ${selector}, .media-controls ${selector}`;
+  return `media-controls ${selector}, .video-controls ${selector}, .audio-controls ${selector}`;
 }
 
 function unchecked(selector: string): string {
@@ -27,21 +27,18 @@ const menu = '[role="menu"]';
 const item = '[role="menuitem"]';
 const option = '[role="menuitemradio"]';
 const activeSubmenu = `${menu}[data-submenu][data-open]:not([data-ending-style])`;
-const playbackRateOptions = [
-  `#playback-rate-menu ${option}`,
-  withinControls(`.media-menu--playback-rate ${option}`),
-].join(', ');
+const playbackRateOptions = `${option}:visible`;
 
 export const SELECTORS = {
   // Player containers
   // HTML: <video-player>, React: wrapper div around VideoSkin
-  videoPlayer: 'video-player, .media-skin--video',
-  audioPlayer: 'audio-player, .media-skin--audio',
+  videoPlayer: 'video-player, .media-skin[data-preset="video"]',
+  audioPlayer: 'audio-player, .media-skin[data-preset="audio"]',
   // The visible container with dimensions — used for screenshots
   container: '.media-skin',
 
   // Controls bar
-  controls: 'media-controls-content, .media-controls',
+  controls: 'media-controls-content, .video-controls, .audio-controls',
 
   // Buttons
   playButton: 'media-play-button, .media-play-button, .media-button--play, button[aria-keyshortcuts~="Space"]',
@@ -75,9 +72,10 @@ export const SELECTORS = {
   settingsSpeedItem: `${item}:has-text("Speed")`,
 
   // Sliders
-  // HTML: <media-time-slider>, React: horizontal .media-slider inside .media-time-controls
-  timeSlider: 'media-time-slider, .media-time-slider, .media-time-controls .media-slider',
-  volumeSlider: 'media-volume-slider, .media-volume-slider, .media-popover--volume .media-slider',
+  // HTML: <media-time-slider>, React: the generic slider inside a preset-specific time layout.
+  timeSlider:
+    'media-time-slider, .media-time-slider, .video-time-slider-group .media-slider, .audio-time-slider-group .media-slider',
+  volumeSlider: 'media-volume-slider, .media-volume-slider',
   sliderThumb: 'media-slider-thumb, .media-slider-thumb, .media-slider__thumb',
 
   // Display elements
@@ -86,10 +84,10 @@ export const SELECTORS = {
   duration: [
     'media-time[type="duration"]',
     'media-time[type="remaining"]',
-    '[data-type="duration"].media-time',
-    '[data-type="remaining"].media-time',
+    'time[data-type="duration"]',
+    'time[data-type="remaining"]',
   ].join(', '),
-  timeToggle: 'media-time[toggle], time.media-time[role="button"]',
+  timeToggle: 'media-time[toggle], time[role="button"][data-type]',
   poster: 'media-poster, img[data-loaded]',
   bufferingIndicator: 'media-buffering-indicator, .media-buffering-indicator',
   thumbnail:

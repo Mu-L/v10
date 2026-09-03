@@ -72,7 +72,7 @@ export function stylePlugin(
   lifecycle?: StylePluginLifecycle
 ): Plugin {
   const designs = new Map<string, Promise<CachedDesignSystem>>();
-  const styleCache = new Map<string, CachedStyles>();
+  const styleCache = new Map<string, Promise<CachedStyles>>();
   const cssById = new Map<string, VirtualCssModule>();
   const cssByOwner = new Map<string, ReadonlySet<string>>();
   const reportedWarnings = new Set<string>();
@@ -406,7 +406,8 @@ function readAccessPath(expression: Expression): string[] | undefined {
 }
 
 function renderStyleRule(rule: ResolvedStyleRule, options: StyleTransformOptions, listItem: boolean): string {
-  const groups = options.mode === 'css' ? [rule.className] : utilityGroupsForRule(rule, options.variants);
+  const utilityGroups = utilityGroupsForRule(rule, options.variants);
+  const groups = options.mode === 'css' || utilityGroups.length === 0 ? [rule.className] : utilityGroups;
   const values = groups.filter(Boolean);
 
   if (listItem) return values.length > 0 ? values.map((value) => JSON.stringify(value)).join(', ') : '""';
@@ -459,15 +460,21 @@ function sourceError(message: string, pos: number): Error {
   return Object.assign(new Error(message), { pos });
 }
 
-async function cachedStyles(cache: Map<string, CachedStyles>, files: readonly string[]): Promise<ResolvedStyles> {
+async function cachedStyles(
+  cache: Map<string, Promise<CachedStyles>>,
+  files: readonly string[]
+): Promise<ResolvedStyles> {
   const key = [...files].sort().join('\0');
-  const cached = cache.get(key);
+  const cached = await cache.get(key);
   if (cached && (await versionsMatch(cached.versions))) return cached.styles;
 
-  const styles = await resolveStyles(files);
+  const loading = resolveStyles(files).then(async (styles) => ({
+    styles,
+    versions: await fileVersions(styles.watchFiles),
+  }));
 
-  cache.set(key, { styles, versions: await fileVersions(styles.watchFiles) });
-  return styles;
+  cache.set(key, loading);
+  return (await loading).styles;
 }
 
 async function fileVersions(files: Iterable<string>): Promise<ReadonlyMap<string, number>> {

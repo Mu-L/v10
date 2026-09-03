@@ -12,7 +12,7 @@ import { isString } from '@videojs/utils/predicate';
 
 const projectDir = resolve(import.meta.dirname, '..');
 const workspaceDir = resolve(projectDir, '../..');
-const registryDir = resolve(workspaceDir, 'packages/skins/dist/registry/r');
+const registryDir = resolve(workspaceDir, 'packages/skins/dist/shadcn/r');
 const require = createRequire(import.meta.url);
 const shadcnBin = require.resolve('shadcn');
 const generatedDir = resolve(projectDir, 'app/_generated');
@@ -75,6 +75,7 @@ async function installFramework(framework: 'react' | 'html', destination: string
     await cp(resolve(root, 'src/components/videojs'), destination, { recursive: true });
 
     if (framework === 'react') {
+      await cp(resolve(root, 'src/index.css'), resolve(generatedDir, 'styles.css'));
       await cp(resolve(root, 'src/lib'), resolve(destination, '../../lib'), { recursive: true });
     }
   } finally {

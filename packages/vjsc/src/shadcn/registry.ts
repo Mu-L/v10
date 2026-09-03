@@ -6,6 +6,7 @@ import type { ModuleMeta } from '../components/meta';
 import { bundleStyles, type GraphModule, type Graph } from '../graph';
 import { escapesRoot, toPosixPath } from '../utils/path';
 import { type ImportReplacement, replaceImportSpecifiers } from './analyze';
+import { readTailwindRegistryTheme } from './tailwind';
 import type {
   RegistryModuleTarget,
   RegistryStylesheetOutput,
@@ -23,6 +24,7 @@ interface SourceBuild<Meta extends ModuleMeta> {
   readonly filename?: string | undefined;
   readonly imports?: Readonly<Record<string, string>> | undefined;
   readonly stylesheet?: RegistryStylesheetOutput | undefined;
+  readonly theme: boolean;
 }
 
 interface StyleBuild<Meta extends ModuleMeta> {
@@ -78,8 +80,8 @@ export async function createShadcnRegistryFiles<Meta extends ModuleMeta>(
   validateItems([...sourceItems, ...createdItems]);
 
   const published = describePublishedModules(graph.modules, sourceItems);
-  const publications = canonicalPublishedModules(graph.modules, published);
-  const styleItems = describeStyleItems(graph, sourceItems, options);
+  const publications = canonicalPublishedModules(graph, published);
+  const styleItems = await describeStyleItems(graph, sourceItems, options);
   const builtItems = await Promise.all([
     ...[...published.values()].map((publication) =>
       buildPublishedItem(publication, graph.modules, publications, graph, options)
@@ -134,7 +136,7 @@ async function resolveSourceItems<Meta extends ModuleMeta>(
     const resolved = await options.items.resolve({ graph, module });
     if (!resolved) continue;
 
-    const { group, target, filename, imports, stylesheet, ...item } = resolved;
+    const { group, target, filename, imports, stylesheet, theme, ...item } = resolved;
     const build: SourceBuild<Meta> = {
       kind: 'source',
       module,
@@ -143,6 +145,7 @@ async function resolveSourceItems<Meta extends ModuleMeta>(
       ...(filename ? { filename } : {}),
       ...(imports ? { imports } : {}),
       ...(stylesheet ? { stylesheet } : {}),
+      theme: theme ?? false,
     };
 
     items.push({ ...item, build } as SourceItem<Meta>);
@@ -164,11 +167,11 @@ async function createFileItems<Meta extends ModuleMeta>(
   });
 }
 
-function describeStyleItems<Meta extends ModuleMeta>(
+async function describeStyleItems<Meta extends ModuleMeta>(
   graph: Graph<Meta>,
   sourceItems: readonly SourceItem<Meta>[],
   options: VjscRegistryOptions<Meta>
-): StyleItem<Meta>[] {
+): Promise<StyleItem<Meta>[]> {
   const styles = options.styles;
   if (!styles) return [];
 
@@ -184,12 +187,22 @@ function describeStyleItems<Meta extends ModuleMeta>(
   }
 
   if (styles.theme) {
-    const { target, include, ...manifest } = styles.theme;
+    const { target, include, tailwind, ...manifest } = styles.theme;
+    const tailwindTheme = tailwind ? await readTailwindRegistryTheme(graph.root, tailwind) : undefined;
+    const cssVars = tailwindTheme
+      ? {
+          ...manifest.cssVars,
+          theme: { ...tailwindTheme.cssVars, ...manifest.cssVars?.theme },
+        }
+      : manifest.cssVars;
+    const css = tailwindTheme ? { ...tailwindTheme.css, ...manifest.css } : manifest.css;
 
     items.push({
       name: styleItemName(target),
       type: 'registry:style',
       ...manifest,
+      cssVars,
+      css,
       build: { kind: 'style', group: 'support', modules: [], target, include },
     });
   }
@@ -201,7 +214,7 @@ function describeStyleItems<Meta extends ModuleMeta>(
     const label = basename(target, '.css');
 
     items.push({
-      name: styleItemName(target),
+      name: styleAssetItemName(asset),
       type: 'registry:style',
       title: `${options.name} ${label} styles`,
       description: `Shared ${label} styles installed with the source modules that use them.`,
@@ -235,24 +248,24 @@ function describePublishedModules<Meta extends ModuleMeta>(
 }
 
 function canonicalPublishedModules<Meta extends ModuleMeta>(
-  modules: ReadonlyMap<string, GraphModule<Meta>>,
+  graph: Graph<Meta>,
   published: ReadonlyMap<string, PublishedModule<Meta>>
 ): ReadonlyMap<string, PublishedModule<Meta>> {
   const canonical = new Map(published);
   const bySource = new Map<string, PublishedModule<Meta>[]>();
 
   for (const publication of published.values()) {
-    const key = moduleSourceKey(publication.module);
+    const key = moduleSourceKey(publication.module, graph.assets);
     const candidates = bySource.get(key) ?? [];
 
     candidates.push(publication);
     bySource.set(key, candidates);
   }
 
-  for (const module of modules.values()) {
+  for (const module of graph.modules.values()) {
     if (canonical.has(module.id)) continue;
 
-    const candidates = bySource.get(moduleSourceKey(module));
+    const candidates = bySource.get(moduleSourceKey(module, graph.assets));
     const publication = candidates?.length === 1 ? candidates[0] : undefined;
 
     if (publication) canonical.set(module.id, publication);
@@ -261,8 +274,10 @@ function canonicalPublishedModules<Meta extends ModuleMeta>(
   return canonical;
 }
 
-function moduleSourceKey(module: GraphModule): string {
-  return `${module.filename}\0${stripVirtualCssImports(module.source)}`;
+function moduleSourceKey(module: GraphModule, assets: ReadonlyMap<string, string>): string {
+  const styles = module.styles.assets.map((id) => assets.get(id) ?? id).sort();
+
+  return `${module.filename}\0${stripVirtualCssImports(module.source)}\0${styles.join('\0')}`;
 }
 
 function collectReachableModules<Meta extends ModuleMeta>(
@@ -387,11 +402,16 @@ function sourceStyleOutputs<Meta extends ModuleMeta>(
 ): { readonly dependencies: string[]; readonly imports: string[] } {
   const styles = options.styles;
   const hasStyles = modules.some((module) => module.styles.files.length > 0 || module.styles.assets.length > 0);
-  if (!hasStyles) return { dependencies: [], imports: [] };
+  if (!hasStyles && !item.build.theme) return { dependencies: [], imports: [] };
 
+  const dependencies = new Set<string>();
   const targets = new Set<string>();
 
-  if (styles?.theme) targets.add(styles.theme.target);
+  if (styles?.theme && (hasStyles || item.build.theme)) {
+    targets.add(styles.theme.target);
+
+    if (styles.theme.target !== item.build.stylesheet?.target) dependencies.add(styleItemName(styles.theme.target));
+  }
 
   if (item.build.stylesheet) {
     targets.add(item.build.stylesheet.target);
@@ -399,18 +419,17 @@ function sourceStyleOutputs<Meta extends ModuleMeta>(
     for (const module of modules) {
       for (const filename of module.styles.files) {
         const target = styleFileTarget(styles?.files, filename);
+        if (!target) continue;
 
-        if (target) targets.add(target);
+        targets.add(target);
+        dependencies.add(styleAssetItemName(filename));
       }
     }
   }
 
   const imports = [...targets].sort();
-  const dependencies = imports
-    .filter((target) => target !== item.build.stylesheet?.target)
-    .map((target) => styleItemName(target));
 
-  return { dependencies, imports };
+  return { dependencies: [...dependencies].sort(), imports };
 }
 
 function styleFileEntries<Meta extends ModuleMeta>(
@@ -674,6 +693,12 @@ function styleItemName(target: string): string {
   return `_style-${basename(target, '.css')}`;
 }
 
+function styleAssetItemName(asset: string): string {
+  validateRelativePath(asset, 'VJSC style asset');
+
+  return `_style-${asset.slice(0, -'.css'.length).replaceAll('/', '-')}`;
+}
+
 function validateOptions<Meta extends ModuleMeta>(options: VjscRegistryOptions<Meta>): void {
   for (const [name, value] of Object.entries(options.paths)) {
     if (name === 'import') continue;
@@ -683,6 +708,10 @@ function validateOptions<Meta extends ModuleMeta>(options: VjscRegistryOptions<M
 
   if (!options.paths.import || options.paths.import.startsWith('.')) {
     throw new Error(`Shadcn registry import path must be an absolute module specifier.`);
+  }
+
+  if (options.styles?.theme?.tailwind) {
+    validateRelativePath(options.styles.theme.tailwind, 'Shadcn registry Tailwind source');
   }
 }
 
