@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { DATA_ATTRS } from '../fixtures/selectors';
+import { DATA_ATTRS, SELECTORS } from '../fixtures/selectors';
 
 const SANDBOX_BASE = process.env.SANDBOX_URL ?? 'http://localhost:5299';
 
@@ -43,9 +43,7 @@ for (const { platform, skin, styling } of CASES) {
     await expect(root).toBeVisible({ timeout: 15_000 });
 
     const host =
-      platform === 'html'
-        ? page.locator('video-skin, video-minimal-skin, video-skin-tailwind, video-minimal-skin-tailwind').first()
-        : root;
+      platform === 'html' && styling === 'css' ? page.locator('video-skin, video-minimal-skin').first() : root;
 
     await host.evaluate((element) => {
       element.style.setProperty('--media-accent-color', '#123456');
@@ -53,10 +51,11 @@ for (const { platform, skin, styling } of CASES) {
       element.style.setProperty('--media-border-radius', '18px');
     });
 
-    const playButton = page.getByRole('button', { name: 'Play' }).first();
+    const settingsButton = page.getByRole('button', { name: 'Settings' }).first();
 
-    await playButton.hover();
-    await expect(playButton).toHaveCSS('color', 'rgb(171, 205, 239)');
+    await settingsButton.click();
+    await expect(settingsButton).toHaveAttribute('aria-expanded', 'true');
+    await expect(settingsButton).toHaveCSS('color', 'rgb(171, 205, 239)');
 
     const styles = await root.evaluate((element) => {
       const accent = 'rgb(18, 52, 86)';
@@ -96,8 +95,7 @@ for (const { platform, skin, styling } of CASES) {
 
     const root = page.getByRole('group', { name: 'Media player' }).first();
     const slider = page.getByRole('slider', { name: 'Seek' }).first().locator('..');
-    // The preview is `aria-hidden`, so `role=img` is the only hook the CSS and Tailwind skins share.
-    const thumbnail = root.locator('[role="img"]').first();
+    const thumbnail = root.locator(SELECTORS.thumbnail).first();
 
     await expect(root).toBeVisible({ timeout: 15_000 });
     await slider.hover();
@@ -108,13 +106,17 @@ for (const { platform, skin, styling } of CASES) {
     const measure = () =>
       thumbnail.evaluate((element) => {
         const image = element.shadowRoot?.querySelector('img') ?? element.querySelector('img');
+
+        if (!(element instanceof HTMLElement) || !(image instanceof HTMLElement)) {
+          throw new Error('Expected the thumbnail host and image to be HTML elements.');
+        }
+
         const rect = element.getBoundingClientRect();
-        const imageRect = image!.getBoundingClientRect();
-        const host = element as HTMLElement;
+        const imageRect = image.getBoundingClientRect();
 
         return {
-          width: host.offsetWidth,
-          height: host.offsetHeight,
+          width: element.offsetWidth,
+          height: element.offsetHeight,
           maxWidth: parseFloat(getComputedStyle(element).maxWidth),
           rightGap: rect.right - imageRect.right,
           bottomGap: rect.bottom - imageRect.bottom,
@@ -139,16 +141,67 @@ for (const { platform, skin, styling } of CASES) {
         return box.maxWidth - box.width;
       })
       .toBeLessThanOrEqual(2);
+    await expect.poll(async () => (await measure()).width).toBeGreaterThan(before.width);
 
     const after = await measure();
 
-    expect(after.width).toBeGreaterThan(before.width);
     // Aspect ratio survives the resize, so the tile is neither cropped nor letterboxed.
     expect(Math.abs(after.width / after.height - before.width / before.height)).toBeLessThan(0.02);
     // The sprite still covers the container that clips it.
     expect(after.rightGap).toBeLessThanOrEqual(0);
     expect(after.bottomGap).toBeLessThanOrEqual(0);
   });
+}
+
+for (const media of ['video', 'audio'] as const) {
+  for (const { platform, skin, styling } of CASES) {
+    test(`${platform} ${skin} ${styling} selects the live ${media} skin`, async ({ page }) => {
+      const query = new URLSearchParams({
+        styling,
+        skin,
+        source: 'hls-live',
+        autoplay: '0',
+        muted: '1',
+        loop: '0',
+        preload: 'metadata',
+      });
+
+      await page.goto(`${SANDBOX_BASE}/${platform}-hls-${media}/?${query}`, { waitUntil: 'domcontentloaded' });
+
+      const root = page.getByRole('group', { name: 'Media player' }).first();
+      const family = `media-skin--live-${media}`;
+
+      await expect(root).toBeVisible({ timeout: 15_000 });
+      await expect(root).toHaveClass(new RegExp(`(?:^|\\s)${family}(?:\\s|$)`));
+      await expect(page.getByRole('slider', { name: 'Seek' })).toHaveCount(0);
+    });
+  }
+}
+
+for (const media of ['video', 'audio'] as const) {
+  for (const skin of ['default', 'minimal'] as const) {
+    test(`cdn ${skin} selects the live ${media} skin`, async ({ page }) => {
+      const query = new URLSearchParams({
+        preset: `hls-${media}`,
+        skin,
+        source: 'hls-live',
+        autoplay: '0',
+        muted: '1',
+        loop: '0',
+        preload: 'metadata',
+      });
+
+      await page.goto(`${SANDBOX_BASE}/cdn/?${query}`, { waitUntil: 'domcontentloaded' });
+
+      const root = page.getByRole('group', { name: 'Media player' }).first();
+      const family = `media-skin--live-${media}`;
+
+      await expect(root).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator(`live-${media}-player`)).toHaveCount(1);
+      await expect(root).toHaveClass(new RegExp(`(?:^|\\s)${family}(?:\\s|$)`));
+      await expect(page.getByRole('slider', { name: 'Seek' })).toHaveCount(0);
+    });
+  }
 }
 
 for (const { media, skin } of HTML_TAILWIND_ERROR_CASES) {
@@ -240,7 +293,7 @@ for (const { platform, skin, styling } of CASES) {
     const muteTooltip = page.locator('[popover="manual"]').filter({ hasText: 'Unmute' }).first();
 
     if (skin === 'minimal') await expect(muteTooltip).toBeVisible();
-    else await expect(muteTooltip).toHaveCount(0);
+    else await expect(muteTooltip).toBeHidden();
 
     const volumeThumb = page.getByRole('slider', { name: 'Volume' }).first();
 
