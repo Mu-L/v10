@@ -85,7 +85,6 @@ const componentParts: ComponentPartNameMap = {
     Buffer: 'SliderBuffer',
     Thumb: 'SliderThumb',
     'Thumbnail.Root': 'SliderThumbnail',
-    'Thumbnail.Image': 'SliderThumbnail',
     Preview: 'SliderPreview',
     Value: 'SliderValue',
   },
@@ -161,6 +160,12 @@ export const htmlComponentTarget: ComponentTarget<CoreSchema> = defineComponentT
   const I18nText = element('media-text', {
     import: { from: '@videojs/html/i18n', sideEffect: true },
   });
+
+  // Both thumbnail elements adopt a light-DOM image and fill in its source, so the part is a plain `img`.
+  const thumbnailImage = ({ props }: { props: object }) => (
+    <Img alt="" aria-hidden="true" decoding="async" {...props} />
+  );
+
   const optionTemplate: TemplateTargetDefinition = {
     render: ({ children }) => <HtmlTemplate>{children}</HtmlTemplate>,
     parts: {
@@ -264,22 +269,11 @@ export const htmlComponentTarget: ComponentTarget<CoreSchema> = defineComponentT
         },
         Slider: {
           Thumbnail: {
-            Root: Div,
+            Image: thumbnailImage,
           },
         },
-        // `<media-thumbnail>` draws its image in a shadow root, so the image part's attributes ride on the host and
-        // its class name has no element to land on until the image moves into light DOM.
-        Thumbnail: ({ props, parts }) => {
-          const image = parts.Image.props;
-
-          return (
-            <target.Thumbnail.Root
-              {...props}
-              crossOrigin={image.crossOrigin}
-              loading={image.loading}
-              fetchPriority={image.fetchPriority}
-            />
-          );
+        Thumbnail: {
+          Image: thumbnailImage,
         },
         Tooltip: ({ props, parts, id }) => {
           const trigger = id('trigger');
