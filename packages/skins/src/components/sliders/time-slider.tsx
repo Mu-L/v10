@@ -1,7 +1,7 @@
 import type { SliderPreviewOverflow, TimeSliderProps as CoreProps } from '@videojs/core';
 import * as $ from '@videojs/core/vjsc';
 import { SpinnerIcon } from '@videojs/icons/vjsc';
-import { Box, type Props, Template } from 'vjsc/components';
+import { Box, type Props, type PropsOf, Slot, Template } from 'vjsc/components';
 
 import type { SkinComponentDescription } from '../../meta';
 import popupStyles from '../../styles/popups/popup.styles';
@@ -12,9 +12,16 @@ import { SliderBuffer, SliderFill, SliderThumb, SliderTrack } from './slider';
 
 export interface TimeSliderProps extends CoreProps {
   previewOverflow?: SliderPreviewOverflow | undefined;
+  /** Draws the thumbnail preview image in place of the one the skin renders. */
+  renderThumbnail?: PropsOf<typeof $.Slider.Thumbnail.Image>['children'];
 }
 
-export function TimeSlider({ className, previewOverflow = 'visible', ...props }: Props<TimeSliderProps> = {}) {
+export function TimeSlider({
+  className,
+  previewOverflow = 'visible',
+  renderThumbnail,
+  ...props
+}: Props<TimeSliderProps> = {}) {
   return (
     <$.TimeSlider.Root className={[sliderStyles.root, styles.root, className]} {...props}>
       <$.TimeSlider.Chapters className={styles.chapters}>
@@ -28,7 +35,9 @@ export function TimeSlider({ className, previewOverflow = 'visible', ...props }:
       <$.TimeSlider.Thumb $render={SliderThumb} className={styles.thumb} />
       <$.TimeSlider.Preview className={sliderStyles.preview} overflow={previewOverflow}>
         <$.Slider.Thumbnail.Root className={[sliderStyles.previewContent, popupStyles.surface, thumbnailStyles.root]}>
-          <$.Slider.Thumbnail.Image className={thumbnailStyles.image} />
+          <Slot name="thumbnail">
+            <$.Slider.Thumbnail.Image className={thumbnailStyles.image}>{renderThumbnail}</$.Slider.Thumbnail.Image>
+          </Slot>
           <SpinnerIcon className={thumbnailStyles.spinnerIcon} />
         </$.Slider.Thumbnail.Root>
         <Box className={[sliderStyles.previewContent, styles.previewContent]}>
