@@ -37,6 +37,9 @@ export function VolumePopoverRoot({ children, ...props }: VolumePopoverRootProps
  * available.
  */
 function VolumePopoverState({ children, ...props }: VolumePopoverRootProps): ReactNode {
+  // React Compiler cannot track state read through the mutable core instance.
+  'use no memo';
+
   const volume = usePlayer(selectVolume);
   const { popover, state: popoverState } = usePopoverContext();
   const [core] = useState(() => new VolumePopoverCore(props));
