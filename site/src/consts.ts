@@ -17,7 +17,22 @@ export const DISCORD_INVITE_URL = 'https://discord.gg/JBqHh485uF';
 export const MUX_URL = 'https://www.mux.com?utm_source=videojs&utm_campaign=vjs10';
 export const MUX_SUPPORT_URL = 'https://www.mux.com/sales-contact?form=sales&utm_source=videojs&utm_campaign=vjs10';
 export const THEME_KEY = 'vjs-site-theme';
+export const ACCENT_KEY = 'vjs-site-accent';
+export const TONE_KEY = 'vjs-site-tone';
+
+/**
+ * Page background per resolved theme and dark tone, written to the `theme-color` meta tag for browser chrome.
+ * `ThemeInit.astro` runs before the stylesheet is available, so these cannot be read from CSS at that point; keep them
+ * in step with `--color-faded-black` and the `data-tone="deep"` override in `styles/globals.css`.
+ */
+export const THEME_COLORS = {
+  light: '#ebe4c1',
+  soft: '#1e1d1d',
+  deep: '#151414',
+} as const;
 export const BANNER_DISMISS_KEY = 'vjs-legacy-banner-dismissed';
+/** Session flag set once the legacy banner has scrolled out of view, so later pages start without it. */
+export const BANNER_SEEN_KEY = 'vjs-legacy-banner-seen';
 export const BLOG_PAGE_SIZE = 10;
 export const CDN_URL_BASE = `https://cdn.jsdelivr.net/npm`;
 export const VJS10_VERSION = htmlPackage.version;
