@@ -60,6 +60,8 @@ video.source = { src: 'https://example.com/asset?id=42', type: 'application/vnd.
 ```
 </FrameworkCase>
 
+The legacy HLS spelling `application/x-mpegURL` is accepted as an alias, and matching is case-insensitive. An HLS source whose `type` isn't recognized is handed to the browser as-is rather than to hls.js, which leaves quality and audio-track selection unavailable.
+
 ## `src` and `source` stay in sync
 
 They are two views of the same thing, and writing either updates the other. Setting `source` derives `src`. Setting `src` replaces only the identity half and **keeps the rest, such as `type` and the engine options, intact**:
