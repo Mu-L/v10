@@ -353,31 +353,37 @@ For display, use `title` on the player.
 
 An asset titled in the Mux dashboard supplies its own: the Mux media loads the asset's metadata and the player falls back to that title when none is set on it, so the display title is optional for Mux-hosted video.
 
-The title reaches player state, but the packaged skins don't place it in their layouts. Add the <DocsLink slug="reference/components/title">Title</DocsLink> component as a child of a packaged skin, or place it in an ejected or custom layout, when you want viewers to see it:
+The packaged video and live-video skins show the resolved title at the top of the player and fade it with the controls, so the embeds above already display it. The <DocsLink slug="reference/components/title" anchor="styling">Title</DocsLink> component sets `data-visible` while the controls are visible, so your skin overrides can move it differently. The audio skins have no title display.
+
+An ejected or custom layout shows the title only where you place the component. Keep it inside the sized container from [Move your layout styles](#move-your-layout-styles) so it overlays the media:
 
 <FrameworkCase frameworks={["html"]}>
 ```js
+import '@videojs/html/ui/container';
 import '@videojs/html/ui/title';
 ```
 
 ```html
 <video-player content-title="Test VOD">
-  <video-skin>
+  <media-container class="player-surface">
+    <mux-video src="https://stream.mux.com/EcHgOK9coz5K….m3u8"></mux-video>
     <media-title></media-title>
-  </video-skin>
+  </media-container>
 </video-player>
 ```
 </FrameworkCase>
 
 <FrameworkCase frameworks={["react"]}>
 ```tsx
-import { Title } from '@videojs/react';
-import { VideoPlayer, VideoSkin } from '@videojs/react/video';
+import { Container, Title } from '@videojs/react';
+import { MuxVideo } from '@videojs/react/media/mux-video';
+import { VideoPlayer } from '@videojs/react/video';
 
 <VideoPlayer title="Test VOD">
-  <VideoSkin>
+  <Container style={{ position: 'relative', width: '100%', aspectRatio: '16/9' }}>
+    <MuxVideo source={{ playbackId: 'EcHgOK9coz5K…' }} />
     <Title />
-  </VideoSkin>
+  </Container>
 </VideoPlayer>
 ```
 </FrameworkCase>
