@@ -43,8 +43,9 @@ import basicUsageHtmlTs from "@/components/docs/demos/title/html/css/BasicUsage.
 
 ## Behavior
 
-The component shows the name of what is playing. It writes its own text, so set the
-title on the player instead of passing children.
+The component renders the resolved title directly as text and owns that text on both
+platforms: React does not accept `children`, and the HTML element replaces any authored
+content whenever the title updates. Set the title on the player instead.
 
 <FrameworkCase frameworks={["react"]}>
   ```tsx
@@ -99,9 +100,8 @@ feature</DocsLink>, which the video and audio presets include.
 
 Set it to `null` to hand the title back to the media.
 
-The title shows whenever there is a title to show. It does not follow the controls or
-playback on its own — when you want it to come and go with the controls, style it against
-the controls in your own layout, the same way you would any other piece of chrome.
+The component exposes `data-visible` while controls are visible. Use that hook to animate
+the title with the controls.
 
 ## Styling
 
@@ -109,8 +109,7 @@ the controls in your own layout, the same way you would any other piece of chrom
 When no title resolves, the element sets the native `hidden` attribute and `data-hidden`,
 so it takes up no space and a background or gradient never sits over empty space.
 
-To fade the title in and out with the controls, style it against a sibling `media-controls`
-rather than reaching for state on the title itself:
+To fade the title in and out with the controls, use the root’s `data-visible` attribute:
 
 ```css
 media-title {
@@ -118,14 +117,14 @@ media-title {
   transition: opacity 150ms ease-out;
 }
 
-media-controls[data-visible] ~ media-title {
+media-title[data-visible] {
   opacity: 1;
 }
 ```
 </FrameworkCase>
 
 <FrameworkCase frameworks={["react"]}>
-React renders a `<span>`, or nothing at all when no title resolves. Add a `className` to
+React renders a `<div>`, or nothing at all when no title resolves. Add a `className` to
 style it:
 
 ```css
@@ -135,11 +134,10 @@ style it:
 }
 ```
 
-To fade the title in and out with the controls, style it against a sibling `Controls`
-rather than reaching for state on the title itself:
+To fade the title in and out with the controls, use the root’s `data-visible` attribute:
 
 ```css
-.controls[data-visible] ~ .title {
+.title[data-visible] {
   opacity: 1;
 }
 ```

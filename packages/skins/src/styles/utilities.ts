@@ -116,13 +116,14 @@ export const utilities = {
   '--text-media-sm': { kind: 'theme', description: 'Small text size in player spacing units.' },
   '--text-media': { kind: 'theme', description: 'Base text size in player spacing units.' },
   '--text-media-lg': { kind: 'theme', description: 'Large text size in player spacing units.' },
+  '--text-media-xl': { kind: 'theme', description: 'Extra large text size in player spacing units.' },
   '--spacing-media-icon-sm': { kind: 'theme', description: 'Chevron size derived from the icon size.' },
   '--spacing-media-icon': { kind: 'theme', description: 'Control icon size.' },
   '--spacing-media-icon-lg': { kind: 'theme', description: 'Large indicator icon size.' },
   '--spacing-media-icon-xl': { kind: 'theme', description: 'Extra large indicator icon size.' },
   '--radius-media-pill': { kind: 'theme', description: 'Always-round radius for tracks and pills.' },
   '--shadow-media-hairline': { kind: 'theme', description: 'One-pixel hairline in the theme border color.' },
-  '--duration-media-controls-half': {
+  '--duration-media-controls-enter': {
     kind: 'theme',
     description: 'Half the controls visibility duration, used while controls appear.',
   },

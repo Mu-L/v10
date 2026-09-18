@@ -221,4 +221,59 @@ describe('TitleElement', () => {
     setTitle(store, 'Big Buck Bunny');
     await waitForAssertion(() => expect(title.textContent).toBe('Big Buck Bunny'));
   });
+
+  it('keeps the same text node when only controls visibility changes', async () => {
+    const store: TitleStore = createTitleStore();
+    const { title } = await setup(store);
+
+    setTitle(store, 'Sintel');
+    await waitForAssertion(() => expect(title.textContent).toBe('Sintel'));
+
+    const textNode = title.firstChild;
+
+    store.toggleControls();
+    await waitForAssertion(() => expect(title.hasAttribute('data-visible')).toBe(false));
+
+    expect(title.firstChild).toBe(textNode);
+    expect(title.textContent).toBe('Sintel');
+  });
+
+  it.each([false, true])('updates title state and reconnects (shadow: %s)', async (shadow) => {
+    const store = createStore<PlayerTarget>()(combine(metadataFeature, controlsFeature, playbackFeature));
+    const provider = createElement(UIElement);
+
+    new ContextProvider(provider, { context: playerContext, initialValue: store as unknown as AnyPlayerStore });
+    const host = createElement(UIElement);
+    const root = shadow ? host.attachShadow({ mode: 'open' }) : host;
+    const title = createElement(TitleElement);
+
+    root.append(title);
+    provider.append(host);
+    document.body.append(provider);
+
+    setPlayerConfigValue(store, metadataFeature.config!.title, 'VJS City');
+    await waitForAssertion(() => {
+      expect(title.textContent).toBe('VJS City');
+      expect(title.hidden).toBe(false);
+      expect(title.hasAttribute('data-visible')).toBe(true);
+    });
+
+    store.toggleControls();
+    await waitForAssertion(() => expect(title.hasAttribute('data-visible')).toBe(false));
+
+    setPlayerConfigValue(store, metadataFeature.config!.title, '');
+    await waitForAssertion(() => {
+      expect(title.hidden).toBe(true);
+      expect(title.hasAttribute('data-hidden')).toBe(true);
+    });
+
+    host.remove();
+    setPlayerConfigValue(store, metadataFeature.config!.title, 'Restored title');
+    provider.append(host);
+    await waitForAssertion(() => {
+      expect(title.textContent).toBe('Restored title');
+      expect(title.hidden).toBe(false);
+      expect(title.childElementCount).toBe(0);
+    });
+  });
 });

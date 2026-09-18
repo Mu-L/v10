@@ -1,5 +1,5 @@
 import { TitleCore, TitleDataAttrs } from '@videojs/core';
-import { applyStateDataAttrs, logMissingFeature, selectMetadata } from '@videojs/core/dom';
+import { applyStateDataAttrs, logMissingFeature, selectControls, selectMetadata } from '@videojs/core/dom';
 import type { PropertyValues } from '@videojs/element';
 
 import { playerContext } from '../../player/context';
@@ -9,23 +9,17 @@ import { UIElement } from '../ui-element';
 /**
  * Displays the resolved content title.
  *
- * The element owns its text content. Set the title through the player's `content-title` attribute rather than by
- * writing children.
+ * The element owns its text content. Set the title through the player's `content-title` attribute.
  */
 export class TitleElement extends UIElement {
   static readonly tagName = 'media-title';
 
   readonly #core = new TitleCore();
   readonly #metadataState = new PlayerController(this, playerContext, selectMetadata);
-
-  readonly #textNode = new Text();
+  readonly #controlsState = new PlayerController(this, playerContext, selectControls);
 
   override connectedCallback(): void {
     super.connectedCallback();
-
-    if (!this.#textNode.parentNode) {
-      this.append(this.#textNode);
-    }
 
     if (__DEV__ && !this.#metadataState.value) {
       logMissingFeature(this.localName, this.#metadataState.displayName!);
@@ -38,9 +32,12 @@ export class TitleElement extends UIElement {
     const metadata = this.#metadataState.value;
     if (!metadata) return;
 
-    const state = this.#core.getState(metadata);
+    const state = this.#core.getState(metadata, this.#controlsState.value);
 
-    this.#textNode.textContent = state.title;
+    // Controls visibility also triggers updates, so only touch the text node when the title changed.
+    // Replacing it needlessly makes assistive tech re-announce a title that should stay put.
+    if (this.textContent !== state.title) this.textContent = state.title;
+
     this.hidden = state.hidden;
 
     applyStateDataAttrs(this, state, TitleDataAttrs);

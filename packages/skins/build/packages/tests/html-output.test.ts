@@ -38,6 +38,15 @@ describe('generated HTML package skins', () => {
     expect(registeredIcons).toEqual(iconNames);
     expect(stylesheet.length).toBeGreaterThan(10_000);
 
+    if (skin.endsWith('video')) {
+      expect(template).toMatch(/<media-title class="media-title">\s*<\/media-title>/);
+      expect(template).not.toContain('media-metadata');
+      expect(tags).toContain('title');
+      expect(stylesheet).toContain('.media-title:not([data-visible])');
+    } else {
+      expect(tags).not.toContain('title');
+    }
+
     for (const tag of registeredTags) {
       expect(existsSync(resolve(workspaceDir, `packages/html/src/define/ui/${tag}.ts`))).toBe(true);
     }

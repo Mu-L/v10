@@ -2,7 +2,7 @@ import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { createPlayerWrapper } from '../../../testing/mocks';
-import { Title } from '../component';
+import { Title } from '../index';
 
 afterEach(() => {
   cleanup();
@@ -42,6 +42,14 @@ describe('Title', () => {
     });
     const { getByTestId } = render(<Title data-testid="title" />, { wrapper: Wrapper });
 
+    expect(getByTestId('title').textContent).toBe('Sintel');
+  });
+
+  it.each([true, false])('reflects controls visibility (%s) without hiding the title', (visible) => {
+    const { Wrapper } = createPlayerWrapper({ ...metadataState('Sintel'), ...controlsState(visible) });
+    const { getByTestId } = render(<Title data-testid="title" />, { wrapper: Wrapper });
+
+    expect(getByTestId('title').hasAttribute('data-visible')).toBe(visible);
     expect(getByTestId('title').textContent).toBe('Sintel');
   });
 
@@ -102,5 +110,14 @@ describe('Title', () => {
     );
 
     expect(getByTestId('title').className).toBe('title--6');
+  });
+
+  it('renders one element and supports element replacement', () => {
+    const { Wrapper } = createPlayerWrapper(metadataState('Sintel'));
+    const { getByTestId } = render(<Title render={<h2 />} data-testid="title" />, { wrapper: Wrapper });
+
+    expect(getByTestId('title').tagName).toBe('H2');
+    expect(getByTestId('title').textContent).toBe('Sintel');
+    expect(getByTestId('title').childElementCount).toBe(0);
   });
 });

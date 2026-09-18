@@ -12,7 +12,7 @@ const compactHidden = [
   'media-max-lg:group-[:not([data-visible])]/controls:opacity-0',
   'media-max-lg:group-[:not([data-visible])]/controls:scale-media-hidden',
   'media-max-lg:pointer-fine:group-[:not([data-visible])]/controls:blur-media-hidden',
-  'transition-[filter,opacity,scale,translate] duration-media-controls-half ease-out',
+  'transition-[filter,opacity,scale,translate] duration-media-controls-enter ease-out',
   'media-max-lg:group-[:not([data-visible])]/controls:duration-media-controls',
 ] as const;
 
@@ -33,7 +33,7 @@ export default styles({
     content: {
       utilities: [
         'group/controls text-media-controls-foreground text-shadow-media',
-        'duration-media-controls-half ease-out',
+        'duration-media-controls-enter ease-out',
       ],
       variants: {
         default: [
@@ -49,7 +49,7 @@ export default styles({
           'media-lg:not-data-visible:duration-media-controls',
         ],
         minimal: [
-          'absolute inset-x-1 bottom-1 z-30 flex items-center rtl:flex-row-reverse gap-x-2 rounded-media-controls bg-transparent p-1 media-opaque:bg-media-background',
+          'absolute inset-x-0.5 bottom-0.5 z-30 flex items-center rtl:flex-row-reverse gap-x-2 rounded-media-controls bg-transparent p-1 media-opaque:bg-media-background',
           'transition-[filter,opacity,translate]',
           'not-data-visible:pointer-events-none not-data-visible:opacity-0',
           'not-data-visible:duration-media-controls',
