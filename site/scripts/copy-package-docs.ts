@@ -12,6 +12,7 @@ import {
 import { basename, dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { selectFrameworkBranches } from '../integrations/markdown-text';
 import {
   getInstallationRoutePath,
   INSTALLATION_ROUTES,
@@ -64,14 +65,15 @@ export function rewriteLinks(content: string, sourceSlug: string, framework: Fra
 
   for (const [source, destination] of INSTALLATION_DOCUMENTS[framework]) {
     const publicPath = `/${source.replace(/\.md$/, '')}`;
+    // Shadcn links pick a framework branch with `?framework=`; the bundled copy holds only this package's branch.
     const canonicalPattern = new RegExp(
-      `(\\]\\()(?:https?://[^\\s)]+)?${escapeForRegex(publicPath)}(?:\\.md|/)?(?=[)#])`,
+      `(\\]\\()(?:https?://[^\\s)]+)?${escapeForRegex(publicPath)}(?:\\.md|/)?(?:\\?framework=(\\w+))?(?=[)#])`,
       'g'
     );
 
-    rewritten = rewritten.replace(canonicalPattern, (_match, prefix: string) => {
-      return prefix + toRelativePath(sourceDir, destination);
-    });
+    rewritten = rewritten.replace(canonicalPattern, (match, prefix: string, linkFramework: string | undefined) =>
+      linkFramework && linkFramework !== framework ? match : prefix + toRelativePath(sourceDir, destination)
+    );
   }
 
   const frameworkPath = `/docs/framework/${framework}/`;
@@ -105,7 +107,10 @@ function copyInstallationDocumentation({
     if (!existsSync(sourcePath)) throw new Error(`Missing installation documentation source: ${sourcePath}`);
 
     const raw = stripFooter(readFileSync(sourcePath, 'utf-8'));
-    const transformed = rewriteLocalLinks ? rewriteLinks(raw, sourceSlug(destination), framework) : raw;
+    // The docs CLI reads the markers in its own copy; a framework package keeps only its branch of a shared guide.
+    const transformed = rewriteLocalLinks
+      ? rewriteLinks(selectFrameworkBranches(raw, framework), sourceSlug(destination), framework)
+      : raw;
     const destinationPath = join(targetDirectory, destination);
 
     mkdirSync(dirname(destinationPath), { recursive: true });
@@ -114,6 +119,35 @@ function copyInstallationDocumentation({
   }
 
   return copied;
+}
+
+/**
+ * The web indexes introduce themselves in terms of `.md` URLs and point at complete files that a package does not
+ * bundle. Inside a package they are files on disk, so restate the header for that setting: which package and version
+ * the copy belongs to and that links are relative paths.
+ */
+export function rewriteIndexHeader(
+  content: string,
+  { framework, version }: { framework: Framework; version: string | undefined }
+): string {
+  const packageName = PACKAGE_NAMES[framework];
+  const versionSuffix = version ? ` v${version}` : '';
+  const context = `Bundled with \`${packageName}\`${versionSuffix}. Links are relative paths to files in this directory.`;
+
+  return (
+    content
+      // The first blockquote line is the header. A section index opens with the section's own description, which stays.
+      .replace(/^> .*$/m, (line) => {
+        const description = line
+          .slice(2)
+          .split(/ ?Every page below/)[0]
+          ?.trim();
+
+        return `> ${description ? `${description} ` : ''}${context}`;
+      })
+      // The framework index also quotes each section's complete file beside its section index.
+      .replace(/ This section in one file \([^)]*\): \S+/g, '')
+  );
 }
 
 export function synthesizeReadme({
@@ -186,20 +220,28 @@ function copyFrameworkDocumentation({
   targetDirectory,
   framework,
   rewriteLocalLinks,
+  version,
 }: {
   sourceDirectory: string;
   targetDirectory: string;
   framework: Framework;
   rewriteLocalLinks: boolean;
+  version: string | undefined;
 }): number {
-  const files = walkDocumentation(sourceDirectory);
+  // A complete file concatenates the pages bundled beside it, so a package ships the pages and indexes only.
+  const files = walkDocumentation(sourceDirectory).filter((sourcePath) => basename(sourcePath) !== 'llms-full.txt');
 
   for (const sourcePath of files) {
     const relativePath = posix.relative(sourceDirectory.split(/[\\/]/).join('/'), sourcePath.split(/[\\/]/).join('/'));
     const raw = readFileSync(sourcePath, 'utf-8');
     const withoutFooter = stripFooter(raw);
+    const isIndex = basename(relativePath) === 'llms.txt';
     const transformed = rewriteLocalLinks
-      ? rewriteLinks(withoutFooter, sourceSlug(relativePath), framework)
+      ? rewriteLinks(
+          isIndex ? rewriteIndexHeader(withoutFooter, { framework, version }) : withoutFooter,
+          sourceSlug(relativePath),
+          framework
+        )
       : withoutFooter;
 
     const destinationPath = join(targetDirectory, relativePath);
@@ -242,6 +284,7 @@ export function packageDocumentation({
         targetDirectory: frameworkTarget,
         framework,
         rewriteLocalLinks: target !== 'cli',
+        version,
       });
       copiedFiles += copyInstallationDocumentation({
         siteDist,

@@ -24,7 +24,7 @@ import yaml from 'shiki/langs/yaml.mjs';
 import svgr from 'vite-plugin-svgr';
 
 import { reactCompilerPlugin } from '../build/react-compiler.ts';
-import llmsMarkdown from './integrations/llms-markdown';
+import llmsMarkdown, { llmsIndexPaths } from './integrations/llms-markdown';
 import { demoPlaceholderPlugin } from './scripts/replace-demo-placeholders.ts';
 import { PRERELEASE_URL, PRODUCTION_URL } from './src/consts.ts';
 import { satteriCdnVersion } from './src/utils/satteriCdnVersion';
@@ -106,17 +106,8 @@ export default defineConfig({
       : []),
     mdx({ extendMarkdownConfig: true }),
     sitemap({
-      // llms-markdown.ts auto-generates sub-indexes, but sitemap entries are
-      // hardcoded here. Add a new line when adding an index.
-      customPages: [
-        `${SITE_URL}/llms.txt`,
-        `${SITE_URL}/blog/llms.txt`,
-        `${SITE_URL}/changelog/llms.txt`,
-        `${SITE_URL}/docs/framework/html/llms.txt`,
-        `${SITE_URL}/docs/framework/html/llms-full.txt`,
-        `${SITE_URL}/docs/framework/react/llms.txt`,
-        `${SITE_URL}/docs/framework/react/llms-full.txt`,
-      ],
+      // The llms indexes are written after the build, so the sitemap cannot discover them from the page list.
+      customPages: llmsIndexPaths().map((path) => `${SITE_URL}${path}`),
     }),
     llmsMarkdown(),
     react(),
