@@ -4,6 +4,11 @@
 
 > **⚠️ Release candidate** Close to stable. Adoption in real projects encouraged.
 
+## Agentstart
+
+Using an AI coding agent? Install the [Video.js skill](https://github.com/videojs/skills) so it reads
+the docs that match this package version before writing code.
+
 ## Overview
 
 `@videojs/html` is a comprehensive library for building media players with vanilla JavaScript and
