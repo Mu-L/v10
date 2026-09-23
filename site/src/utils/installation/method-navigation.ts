@@ -1,37 +1,32 @@
-import { navigate } from 'astro:transitions/client';
+import { isShadcnInstallationUrl, type InstallationPickerFramework } from '@/utils/installation/framework-navigation';
+import type { InstallationMethod } from '@/utils/installation/method-options';
+import { getInstallationRoutePath } from '@/utils/installation/routes';
+import type { InstallationSelection } from '@/utils/installation/url-state';
+import { serializeInstallationSearch } from '@/utils/installation/url-state';
 
-import { DOCS_FRAMEWORK_NAVIGATION_INFO, savePageScrollForNavigation } from '@/utils/docs/navigation';
-
-export type InstallationMethod = 'packaged' | 'shadcn' | 'cdn';
-
-declare global {
-  interface Window {
-    __videojsInstallationMethodNavigationController?: AbortController;
-  }
-}
-
-function isInstallationMethod(value: string | undefined): value is InstallationMethod {
-  return value === 'packaged' || value === 'shadcn' || value === 'cdn';
-}
+export type { InstallationMethod } from '@/utils/installation/method-options';
 
 /** Carry compatible installation choices to another method's guide. */
 export function resolveInstallationMethodUrl(current: URL, href: string, method: InstallationMethod): URL {
   const target = new URL(href, current);
+  const hrefParams = [...target.searchParams];
 
   target.search = current.search;
 
+  for (const [key, value] of hrefParams) target.searchParams.set(key, value);
+
   if (method === 'packaged') {
-    if (current.pathname.endsWith('/shadcn')) {
+    if (isShadcnInstallationUrl(current)) {
       const framework = current.searchParams.get('framework') === 'html' ? 'html' : 'react';
 
-      target.pathname = `/docs/guides/installation/${framework}`;
+      target.pathname = getInstallationRoutePath(framework);
     }
 
     target.searchParams.delete('framework');
   } else if (method === 'shadcn') {
     const framework = current.pathname.endsWith('/react')
       ? 'react'
-      : current.pathname.endsWith('/shadcn') && current.searchParams.get('framework') !== 'html'
+      : isShadcnInstallationUrl(current) && current.searchParams.get('framework') !== 'html'
         ? 'react'
         : 'html';
 
@@ -44,51 +39,21 @@ export function resolveInstallationMethodUrl(current: URL, href: string, method:
   return target;
 }
 
-function handleClick(event: MouseEvent): void {
-  if (
-    event.defaultPrevented ||
-    event.button !== 0 ||
-    event.metaKey ||
-    event.ctrlKey ||
-    event.shiftKey ||
-    event.altKey ||
-    !(event.target instanceof Element)
-  ) {
-    return;
-  }
+/** Build the native card href from the latest picker state, including navigation opened in another tab. */
+export function resolveInstallationMethodHref(
+  current: URL,
+  href: string,
+  method: InstallationMethod,
+  selection: InstallationSelection,
+  framework?: InstallationPickerFramework
+): string {
+  const source = new URL(current);
 
-  const link = event.target.closest<HTMLAnchorElement>('[data-installation-method-nav] a[data-installation-method]');
-  const method = link?.dataset.installationMethod;
-  if (!link || link.target === '_blank' || !isInstallationMethod(method)) return;
+  source.search = serializeInstallationSearch(selection, source.search);
 
-  const current = new URL(window.location.href);
-  const target = resolveInstallationMethodUrl(current, link.href, method);
+  if (isShadcnInstallationUrl(source) && framework) source.searchParams.set('framework', framework);
 
-  event.preventDefault();
+  const target = resolveInstallationMethodUrl(source, href, method);
 
-  if (target.href === current.href) return;
-
-  const targetPath = `${target.pathname}${target.search}${target.hash}`;
-
-  savePageScrollForNavigation(targetPath);
-  // Leave the click dispatch before asking Astro to start a transition. Its router also observes document clicks, and
-  // starting a transition from our capture listener while that event is still active aborts it as an invalid state.
-  queueMicrotask(() => {
-    void navigate(targetPath, {
-      history: 'push',
-      info: DOCS_FRAMEWORK_NAVIGATION_INFO,
-    });
-  });
-}
-
-/** Keep installation-method cards interactive after Astro swaps in another guide. */
-export function initializeInstallationMethodNavigation(): void {
-  window.__videojsInstallationMethodNavigationController?.abort();
-
-  const controller = new AbortController();
-
-  window.__videojsInstallationMethodNavigationController = controller;
-  // Astro's router delegates clicks from the document in the bubble phase. Capture first so it receives our rewritten
-  // URL instead of starting a second navigation to the card's static fallback href.
-  document.addEventListener('click', handleClick, { capture: true, signal: controller.signal });
+  return `${target.pathname}${target.search}${target.hash}`;
 }

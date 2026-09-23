@@ -1,3 +1,4 @@
+import { useStore } from '@nanostores/react';
 import { navigate } from 'astro:transitions/client';
 
 import Html5Logo from '@/assets/logos/brands/html5.svg?react';
@@ -5,16 +6,17 @@ import ReactLogo from '@/assets/logos/brands/react.svg?react';
 import SvelteLogo from '@/assets/logos/brands/svelte.svg?react';
 import VueLogo from '@/assets/logos/brands/vue.svg?react';
 import CardRadioGroup, { type CardRadioOption } from '@/components/CardRadioGroup';
+import { registryFramework, selectRegistryFramework } from '@/stores/registry';
 import { DOCS_FRAMEWORK_NAVIGATION_INFO, savePageScrollForNavigation } from '@/utils/docs/navigation';
 import {
+  isRegistryFramework,
   type InstallationPickerFramework,
   resolveInstallationFrameworkNavigation,
 } from '@/utils/installation/framework-navigation';
+import type { InstallationRouteSegment } from '@/utils/installation/routes';
+import useIsHydrated from '@/utils/useIsHydrated';
 
-/**
- * Frameworks the installation flow can start from. React and HTML switch the docs framework; Vue and Svelte open their
- * own installation pages, which build on the HTML custom elements.
- */
+/** Framework entry points. The selected framework determines which installation methods the next section offers. */
 const OPTIONS: CardRadioOption<InstallationPickerFramework>[] = [
   {
     value: 'react',
@@ -44,24 +46,43 @@ const OPTIONS: CardRadioOption<InstallationPickerFramework>[] = [
 
 interface Props {
   currentFramework: InstallationPickerFramework;
+  route: InstallationRouteSegment;
 }
 
-export default function JSPickerClient({ currentFramework }: Props) {
-  const handleChange = (next: InstallationPickerFramework) => {
-    if (next === currentFramework) return;
+export default function JSPickerClient({ currentFramework, route }: Props) {
+  const selectedRegistryFramework = useStore(registryFramework);
+  const isHydrated = useIsHydrated();
+  const displayedFramework = route === 'shadcn' && isHydrated ? selectedRegistryFramework : currentFramework;
 
-    const { target, history } = resolveInstallationFrameworkNavigation(currentFramework, next, window.location.search);
+  const handleChange = (next: InstallationPickerFramework) => {
+    if (next === displayedFramework) return;
+
+    if (route === 'shadcn' && isRegistryFramework(next)) {
+      selectRegistryFramework(next);
+      return;
+    }
+
+    const { target, history } = resolveInstallationFrameworkNavigation(new URL(window.location.href), next);
 
     savePageScrollForNavigation(target);
     void navigate(target, { history, info: DOCS_FRAMEWORK_NAVIGATION_INFO });
   };
 
   return (
-    <CardRadioGroup
-      value={currentFramework}
-      onChange={handleChange}
-      options={OPTIONS}
-      aria-label="Select JS framework"
-    />
+    <>
+      <CardRadioGroup
+        value={displayedFramework}
+        onChange={handleChange}
+        options={OPTIONS}
+        aria-label="Select JS framework"
+      />
+      <div className="text-p4 mt-3 min-h-6">
+        {displayedFramework === 'html' && route !== 'cdn' && (
+          <p>
+            Want to load Video.js from a CDN? See <a href="#choose-how-to-install">Choose how to install</a> below.
+          </p>
+        )}
+      </div>
+    </>
   );
 }

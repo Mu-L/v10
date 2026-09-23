@@ -8,8 +8,8 @@ import {
 } from './types';
 
 /**
- * The installation picks that live in the page URL, using the same names and vocabulary as `@videojs/cli docs`, so a
- * URL and a CLI command describe the same player: `?preset=live-video&skin=minimal&media=hls&install-method=npm`.
+ * The installation choices encoded in the page URL. `install-method` stores the package manager on package-based routes
+ * and stays at its default on the CDN route.
  */
 export interface InstallationSelection {
   useCase: UseCase;
@@ -24,7 +24,7 @@ export const DEFAULT_SELECTION: InstallationSelection = {
   skin: 'video',
   renderer: 'html5-video',
   sourceUrl: '',
-  installMethod: 'cdn',
+  installMethod: 'npm',
 };
 
 const INSTALL_METHODS: readonly InstallMethod[] = ['cdn', 'npm', 'pnpm', 'yarn', 'bun'];

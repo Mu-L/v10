@@ -1,6 +1,7 @@
 import { sidebar as defaultSidebar } from '@/docs.config';
 import type { Sidebar, SupportedFramework } from '@/types/docs';
 import { DEFAULT_FRAMEWORK, isValidFramework, resolveDocsFramework } from '@/types/docs';
+import { isShadcnInstallationUrl, SHADCN_INSTALLATION_PATH } from '@/utils/installation/framework-navigation';
 
 import { findFirstGuide, findGuideBySlug, getValidFrameworksForGuide } from './sidebar';
 
@@ -14,9 +15,11 @@ export function buildDocsUrl(framework: SupportedFramework, guideSlug: string): 
 
   if (guideSlug === 'guides/installation-svelte') return '/docs/guides/installation/svelte';
 
-  if (guideSlug === 'guides/installation-shadcn') return '/docs/guides/installation/shadcn';
+  if (guideSlug === 'guides/installation-shadcn') {
+    return `${SHADCN_INSTALLATION_PATH}?framework=${framework}`;
+  }
 
-  if (guideSlug === 'guides/cdn') return '/docs/guides/installation/cdn';
+  if (guideSlug === 'guides/installation-cdn') return '/docs/guides/installation/cdn';
 
   return `/docs/framework/${framework}/${guideSlug}`;
 }
@@ -39,9 +42,9 @@ export function buildAgnosticDocsUrl(guideSlug?: string | null): string {
 
   if (guideSlug === 'guides/installation-svelte') return '/docs/guides/installation/svelte';
 
-  if (guideSlug === 'guides/installation-shadcn') return '/docs/guides/installation/shadcn';
+  if (guideSlug === 'guides/installation-shadcn') return SHADCN_INSTALLATION_PATH;
 
-  if (guideSlug === 'guides/cdn') return '/docs/guides/installation/cdn';
+  if (guideSlug === 'guides/installation-cdn') return '/docs/guides/installation/cdn';
 
   return guideSlug ? `/docs/${guideSlug}` : '/docs';
 }
@@ -59,7 +62,7 @@ export function getFrameworkFromDocsPath(pathname: string): SupportedFramework |
 
 /** Read the selected framework from a docs URL, including Shadcn's query-controlled source framework. */
 export function getFrameworkFromDocsUrl(url: URL): SupportedFramework | null {
-  if (url.pathname.replace(/\/$/, '') === '/docs/guides/installation/shadcn') {
+  if (isShadcnInstallationUrl(url)) {
     const framework = url.searchParams.get('framework');
 
     return isValidFramework(framework) ? framework : null;

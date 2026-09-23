@@ -1,0 +1,59 @@
+---
+import { FRAMEWORK_COOKIE } from '@/utils/docs/preferences';
+import { SHADCN_INSTALLATION_PATH } from '@/utils/installation/framework-navigation';
+
+/** Match Shadcn's prerendered framework content to its query before the React islands hydrate. */
+---
+
+<style is:global>
+  [data-shadcn-framework="html"] {
+    display: none;
+  }
+
+  html[data-registry-framework="html"] [data-shadcn-framework="react"] {
+    display: none;
+  }
+
+  html[data-registry-framework="html"] [data-shadcn-framework="html"] {
+    display: contents;
+  }
+
+  [data-shadcn-html-method] {
+    display: none;
+  }
+
+  html[data-registry-framework="html"] [data-shadcn-html-method] {
+    display: flex;
+  }
+</style>
+
+<script is:inline define:vars={{ frameworkCookie: FRAMEWORK_COOKIE, shadcnPath: SHADCN_INSTALLATION_PATH }}>
+  function applyInstallationFramework(url, root) {
+    if (!root) return;
+
+    const isShadcn = url.pathname.replace(/\/$/, "") === shadcnPath;
+
+    if (!isShadcn) {
+      delete root.dataset.registryFramework;
+      return;
+    }
+
+    const requested = new URLSearchParams(url.search).get("framework");
+    const saved = document.cookie
+      .split(";")
+      .map((cookie) => cookie.trim().split("="))
+      .find(([key]) => key === frameworkCookie)?.[1];
+
+    root.dataset.registryFramework = requested === "html" || requested === "react"
+      ? requested
+      : saved === "html" || saved === "react"
+        ? saved
+        : "react";
+  }
+
+  applyInstallationFramework(window.location, document.documentElement);
+
+  document.addEventListener("astro:before-swap", function (event) {
+    applyInstallationFramework(event.to, event.newDocument.documentElement);
+  });
+</script>

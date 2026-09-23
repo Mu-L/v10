@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { currentFramework } from '@/stores/preferences';
+import { registryFramework } from '@/stores/registry';
 
 import {
   DOCS_FRAMEWORK_NAVIGATION_INFO,
+  findVisibleActiveSidebarLink,
   initializeDocsNavigation,
   savePageScrollForNavigation,
   syncFrameworkPreferenceFromUrl,
@@ -15,6 +17,7 @@ describe('syncFrameworkPreferenceFromUrl', () => {
     window.__videojsDocsNavigationController?.abort();
     delete window.__videojsDocsNavigationController;
     currentFramework.set(null);
+    registryFramework.set('react');
     document.cookie = `${FRAMEWORK_COOKIE}=; max-age=0; path=/`;
     window.sessionStorage.clear();
     window.history.replaceState(null, '', '/');
@@ -43,12 +46,57 @@ describe('syncFrameworkPreferenceFromUrl', () => {
 
   it('synchronizes the query-controlled Shadcn framework', () => {
     currentFramework.set('react');
+    registryFramework.set('react');
     document.cookie = `${FRAMEWORK_COOKIE}=react; path=/`;
 
     syncFrameworkPreferenceFromUrl(new URL('https://videojs.org/docs/guides/installation/shadcn?framework=html'));
 
     expect(currentFramework.get()).toBe('html');
+    expect(registryFramework.get()).toBe('html');
     expect(getFrameworkPreferenceClient()).toBe('html');
+  });
+
+  it('uses the saved preference when the Shadcn query is missing', () => {
+    currentFramework.set('react');
+    registryFramework.set('react');
+    document.cookie = `${FRAMEWORK_COOKIE}=html; path=/`;
+
+    syncFrameworkPreferenceFromUrl(new URL('https://videojs.org/docs/guides/installation/shadcn'));
+
+    expect(currentFramework.get()).toBe('html');
+    expect(registryFramework.get()).toBe('html');
+    expect(getFrameworkPreferenceClient()).toBe('html');
+  });
+
+  it('normalizes a queryless Shadcn entry without replacing its history or scroll state', () => {
+    document.cookie = `${FRAMEWORK_COOKIE}=html; path=/`;
+    window.history.replaceState(
+      { index: 2, scrollX: 0, scrollY: 360 },
+      '',
+      '/docs/guides/installation/shadcn?preset=audio'
+    );
+
+    initializeDocsNavigation();
+
+    expect(window.location.search).toBe('?preset=audio&framework=html');
+    expect(window.history.state).toEqual({ index: 2, scrollX: 0, scrollY: 360 });
+    expect(registryFramework.get()).toBe('html');
+  });
+
+  it('normalizes a queryless Shadcn entry after client navigation', () => {
+    document.cookie = `${FRAMEWORK_COOKIE}=html; path=/`;
+    window.history.replaceState({ index: 2, scrollX: 0, scrollY: 360 }, '', '/docs');
+
+    initializeDocsNavigation();
+    window.history.replaceState(
+      { index: 3, scrollX: 0, scrollY: 360 },
+      '',
+      '/docs/guides/installation/shadcn?preset=audio'
+    );
+    document.dispatchEvent(new Event('astro:after-swap'));
+
+    expect(window.location.search).toBe('?preset=audio&framework=html');
+    expect(window.history.state).toEqual({ index: 3, scrollX: 0, scrollY: 360 });
   });
 
   it('does not change the preference for a framework-agnostic route', () => {
@@ -72,6 +120,7 @@ describe('framework navigation scroll', () => {
     window.history.replaceState(null, '', '/');
     document.documentElement.removeAttribute('data-base-ui-scroll-locked');
     document.body.scrollTop = 0;
+    document.body.replaceChildren();
     vi.restoreAllMocks();
   });
 
@@ -84,6 +133,27 @@ describe('framework navigation scroll', () => {
       url: '/docs/framework/react/guides/installation',
       scrollY: 275,
     });
+  });
+
+  it('restores against the visible active link when another framework sidebar is hidden', () => {
+    document.body.innerHTML = `
+      <aside id="docs-sidebar">
+        <div hidden><a aria-current="page">React installation</a></div>
+        <div><a aria-current="page">HTML installation</a></div>
+      </aside>
+    `;
+    const aside = document.getElementById('docs-sidebar')!;
+    const [hiddenLink, visibleLink] = aside.querySelectorAll<HTMLElement>('a');
+    const visibleRect = visibleLink!.getBoundingClientRect();
+    const hiddenRects = Object.assign([] as DOMRect[], { item: () => null }) satisfies DOMRectList;
+    const visibleRects = Object.assign([visibleRect], {
+      item: (index: number) => (index === 0 ? visibleRect : null),
+    }) satisfies DOMRectList;
+
+    vi.spyOn(hiddenLink!, 'getClientRects').mockReturnValue(hiddenRects);
+    vi.spyOn(visibleLink!, 'getClientRects').mockReturnValue(visibleRects);
+
+    expect(findVisibleActiveSidebarLink(aside)).toBe(visibleLink);
   });
 
   it('saves the locked body position while a Base UI popup is open', () => {

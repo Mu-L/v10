@@ -18,6 +18,7 @@ export default function PackageManagerTabs({ commands, syncSelection = true }: P
   const selectedRunner: ShadcnRunner = $installMethod === 'cdn' ? 'npm' : $installMethod;
 
   useEffect(() => {
+    // Package-manager tabs cannot select CDN, so normalize the shared selection before synchronizing command islands.
     if (syncSelection && installMethod.get() === 'cdn') installMethod.set('npm');
   }, [syncSelection]);
 

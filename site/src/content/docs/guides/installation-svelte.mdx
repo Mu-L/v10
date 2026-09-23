@@ -5,6 +5,7 @@ description: 'Install Video.js in Svelte or SvelteKit and build a video player w
 
 import JSPicker from '@/components/installation/JSPicker.astro';
 import HTMLInstallTabs from '@/components/installation/HTMLInstallTabs.astro';
+import InstallationCLIForLLMs from '@/components/installation/InstallationCLIForLLMs.astro';
 import InstallationChoicesForLLMs from '@/components/installation/InstallationChoicesForLLMs.astro';
 import InstallationMethodNav from '@/components/installation/InstallationMethodNav.astro';
 import InstallationOverview from '@/components/installation/InstallationOverview.astro';
@@ -26,17 +27,13 @@ import HumanCase from '@/components/docs/HumanCase.astro';
 
 <InstallationChoicesForLLMs />
 
+<InstallationCLIForLLMs />
+
 <HumanCase>
-
-## Choose your installation method
-
-Start with packages, add editable source, or load the browser-ready player from a CDN.
-
-<InstallationMethodNav />
 
 ## Choose your JS framework
 
-Choose another framework to open its packaged installation guide. Svelte and SvelteKit both use the HTML custom elements.
+Choose the JavaScript framework for your project.
 
 <ContentWidth margins="lg">
   <JSPicker />
@@ -66,7 +63,15 @@ Paste a media URL to detect its source type, pick one directly, or upload a vide
   <MediaSourcePicker client:idle />
 </ContentWidth>
 
+## Choose how to install
+
+Choose from the installation options available for your selections. Shadcn adds editable HTML custom-element source to your Svelte project.
+
+<InstallationMethodNav />
+
 </HumanCase>
+
+<div data-cli-replace="installation" class="contents">
 
 ## Install the packages
 
@@ -87,6 +92,8 @@ Then render the component in a page and pass it the media source you selected ab
 <ContentWidth>
   <SvelteUsageCodeBlock client:idle />
 </ContentWidth>
+
+</div>
 
 That's it! You now have a working Video.js player.
 
