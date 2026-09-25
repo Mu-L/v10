@@ -11,6 +11,7 @@ import {
   generateChronologicalIndex,
   generateDocsCorpus,
   generateDocsIndex,
+  generateInstallationIndex,
   generatePageFooter,
   generateRootIndex,
   llmsIndexPaths,
@@ -228,9 +229,22 @@ describe('convertPage', () => {
   });
 
   it('leaves marker wrappers in place for their own rules', () => {
-    const markdown = convert('<div data-cli-replace="installation" class="contents"><p>Steps</p></div>');
+    const markdown = convert('<div data-installation-plan class="contents"><p>Steps</p></div>');
 
-    expect(markdown).toBe('<!-- cli:replace installation -->\n\nSteps\n\n<!-- /cli:replace installation -->');
+    expect(markdown).toBe('<!-- installation-plan:start -->\n\nSteps\n\n<!-- installation-plan:end -->');
+  });
+
+  it('marks source-framework branches for request-time and package selection', () => {
+    const markdown = convert(
+      '<div data-shadcn-framework="react"><p>React only</p></div><div data-shadcn-framework="html"><p>HTML only</p></div>'
+    );
+
+    expect(markdown).toContain(
+      '<!-- installation:framework react -->\nReact only\n<!-- /installation:framework react -->'
+    );
+    expect(markdown).toContain(
+      '<!-- installation:framework html -->\nHTML only\n<!-- /installation:framework html -->'
+    );
   });
 
   it('restores the separators between code chips', () => {
@@ -342,6 +356,28 @@ describe('convertPage', () => {
     );
 
     expect(markdown).toBe('# Title\n\nPublished 2026-09-08.');
+  });
+});
+
+describe('generateInstallationIndex', () => {
+  it('lists canonical routes and only supported Markdown query parameters', () => {
+    const markdown = generateInstallationIndex(SITE_URL);
+
+    expect(markdown).toContain(
+      '- [HTML source](https://videojs.org/docs/guides/installation/shadcn.md?framework=html)'
+    );
+    expect(markdown).not.toContain('shadcn.md?framework=vue');
+    expect(markdown).toContain('`framework`: On the Shadcn page, choose `react` or `html`.');
+    expect(markdown).toContain('`extensions`:');
+    expect(markdown).toContain('Applies when method=shadcn.');
+    expect(markdown).toContain('Use `project=existing&template=none` for an existing page');
+    expect(markdown).not.toMatch(/--[a-z]/);
+    expect(markdown).toContain('`package-manager`');
+    expect(markdown).toContain('`package-manager`: The command runner used for app setup');
+    expect(markdown).toContain('Default: pnpm.');
+    expect(markdown).not.toContain("Default: the project's package manager");
+    expect(markdown).not.toContain('`method`:');
+    expect(markdown).not.toContain('`install-method`:');
   });
 });
 
@@ -533,26 +569,61 @@ describe('generateDocsCorpus', () => {
     expect(full).toContain(`<!-- Source: ${SITE_URL}${pathname} -->`);
   });
 
-  it("keeps only the framework's branches of a shared page and drops the CLI markers", () => {
-    const slug = firstSidebarSlug(sidebar);
+  it("renders the framework's installation plan and keeps only its source branches", () => {
     const markdown = [
-      '# Page',
-      '<!-- cli:replace installation -->',
-      'Steps',
-      '<!-- cli:framework react -->',
+      '# Shadcn Installation Guide',
+      '<!-- installation-plan:start -->',
+      'Default steps',
+      '<!-- installation-plan:end -->',
+      '<!-- installation:framework react -->',
       'React only',
-      '<!-- /cli:framework react -->',
-      '<!-- cli:framework html -->',
+      '<!-- /installation:framework react -->',
+      '<!-- installation:framework html -->',
       'HTML only',
-      '<!-- /cli:framework html -->',
-      '<!-- /cli:replace installation -->',
+      '<!-- /installation:framework html -->',
       'After',
     ].join('\n\n');
-    const { content } = generateDocsCorpus('html', [htmlPage(slug, markdown)], SITE_URL);
+    const { content } = generateDocsCorpus(
+      'html',
+      [
+        {
+          pathname: '/docs/guides/installation/shadcn',
+          title: 'Shadcn Installation Guide',
+          frameworks: ['react', 'html'],
+          markdown,
+        },
+      ],
+      SITE_URL
+    );
 
-    expect(content).toContain('# Page\n\nSteps\n\nHTML only\n\nAfter\n');
+    expect(content).toContain('- `framework`: `html`');
+    expect(content).toContain('HTML only');
     expect(content).not.toContain('React only');
-    expect(content).not.toContain('cli:');
+    expect(content).not.toContain('installation:framework');
+  });
+
+  it('uses the canonical framework for dedicated installation guides', () => {
+    const markdown = [
+      '# Vue Installation Guide',
+      '<!-- installation-plan:start -->',
+      'Default steps',
+      '<!-- installation-plan:end -->',
+    ].join('\n\n');
+    const { content } = generateDocsCorpus(
+      'html',
+      [
+        {
+          pathname: '/docs/guides/installation/vue',
+          title: 'Vue Installation Guide',
+          frameworks: ['html'],
+          markdown,
+        },
+      ],
+      SITE_URL
+    );
+
+    expect(content).toContain('- `framework`: `vue`');
+    expect(content).not.toContain('Invalid installation options');
   });
 
   it('adds the section label to titles two pages share', () => {
