@@ -98,6 +98,7 @@ export {
 export {
   supportsAnchorPositioning,
   supportsAnimationFrame,
+  supportsConstructableStyleSheets,
   supportsIdleCallback,
   supportsPopoverAPI,
 } from './supports';
